@@ -517,6 +517,50 @@ def generate_comprehensive_word_report(
                     pq_table.rows[i].cells[1].text = str(value)
                 
                 doc.add_paragraph("\n**Analysis:** This transient simulation models a 20% sudden load change to evaluate system response and power quality impacts.")
+                
+                # Add transient visualization charts if data available
+                transient_data = transient.get('transient_data', {})
+                if transient_data:
+                    try:
+                        from app.utils.transient_charts import (
+                            create_transient_response_chart,
+                            create_load_rate_of_change_chart,
+                            create_frequency_deviation_chart,
+                            create_workload_step_change_chart
+                        )
+                        
+                        doc.add_paragraph("\n**Transient Visualizations:**")
+                        
+                        # Workload step change
+                        step_chart = create_workload_step_change_chart(transient_data)
+                        if step_chart and os.path.exists(step_chart):
+                            doc.add_paragraph("*Workload Step Change Event:*")
+                            doc.add_picture(step_chart, width=Inches(6))
+                            os.remove(step_chart)
+                        
+                        # Transient response (Load/Gen/BESS)
+                        response_chart = create_transient_response_chart(transient_data)
+                        if response_chart and os.path.exists(response_chart):
+                            doc.add_paragraph("*System Response (Load, Generator, BESS):*")
+                            doc.add_picture(response_chart, width=Inches(6))
+                            os.remove(response_chart)
+                        
+                        # Load rate of change
+                        rate_chart = create_load_rate_of_change_chart(transient_data)
+                        if rate_chart and os.path.exists(rate_chart):
+                            doc.add_paragraph("*Load Rate of Change (dP/dt):*")
+                            doc.add_picture(rate_chart, width=Inches(6))
+                            os.remove(rate_chart)
+                        
+                        # Frequency deviation
+                        freq_chart = create_frequency_deviation_chart(transient_data)
+                        if freq_chart and os.path.exists(freq_chart):
+                            doc.add_paragraph("*Frequency Deviation:*")
+                            doc.add_picture(freq_chart, width=Inches(6))
+                            os.remove(freq_chart)
+                            
+                    except Exception as e:
+                        doc.add_paragraph(f"*Note: Some transient charts unavailable: {str(e)}*")
     
     # Constraint Compliance
     doc.add_page_break()
