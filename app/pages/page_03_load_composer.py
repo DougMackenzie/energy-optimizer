@@ -32,6 +32,58 @@ def render():
             'growth_trajectory': []
         }
     
+    # Preset workload templates
+    st.markdown("#### 🎯 Preset Workload Templates")
+    
+    preset_templates = {
+        "AI Training Focused": {
+            'Training': 60, 'Inference': 20, 'HPC': 15, 'Enterprise': 5,
+            'load_factor': 85, 'description': 'Heavy model training, high GPU utilization'
+        },
+        "AI Inference Focused": {
+            'Training': 20, 'Inference': 50, 'HPC': 20, 'Enterprise': 10,
+            'load_factor': 75, 'description': 'Production serving, moderate variability'
+        },
+        "Mixed AI/HPC": {
+            'Training': 40, 'Inference': 30, 'HPC': 20, 'Enterprise': 10,
+            'load_factor': 78, 'description': 'Balanced AI and scientific computing'
+        },
+        "Enterprise Cloud": {
+            'Training': 10, 'Inference': 15, 'HPC': 10, 'Enterprise': 65,
+            'load_factor': 60, 'description': 'Traditional datacenter workloads'
+        },
+        "HPC Research": {
+            'Training': 15, 'Inference': 10, 'HPC': 70, 'Enterprise': 5,
+            'load_factor': 88, 'description': 'Scientific simulations, high utilization'
+        }
+    }
+    
+    col_preset1, col_preset2 = st.columns([3, 1])
+    
+    with col_preset1:
+        selected_template = st.selectbox(
+            "Select Preset Configuration",
+            list(preset_templates.keys()),
+            help="Choose a pre-configured workload mix or customize below"
+        )
+        
+        if selected_template:
+            template = preset_templates[selected_template]
+            st.caption(f"📝 {template['description']}")
+    
+    with col_preset2:
+        if st.button("Apply Template", type="primary", use_container_width=True):
+            template = preset_templates[selected_template]
+            st.session_state.load_profile['workload_mix'] = {
+                k: v for k, v in template.items() 
+                if k in ['Training', 'Inference', 'HPC', 'Enterprise']
+            }
+            st.session_state.load_profile['load_factor'] = template['load_factor']
+            st.success(f"✅ Applied {selected_template} template!")
+            st.rerun()
+    
+    st.markdown("---")
+    
     # Workload Configuration
     st.markdown("#### 🖥️ IT Workload Configuration")
     
