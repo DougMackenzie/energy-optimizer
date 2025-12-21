@@ -1,12 +1,60 @@
 """
 Multi-Scenario Runner
 Batch run multiple scenarios and compare results
+Uses scipy optimization engine for equipment sizing
 """
 
-from typing import List, Dict
+from typing import List, Dict, Tuple
 from app.utils.optimizer import optimize_scenario, rank_scenarios
 from app.utils.data_io import load_equipment_from_sheets
+from app.utils.optimization_engine import optimize_equipment_configuration, calculate_pareto_frontier
 import pandas as pd
+
+
+def auto_size_equipment_optimized(
+    scenario: Dict, 
+    site: Dict, 
+    equipment_data: Dict, 
+    constraints: Dict,
+    grid_config: Dict = None
+) -> Tuple[Dict, bool, List[str]]:
+    """
+    Use scipy optimizer to find optimal equipment configuration
+    
+    Returns:
+        (equipment_config, feasible, violations)
+    """
+    
+    # Use default grid config if not provided
+    if grid_config is None:
+        grid_config = {
+            'voltage_level': '345kV',
+            'transformer_lead_months': 24,
+            'breaker_lead_months': 18,
+            'total_timeline_months': constraints.get('Estimated_Interconnection_Months', 96),
+            'grid_capacity_override': None,
+            'timeline_override': None,
+            'grid_available_mw': constraints.get('Grid_Available_MW', 200)
+        }
+    
+    # Define objective weights (balanced approach)
+    objectives = {
+        'lcoe': {'weight': 0.4},
+        'timeline': {'weight': 0.3},
+        'emissions': {'weight': 0.3}
+    }
+    
+    # Run optimization
+    config, feasible, violations = optimize_equipment_configuration(
+        scenario=scenario,
+        site=site,
+        equipment_data=equipment_data,
+        constraints=constraints,
+        grid_config=grid_config,
+        objectives=objectives
+    )
+    
+    return config, feasible, violations
 
 
 def auto_size_equipment(scenario: Dict, site: Dict, equipment_data: Dict, constraints: Dict) -> Dict:
@@ -145,13 +193,14 @@ def run_all_scenarios(
     site: Dict,
     constraints: Dict,
     objectives: Dict,
-    scenarios: List[Dict]
+    scenarios: List[Dict],
+    grid_config: Dict = None
 ) -> List[Dict]:
     """
-    Run optimization for all scenarios and return ranked results
+    Run optimization for all scenarios using scipy optimizer
     
     Returns:
-        List of optimization results, ranked by score
+        List of optimization results with constraint violations
     """
     
     # Load equipment once
@@ -160,10 +209,16 @@ def run_all_scenarios(
     results = []
     
     for scenario in scenarios:
-        # Auto-size equipment for this scenario
-        equipment_config = auto_size_equipment(scenario, site, equipment_data, constraints)
+        # Use scipy optimizer for equipment sizing
+        equipment_config, is_feasible, violations = auto_size_equipment_optimized(
+            scenario=scenario,
+            site=site,
+            equipment_data=equipment_data,
+            constraints=constraints,
+            grid_config=grid_config
+        )
         
-        # Run optimization
+        # Run full optimization with the optimized config
         result = optimize_scenario(
             site=site,
             constraints=constraints,
@@ -171,6 +226,10 @@ def run_all_scenarios(
             equipment_config=equipment_config,
             objectives=objectives
         )
+        
+        # Override feasibility with optimizer result
+        result['feasible'] = is_feasible
+        result['violations'] = violations
         
         results.append(result)
     
@@ -183,6 +242,7 @@ def run_all_scenarios(
 def create_comparison_table(results: List[Dict]) -> pd.DataFrame:
     """
     Create comparison table from optimization results
+    Shows constraint violations for infeasible scenarios
     """
     
     rows = []
@@ -190,6 +250,16 @@ def create_comparison_table(results: List[Dict]) -> pd.DataFrame:
     for result in results:
         if not result:
             continue
+        
+        # Get constraint violations summary
+        violations = result.get('violations', [])
+        if violations:
+            # Summarize first 2 violations
+            violations_text = '; '.join(violations[:2])
+            if len(violations) > 2:
+                violations_text += f" (+{len(violations)-2} more)"
+        else:
+            violations_text = '-'
         
         row = {
             'Rank': result.get('rank', 999),
@@ -201,7 +271,7 @@ def create_comparison_table(results: List[Dict]) -> pd.DataFrame:
             'Speed': result['timeline']['deployment_speed'] if result.get('feasible') else 'N/A',
             'Total MW': f"{result['metrics']['total_capacity_mw']:.0f}" if result.get('feasible') else 'N/A',
             'Score': f"{result.get('score', 0):.1f}" if result.get('feasible') else '0',
-            'Violations': len(result.get('violations', []))
+            'Constraint Violations': violations_text
         }
         
         rows.append(row)
