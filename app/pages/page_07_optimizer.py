@@ -50,10 +50,89 @@ def render():
         else:
             st.metric("Objective", "Not Set")
     
+    # Multi-Scenario Comparison
+    st.markdown("---")
+    with st.expander("🔄 Batch Run All Scenarios", expanded=False):
+        st.markdown("#### Compare All Deployment Strategies")
+        st.info("""
+        **Auto-run all 5 scenarios** for this site and compare:
+        - Automatically sizes equipment for each scenario
+        - Validates constraints
+        - Calculates LCOE and deployment timeline
+        - Ranks scenarios by weighted objectives
+        """)
+        
+        col_batch1, col_batch2 = st.columns([3, 1])
+        
+        with col_batch1:
+            st.caption("This will run: All Sources, BTM Only, BESS+GT, Grid+Solar, IFOM Bridge")
+        
+        with col_batch2:
+            if st.button("⚡ Run All Scenarios", type="primary", use_container_width=True):
+                with st.spinner("Running all scenarios... This may take 10-20 seconds"):
+                    from app.utils.multi_scenario import run_all_scenarios, create_comparison_table
+                    from app.utils.site_loader import load_scenario_templates
+                    
+                    scenarios = load_scenario_templates()
+                    
+                    # Run all scenarios
+                    results = run_all_scenarios(
+                        site=site,
+                        constraints=constraints,
+                        objectives=objectives,
+                        scenarios=scenarios
+                    )
+                    
+                    # Store results
+                    st.session_state.multi_scenario_results = results
+                    
+                    st.success(f"✅ Completed {len(results)} scenarios!")
+                    st.rerun()
+        
+        # Display results if available
+        if 'multi_scenario_results' in st.session_state:
+            st.markdown("---")
+            st.markdown("#### 📊 Scenario Comparison Results")
+            
+            from app.utils.multi_scenario import create_comparison_table
+            
+            results = st.session_state.multi_scenario_results
+            df = create_comparison_table(results)
+            
+            # Display table
+            st.dataframe(df, use_container_width=True, hide_index=True)
+            
+            # Show top recommendation
+            if len(results) > 0 and results[0].get('feasible'):
+                top_result = results[0]
+                st.success(f"""
+                **🏆 Recommended Scenario: {top_result['scenario_name']}**
+                - LCOE: ${top_result['economics']['lcoe_mwh']:.2f}/MWh
+                - Deployment: {top_result['timeline']['timeline_months']} months
+                - Score: {top_result['score']:.1f}/100
+                """)
+            
+            # Option to select a scenario
+            col_sel1, col_sel2 = st.columns([3, 1])
+            
+            with col_sel1:
+                scenario_names = [r['scenario_name'] for r in results if r.get('feasible')]
+                if scenario_names:
+                    selected_scenario = st.selectbox("Select scenario to view details:", scenario_names)
+            
+            with col_sel2:
+                if st.button("📋 View Details", use_container_width=True):
+                    # Find selected result
+                    selected_result = next((r for r in results if r['scenario_name'] == selected_scenario), None)
+                    if selected_result:
+                        st.session_state.optimization_result = selected_result
+                        st.session_state.current_page = 'results'
+                        st.rerun()
+    
     st.markdown("---")
     
-    # Equipment Sizing Section
-    st.markdown("#### ⚙️ Equipment Sizing")
+    # Equipment Sizing Section (existing content continues below)
+    st.markdown("#### ⚙️ Manual Equipment Sizing")
     st.info("Configure equipment capacities for this scenario. The optimizer will validate against site constraints.")
     
     from app.utils.data_io import load_equipment_from_sheets
