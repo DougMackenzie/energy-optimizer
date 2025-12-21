@@ -266,6 +266,18 @@ def generate_multi_scenario_report(
         # Visualizations (same as single-scenario report)
         doc.add_heading('Dispatch & Power Quality Visualization', 2)
         
+        # Run dispatch simulation for actual data
+        dispatch_data = None
+        try:
+            from app.utils.dispatch_simulation import dispatch_equipment, generate_8760_load_profile
+            load_mw = site.get('Total_Facility_MW', 200)
+            load_factor = site.get('Load_Factor_Pct', 70) / 100
+            load_profile_array = generate_8760_load_profile(load_mw, load_factor)
+            dispatch_results = dispatch_equipment(load_profile_array, equipment_config, bess_available=True)
+            dispatch_data = dispatch_results
+        except:
+            pass
+        
         try:
             from app.utils.report_charts import (
                 create_8760_dispatch_chart,
@@ -274,8 +286,8 @@ def generate_multi_scenario_report(
                 create_deployment_timeline_chart
             )
             
-            # 8760 Dispatch
-            dispatch_chart = create_8760_dispatch_chart(equipment_config, site)
+            # 8760 Dispatch WITH ACTUAL DATA
+            dispatch_chart = create_8760_dispatch_chart(equipment_config, site, dispatch_data=dispatch_data)
             if dispatch_chart and os.path.exists(dispatch_chart):
                 doc.add_paragraph("**Hourly Dispatch (First Week):**")
                 doc.add_picture(dispatch_chart, width=Inches(6))
@@ -355,6 +367,47 @@ def generate_multi_scenario_report(
                 for i, (label, value) in enumerate(pq_data):
                     pq_table.rows[i].cells[0].text = label
                     pq_table.rows[i].cells[1].text = str(value)
+                
+                # Add transient visualization charts
+                transient_data = transient.get('transient_data', {})
+                if transient_data:
+                    try:
+                        from app.utils.transient_charts import (
+                            create_transient_response_chart,
+                            create_load_rate_of_change_chart,
+                            create_frequency_deviation_chart,
+                            create_workload_step_change_chart
+                        )
+                        
+                        # Workload step change
+                        step_chart = create_workload_step_change_chart(transient_data)
+                        if step_chart and os.path.exists(step_chart):
+                            doc.add_paragraph("\\n*Workload Step Change:*")
+                            doc.add_picture(step_chart, width=Inches(5.5))
+                            os.remove(step_chart)
+                        
+                        # Transient response
+                        response_chart = create_transient_response_chart(transient_data)
+                        if response_chart and os.path.exists(response_chart):
+                            doc.add_paragraph("*System Response:*")
+                            doc.add_picture(response_chart, width=Inches(5.5))
+                            os.remove(response_chart)
+                        
+                        # Load rate of change
+                        rate_chart = create_load_rate_of_change_chart(transient_data)
+                        if rate_chart and os.path.exists(rate_chart):
+                            doc.add_paragraph("*Load Rate of Change:*")
+                            doc.add_picture(rate_chart, width=Inches(5.5))
+                            os.remove(rate_chart)
+                        
+                        # Frequency deviation  
+                        freq_chart = create_frequency_deviation_chart(transient_data)
+                        if freq_chart and os.path.exists(freq_chart):
+                            doc.add_paragraph("*Frequency Deviation:*")
+                            doc.add_picture(freq_chart, width=Inches(5.5))
+                            os.remove(freq_chart)
+                    except Exception as e:
+                        doc.add_paragraph(f"*Charts unavailable: {str(e)}*")
         
         doc.add_page_break()
     

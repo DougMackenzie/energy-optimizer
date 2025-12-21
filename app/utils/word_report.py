@@ -318,6 +318,23 @@ def generate_comprehensive_word_report(
     if optimization_result.get('feasible'):
         doc.add_heading('5. 8760 Dispatch & Power Quality Analysis', 1)
         
+        # Run dispatch simulation to get actual 8760 data
+        dispatch_data = None
+        try:
+            from app.utils.dispatch_simulation import dispatch_equipment, generate_8760_load_profile
+            
+            # Generate load profile
+            load_mw = site.get('Total_Facility_MW', 200)
+            load_factor = site.get('Load_Factor_Pct', 70) / 100
+            load_profile_array = generate_8760_load_profile(load_mw, load_factor)
+            
+            # Run dispatch
+            dispatch_results = dispatch_equipment(load_profile_array, equipment_config, bess_available=True)
+            dispatch_data = dispatch_results  # This has all the hourly arrays
+        except Exception as e:
+            # If dispatch fails, charts will fall back to synthetic data
+            pass
+        
         try:
             from app.utils.report_charts import (
                 create_8760_dispatch_chart,
@@ -330,7 +347,7 @@ def generate_comprehensive_word_report(
             doc.add_heading('5.1 Hourly Dispatch Visualization', 2)
             doc.add_paragraph("The following chart shows the equipment dispatch stack for the first week (168 hours).")
             
-            dispatch_chart = create_8760_dispatch_chart(equipment_config, site)
+            dispatch_chart = create_8760_dispatch_chart(equipment_config, site, dispatch_data=dispatch_data)
             if dispatch_chart and os.path.exists(dispatch_chart):
                 doc.add_picture(dispatch_chart, width=Inches(6.5))
                 os.remove(dispatch_chart)  # Clean up temp file

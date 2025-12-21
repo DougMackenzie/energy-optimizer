@@ -102,6 +102,66 @@ def render():
         df_summary = create_dispatch_summary_df(dispatch)
         st.dataframe(df_summary, use_container_width=True, hide_index=True)
         
+        # 8760 Dispatch Data Export
+        st.markdown("---")
+        st.markdown("#### 💾 Export 8760 Hourly Dispatch Data")
+        
+        col_exp1, col_exp2, col_exp3 = st.columns([2, 1, 1])
+        
+        with col_exp1:
+            st.info("Download the complete 8760-hour dispatch data including all equipment outputs, fuel consumption, and emissions.")
+        
+        with col_exp2:
+            # Create CSV export
+            import pandas as pd
+            import io
+            
+            # Build hourly dataframe
+            hours = list(range(8760))
+            export_df = pd.DataFrame({
+                'Hour': hours,
+                'Load_MW': dispatch['load_profile_mw'].tolist() if isinstance(dispatch['load_profile_mw'], np.ndarray) else dispatch['load_profile_mw'],
+                'Grid_Import_MW': dispatch.get('grid_import_mw', np.zeros(8760)).tolist() if isinstance(dispatch.get('grid_import_mw', []), np.ndarray) else dispatch.get('grid_import_mw', [0]*8760),
+                'Solar_Output_MW': dispatch.get('solar_output_mw', np.zeros(8760)).tolist() if isinstance(dispatch.get('solar_output_mw', []), np.ndarray) else dispatch.get('solar_output_mw', [0]*8760),
+                'Recip_Output_MW': dispatch.get('recip_dispatch_mw', np.zeros(8760)).tolist() if isinstance(dispatch.get('recip_dispatch_mw', []), np.ndarray) else dispatch.get('recip_dispatch_mw', [0]*8760),
+                'Turbine_Output_MW': dispatch.get('turbine_dispatch_mw', np.zeros(8760)).tolist() if isinstance(dispatch.get('turbine_dispatch_mw', []), np.ndarray) else dispatch.get('turbine_dispatch_mw', [0]*8760),
+                'BESS_Discharge_MW': dispatch.get('bess_discharge_mw', np.zeros(8760)).tolist() if isinstance(dispatch.get('bess_discharge_mw', []), np.ndarray) else dispatch.get('bess_discharge_mw', [0]*8760),
+                'Fuel_Consumption_MMBtu': dispatch.get('fuel_consumption_mmbtu_hourly', np.zeros(8760)).tolist() if isinstance(dispatch.get('fuel_consumption_mmbtu_hourly', []), np.ndarray) else dispatch.get('fuel_consumption_mmbtu_hourly', [0]*8760),
+                'NOx_Emissions_lb': dispatch.get('nox_emissions_lb_hourly', np.zeros(8760)).tolist() if isinstance(dispatch.get('nox_emissions_lb_hourly', []), np.ndarray) else dispatch.get('nox_emissions_lb_hourly', [0]*8760),
+                'CO_Emissions_lb': dispatch.get('co_emissions_lb_hourly', np.zeros(8760)).tolist() if isinstance(dispatch.get('co_emissions_lb_hourly', []), np.ndarray) else dispatch.get('co_emissions_lb_hourly', [0]*8760)
+            })
+            
+            csv_buffer = io.StringIO()
+            export_df.to_csv(csv_buffer, index=False)
+            
+            from datetime import datetime
+            site_name = result.get('site_name', 'Site').replace(' ', '_')
+            csv_filename = f"{site_name}_8760_Dispatch_{datetime.now().strftime('%Y%m%d')}.csv"
+            
+            st.download_button(
+                label="📥 Download CSV",
+                data=csv_buffer.getvalue(),
+                file_name=csv_filename,
+                mime="text/csv",
+                use_container_width=True
+            )
+        
+        with col_exp3:
+            # Create Excel export
+            excel_buffer = io.BytesIO()
+            with pd.ExcelWriter(excel_buffer, engine='openpyxl') as writer:
+                export_df.to_excel(writer, sheet_name='8760 Dispatch', index=False)
+            
+            excel_filename = f"{site_name}_8760_Dispatch_{datetime.now().strftime('%Y%m%d')}.xlsx"
+            
+            st.download_button(
+                label="📥 Download Excel",
+                data=excel_buffer.getvalue(),
+                file_name=excel_filename,
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                use_container_width=True
+            )
+        
         # Equipment Utilization Table
         st.markdown("---")
         st.markdown("#### ⚙️ Equipment Utilization Breakdown")

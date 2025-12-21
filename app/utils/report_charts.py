@@ -15,69 +15,85 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
-def create_8760_dispatch_chart(equipment_config: Dict, site: Dict, save_path: str = None) -> str:
+def create_8760_dispatch_chart(equipment_config: Dict, site: Dict, save_path: str = None, dispatch_data: Dict = None) -> str:
     """
     Generate 8760 hourly dispatch visualization
+    
+    Args:
+        equipment_config: Equipment configuration
+        site: Site information
+        save_path: Optional path to save chart
+        dispatch_data: Optional actual dispatch results from simulation
     
     Returns:
         path to saved image file
     """
-    # Simulate 8760 hours (simplified - real version would use actual dispatch)
-    hours = np.arange(8760)
-    total_load = site.get('Total_Facility_MW', 200)
-    load_factor = site.get('Load_Factor_Pct', 70) / 100
-    
-    # Create synthetic load profile with daily and seasonal patterns
-    base_load = total_load * load_factor
-    daily_pattern = np.sin(hours * 2 * np.pi / 24) * (total_load * 0.15)
-    seasonal_pattern = np.sin(hours * 2 * np.pi / 8760) * (total_load * 0.10)
-    load_profile = base_load + daily_pattern + seasonal_pattern
-    load_profile = np.clip(load_profile, total_load * 0.5, total_load)
-    
-    # Equipment dispatch (stacked)
-    grid_import = np.zeros(8760)
-    solar_output = np.zeros(8760)
-    recip_output = np.zeros(8760)
-    turbine_output = np.zeros(8760)
-    bess_discharge = np.zeros(8760)
-    
-    # Grid (if available)
-    if equipment_config.get('grid_import_mw', 0) > 0:
-        grid_cap = equipment_config['grid_import_mw']
-        grid_import = np.full(8760, min(grid_cap, total_load * 0.4))
-    
-    # Solar (daytime only, 6am-8pm)
-    if equipment_config.get('solar_mw_dc', 0) > 0:
-        solar_cap = equipment_config['solar_mw_dc']
-        for h in range(8760):
-            hour_of_day = h % 24
-            if 6 <= hour_of_day <= 20:
-                # Peak at noon
-                sun_factor = np.sin((hour_of_day - 6) * np.pi / 14)
-                solar_output[h] = solar_cap * sun_factor * 0.25  # 25% AC derate
-    
-    # Reciprocating engines (baseload)
-    if equipment_config.get('recip_engines'):
-        recip_cap = sum(e.get('capacity_mw', 0) for e in equipment_config['recip_engines'])
-        recip_cf = equipment_config['recip_engines'][0].get('capacity_factor', 0.7) if equipment_config['recip_engines'] else 0.7
-        recip_output = np.full(8760, recip_cap * recip_cf)
-    
-    # Gas turbines (peaking)
-    if equipment_config.get('gas_turbines'):
-        turbine_cap = sum(t.get('capacity_mw', 0) for t in equipment_config['gas_turbines'])
-        # Turbines run during high load periods
-        for h in range(8760):
-            if load_profile[h] > base_load:
-                turbine_output[h] = min(turbine_cap, (load_profile[h] - base_load) * 0.5)
-    
-    # BESS (peak shaving)
-    if equipment_config.get('bess'):
-        bess_power = sum(b.get('power_mw', 0) for b in equipment_config['bess'])
-        for h in range(8760):
-            hour_of_day = h % 24
-            # Discharge during evening peak (6pm-10pm)
-            if 18 <= hour_of_day <= 22:
-                bess_discharge[h] = bess_power * 0.8
+    # If actual dispatch data provided, use it!
+    if dispatch_data:
+        hours = np.arange(8760)
+        load_profile = dispatch_data.get('load_profile_mw', np.zeros(8760))
+        grid_import = dispatch_data.get('grid_import_mw', np.zeros(8760))
+        solar_output = dispatch_data.get('solar_output_mw', np.zeros(8760))
+        recip_output = dispatch_data.get('recip_dispatch_mw', np.zeros(8760))
+        turbine_output = dispatch_data.get('turbine_dispatch_mw', np.zeros(8760))
+        bess_discharge = dispatch_data.get('bess_discharge_mw', np.zeros(8760))
+    else:
+        # Fallback to synthetic simulation if no real data available
+        hours = np.arange(8760)
+        total_load = site.get('Total_Facility_MW', 200)
+        load_factor = site.get('Load_Factor_Pct', 70) / 100
+        
+        # Create synthetic load profile with daily and seasonal patterns
+        base_load = total_load * load_factor
+        daily_pattern = np.sin(hours * 2 * np.pi / 24) * (total_load * 0.15)
+        seasonal_pattern = np.sin(hours * 2 * np.pi / 8760) * (total_load * 0.10)
+        load_profile = base_load + daily_pattern + seasonal_pattern
+        load_profile = np.clip(load_profile, total_load * 0.5, total_load)
+        
+        # Equipment dispatch (stacked)
+        grid_import = np.zeros(8760)
+        solar_output = np.zeros(8760)
+        recip_output = np.zeros(8760)
+        turbine_output = np.zeros(8760)
+        bess_discharge = np.zeros(8760)
+        
+        # Grid (if available)
+        if equipment_config.get('grid_import_mw', 0) > 0:
+            grid_cap = equipment_config['grid_import_mw']
+            grid_import = np.full(8760, min(grid_cap, total_load * 0.4))
+        
+        # Solar (daytime only, 6am-8pm)
+        if equipment_config.get('solar_mw_dc', 0) > 0:
+            solar_cap = equipment_config['solar_mw_dc']
+            for h in range(8760):
+                hour_of_day = h % 24
+                if 6 <= hour_of_day <= 20:
+                    # Peak at noon
+                    sun_factor = np.sin((hour_of_day - 6) * np.pi / 14)
+                    solar_output[h] = solar_cap * sun_factor * 0.25  # 25% AC derate
+        
+        # Reciprocating engines (baseload)
+        if equipment_config.get('recip_engines'):
+            recip_cap = sum(e.get('capacity_mw', 0) for e in equipment_config['recip_engines'])
+            recip_cf = equipment_config['recip_engines'][0].get('capacity_factor', 0.7) if equipment_config['recip_engines'] else 0.7
+            recip_output = np.full(8760, recip_cap * recip_cf)
+        
+        # Gas turbines (peaking)
+        if equipment_config.get('gas_turbines'):
+            turbine_cap = sum(t.get('capacity_mw', 0) for t in equipment_config['gas_turbines'])
+            # Turbines run during high load periods
+            for h in range(8760):
+                if load_profile[h] > base_load:
+                    turbine_output[h] = min(turbine_cap, (load_profile[h] - base_load) * 0.5)
+        
+        # BESS (peak shaving)
+        if equipment_config.get('bess'):
+            bess_power = sum(b.get('power_mw', 0) for b in equipment_config['bess'])
+            for h in range(8760):
+                hour_of_day = h % 24
+                # Discharge during evening peak (6pm-10pm)
+                if 18 <= hour_of_day <= 22:
+                    bess_discharge[h] = bess_power * 0.8
    
     # Create stacked area chart (show first week for clarity - 168 hours)
     fig, ax = plt.subplots(figsize=(14, 6))
