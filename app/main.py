@@ -258,6 +258,10 @@ def load_page(page_name: str):
         from pages_custom import page_10_dispatch
         page_10_dispatch.render()
         
+    elif page_name == 'debug':
+        from pages_custom import page_99_debug
+        page_99_debug.render()
+        
     else:
         st.error(f"Unknown page: {page_name}")
 
