@@ -238,7 +238,7 @@ def load_page(page_name: str):
         from pages_custom import page_05_transient
         page_05_transient.render()
         
-    elif page_name == 'equipment':
+    elif page_name == 'equipment' or page_name == 'equipment_library':
         from pages_custom import page_06_equipment
         page_06_equipment.render()
         
