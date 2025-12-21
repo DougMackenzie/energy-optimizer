@@ -1,0 +1,316 @@
+# Antigravity Equipment Library
+# Default equipment specifications for BTM power solutions
+# Sources: OEM specs, IEEE Gold Book, NERC GADS
+
+# =============================================================================
+# RECIPROCATING ENGINES
+# =============================================================================
+recip_engines:
+  - id: wartsila_50sg
+    name: "Wärtsilä 50SG"
+    manufacturer: Wärtsilä
+    model: "20V50SG"
+    type: recip
+    fuel: natural_gas
+    capacity_mw: 18.8
+    min_load_pct: 40
+    efficiency_pct: 48.2
+    heat_rate_btu_kwh: 7084
+    start_time_cold_min: 2
+    start_time_hot_min: 0.5
+    ramp_rate_mw_min: 3.0
+    ramp_rate_pct_min: 16
+    nox_g_hphr: 0.5
+    nox_lb_mwh: 0.47
+    co2_lb_mwh: 880
+    lead_time_months_min: 12
+    lead_time_months_max: 24
+    capex_per_kw: 850
+    fixed_om_per_kw_yr: 15
+    variable_om_per_mwh: 8
+    availability_pct: 97.5
+    mtbf_hrs: 2500
+    mttr_hrs: 24
+    footprint_sqft: 12000
+    notes: "Industry workhorse for large-scale BTM. Excellent efficiency."
+
+  - id: cat_cg260_16
+    name: "Caterpillar CG260-16"
+    manufacturer: Caterpillar
+    model: "CG260-16"
+    type: recip
+    fuel: natural_gas
+    capacity_mw: 9.7
+    min_load_pct: 50
+    efficiency_pct: 46.5
+    heat_rate_btu_kwh: 7340
+    start_time_cold_min: 1.5
+    start_time_hot_min: 0.5
+    ramp_rate_mw_min: 2.5
+    ramp_rate_pct_min: 26
+    nox_g_hphr: 0.6
+    nox_lb_mwh: 0.56
+    co2_lb_mwh: 920
+    lead_time_months_min: 10
+    lead_time_months_max: 18
+    capex_per_kw: 780
+    fixed_om_per_kw_yr: 14
+    variable_om_per_mwh: 7
+    availability_pct: 97.0
+    mtbf_hrs: 2200
+    mttr_hrs: 20
+    footprint_sqft: 8000
+    notes: "Good mid-size option. Faster start than Wärtsilä."
+
+  - id: jenbacher_j920
+    name: "INNIO Jenbacher J920"
+    manufacturer: INNIO
+    model: "J920 FleXtra"
+    type: recip
+    fuel: natural_gas
+    capacity_mw: 10.4
+    min_load_pct: 40
+    efficiency_pct: 49.3
+    heat_rate_btu_kwh: 6924
+    start_time_cold_min: 5
+    start_time_hot_min: 1
+    ramp_rate_mw_min: 2.0
+    ramp_rate_pct_min: 19
+    nox_g_hphr: 0.4
+    nox_lb_mwh: 0.37
+    co2_lb_mwh: 850
+    lead_time_months_min: 14
+    lead_time_months_max: 20
+    capex_per_kw: 900
+    fixed_om_per_kw_yr: 16
+    variable_om_per_mwh: 9
+    availability_pct: 97.5
+    mtbf_hrs: 2600
+    mttr_hrs: 24
+    footprint_sqft: 9000
+    notes: "Best-in-class efficiency. Lower NOx. Slower start."
+
+  - id: mtu_20v4000
+    name: "Rolls-Royce MTU 20V4000"
+    manufacturer: Rolls-Royce
+    model: "20V4000 GS"
+    type: recip
+    fuel: natural_gas
+    capacity_mw: 2.5
+    min_load_pct: 30
+    efficiency_pct: 44.0
+    heat_rate_btu_kwh: 7750
+    start_time_cold_min: 0.5
+    start_time_hot_min: 0.25
+    ramp_rate_mw_min: 2.0
+    ramp_rate_pct_min: 80
+    nox_g_hphr: 0.7
+    nox_lb_mwh: 0.65
+    co2_lb_mwh: 960
+    lead_time_months_min: 8
+    lead_time_months_max: 14
+    capex_per_kw: 700
+    fixed_om_per_kw_yr: 12
+    variable_om_per_mwh: 10
+    availability_pct: 96.5
+    mtbf_hrs: 2000
+    mttr_hrs: 16
+    footprint_sqft: 3000
+    notes: "Fast start for peaking. Good for N+1 reserve."
+
+# =============================================================================
+# GAS TURBINES
+# =============================================================================
+gas_turbines:
+  - id: ge_lm6000_pf
+    name: "GE LM6000 PF+"
+    manufacturer: GE Vernova
+    model: "LM6000 PF+"
+    type: aeroderivative_gt
+    fuel: natural_gas
+    capacity_mw: 57
+    capacity_range_mw: [51, 57]
+    min_load_pct: 50
+    efficiency_pct: 40.0
+    heat_rate_btu_kwh: 8530
+    start_time_cold_min: 10
+    start_time_hot_min: 5
+    ramp_rate_mw_min: 10
+    ramp_rate_pct_min: 18
+    nox_ppm_15o2: 15
+    nox_lb_mwh: 0.35
+    co2_lb_mwh: 1050
+    lead_time_months_min: 36
+    lead_time_months_max: 48
+    capex_per_kw: 650
+    fixed_om_per_kw_yr: 12
+    variable_om_per_mwh: 4
+    availability_pct: 97.0
+    mtbf_hrs: 2000
+    mttr_hrs: 48
+    footprint_sqft: 15000
+    notes: "Proven aeroderivative. Long lead time. Lower CAPEX/kW than recips."
+
+  - id: ge_lm2500
+    name: "GE LM2500"
+    manufacturer: GE Vernova
+    model: "LM2500+G4"
+    type: aeroderivative_gt
+    fuel: natural_gas
+    capacity_mw: 34
+    capacity_range_mw: [30, 34]
+    min_load_pct: 40
+    efficiency_pct: 38.5
+    heat_rate_btu_kwh: 8870
+    start_time_cold_min: 8
+    start_time_hot_min: 4
+    ramp_rate_mw_min: 8
+    ramp_rate_pct_min: 24
+    nox_ppm_15o2: 25
+    nox_lb_mwh: 0.50
+    co2_lb_mwh: 1100
+    lead_time_months_min: 30
+    lead_time_months_max: 42
+    capex_per_kw: 600
+    fixed_om_per_kw_yr: 10
+    variable_om_per_mwh: 3.5
+    availability_pct: 97.5
+    mtbf_hrs: 2200
+    mttr_hrs: 36
+    footprint_sqft: 10000
+    notes: "Workhorse aeroderivative. Good balance of cost and performance."
+
+  - id: siemens_sgt800
+    name: "Siemens SGT-800"
+    manufacturer: Siemens Energy
+    model: "SGT-800"
+    type: industrial_gt
+    fuel: natural_gas
+    capacity_mw: 62
+    capacity_range_mw: [57, 62]
+    min_load_pct: 40
+    efficiency_pct: 41.5
+    heat_rate_btu_kwh: 8225
+    start_time_cold_min: 15
+    start_time_hot_min: 8
+    ramp_rate_mw_min: 6
+    ramp_rate_pct_min: 10
+    nox_ppm_15o2: 15
+    nox_lb_mwh: 0.32
+    co2_lb_mwh: 1020
+    lead_time_months_min: 36
+    lead_time_months_max: 52
+    capex_per_kw: 550
+    fixed_om_per_kw_yr: 10
+    variable_om_per_mwh: 3
+    availability_pct: 96.5
+    mtbf_hrs: 1800
+    mttr_hrs: 72
+    footprint_sqft: 18000
+    notes: "Industrial frame. Best efficiency. Longest lead time."
+
+# =============================================================================
+# BATTERY ENERGY STORAGE SYSTEMS (BESS)
+# =============================================================================
+bess:
+  - id: lfp_4hr
+    name: "LFP BESS 4-Hour"
+    type: bess
+    chemistry: LFP
+    duration_hrs: 4
+    power_mw: 25  # Per block
+    energy_mwh: 100  # Per block
+    roundtrip_efficiency_pct: 88
+    response_time_ms: 50
+    ramp_rate_mw_s: 25  # Essentially instant
+    dod_pct: 80
+    cycle_life: 6000
+    calendar_life_yrs: 15
+    lead_time_months_min: 12
+    lead_time_months_max: 18
+    capex_per_kwh: 350
+    capex_per_kw: 150
+    fixed_om_per_kwh_yr: 5
+    availability_pct: 99.5
+    mtbf_hrs: 8760
+    mttr_hrs: 4
+    footprint_sqft_per_mwh: 50
+    augmentation_yr: 10
+    notes: "Standard utility-scale BESS. LFP preferred for safety."
+
+  - id: lfp_2hr
+    name: "LFP BESS 2-Hour"
+    type: bess
+    chemistry: LFP
+    duration_hrs: 2
+    power_mw: 50  # Per block
+    energy_mwh: 100  # Per block
+    roundtrip_efficiency_pct: 90
+    response_time_ms: 50
+    ramp_rate_mw_s: 50
+    dod_pct: 80
+    cycle_life: 8000
+    calendar_life_yrs: 15
+    lead_time_months_min: 10
+    lead_time_months_max: 16
+    capex_per_kwh: 400
+    capex_per_kw: 100
+    fixed_om_per_kwh_yr: 5
+    availability_pct: 99.5
+    mtbf_hrs: 8760
+    mttr_hrs: 4
+    footprint_sqft_per_mwh: 45
+    augmentation_yr: 10
+    notes: "Higher power for transient support. More cycles."
+
+# =============================================================================
+# SOLAR PV
+# =============================================================================
+solar_pv:
+  - id: utility_pv_fixed
+    name: "Utility Solar PV (Fixed Tilt)"
+    type: solar_pv
+    tracking: fixed
+    capacity_factor_pct: 22
+    dc_ac_ratio: 1.3
+    degradation_pct_yr: 0.5
+    lead_time_months_min: 8
+    lead_time_months_max: 14
+    capex_per_kw_dc: 900
+    fixed_om_per_kw_yr: 12
+    availability_pct: 98.0
+    land_acres_per_mw: 5
+    itc_eligible: true
+    notes: "Basic fixed-tilt. Lower cost, lower output."
+
+  - id: utility_pv_tracker
+    name: "Utility Solar PV (Single-Axis Tracker)"
+    type: solar_pv
+    tracking: single_axis
+    capacity_factor_pct: 28
+    dc_ac_ratio: 1.3
+    degradation_pct_yr: 0.5
+    lead_time_months_min: 10
+    lead_time_months_max: 16
+    capex_per_kw_dc: 1050
+    fixed_om_per_kw_yr: 14
+    availability_pct: 97.5
+    land_acres_per_mw: 6
+    itc_eligible: true
+    notes: "Single-axis tracking. ~25% more output than fixed."
+
+# =============================================================================
+# GRID CONNECTION
+# =============================================================================
+grid:
+  - id: grid_import
+    name: "Grid Import"
+    type: grid
+    capacity_mw: 150  # Typical, varies by interconnection
+    availability_pct: 99.97
+    response_time_ms: 100
+    wheeling_cost_per_mwh: 5
+    demand_charge_per_kw_mo: 10
+    energy_cost_per_mwh: 45  # Varies significantly
+    co2_lb_mwh: 850  # Grid average, varies by region
+    notes: "Subject to interconnection queue and utility timeline."

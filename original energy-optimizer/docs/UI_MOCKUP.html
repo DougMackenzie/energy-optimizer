@@ -1,0 +1,1938 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Antigravity Energy Optimizer - Complete Platform</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #1E3A5F;
+            --secondary: #2E86AB;
+            --accent: #F18F01;
+            --success: #28A745;
+            --warning: #FFC107;
+            --danger: #DC3545;
+            --text: #333333;
+            --text-light: #666666;
+            --text-muted: #999999;
+            --bg: #FFFFFF;
+            --bg-light: #F8F9FA;
+            --bg-dark: #E9ECEF;
+            --border: #DEE2E6;
+            --border-light: #F0F0F0;
+        }
+        
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: var(--bg-light);
+            color: var(--text);
+            line-height: 1.5;
+            font-size: 13px;
+        }
+        
+        .app-container { display: flex; min-height: 100vh; }
+        
+        /* Sidebar */
+        .sidebar {
+            width: 200px;
+            background: linear-gradient(180deg, var(--primary) 0%, #152a45 100%);
+            color: white;
+            position: fixed;
+            height: 100vh;
+            overflow-y: auto;
+            z-index: 1000;
+        }
+        
+        .sidebar-header { padding: 14px 12px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        .logo { display: flex; align-items: center; gap: 8px; }
+        .logo-icon { width: 28px; height: 28px; background: var(--accent); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 12px; }
+        .logo-text { font-size: 14px; font-weight: 700; letter-spacing: -0.5px; }
+        
+        .nav-section { padding: 8px 0; }
+        .nav-label { font-size: 9px; text-transform: uppercase; letter-spacing: 1px; opacity: 0.5; padding: 6px 14px 4px; }
+        .nav-item { display: flex; align-items: center; gap: 8px; padding: 8px 14px; color: rgba(255,255,255,0.7); text-decoration: none; font-size: 11px; font-weight: 500; cursor: pointer; transition: all 0.2s; border-left: 3px solid transparent; }
+        .nav-item:hover { background: rgba(255,255,255,0.1); color: white; }
+        .nav-item.active { background: rgba(255,255,255,0.15); color: white; border-left-color: var(--accent); }
+        .nav-item .nav-badge { margin-left: auto; background: var(--accent); color: white; font-size: 9px; padding: 1px 5px; border-radius: 8px; }
+        
+        .main-content { flex: 1; margin-left: 200px; }
+        
+        .top-bar { background: white; padding: 10px 16px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 100; }
+        .breadcrumb { font-size: 12px; color: var(--text-light); }
+        .breadcrumb span { color: var(--text); font-weight: 600; }
+        
+        .btn { padding: 6px 12px; border-radius: 4px; font-size: 11px; font-weight: 600; cursor: pointer; transition: all 0.2s; border: none; display: inline-flex; align-items: center; gap: 5px; }
+        .btn-sm { padding: 4px 8px; font-size: 10px; }
+        .btn-lg { padding: 8px 16px; font-size: 12px; }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-primary:hover { background: #152a45; }
+        .btn-secondary { background: var(--bg-light); color: var(--text); border: 1px solid var(--border); }
+        .btn-accent { background: var(--accent); color: white; }
+        .btn-accent:hover { background: #d97e01; }
+        .btn-success { background: var(--success); color: white; }
+        .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text); }
+        .btn-outline:hover { background: var(--bg-light); }
+        .btn-outline.active { background: var(--secondary); color: white; border-color: var(--secondary); }
+        
+        .content-area { padding: 14px 18px; }
+        
+        .card { background: white; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border: 1px solid var(--border-light); overflow: hidden; margin-bottom: 12px; }
+        .card-header { padding: 10px 14px; border-bottom: 1px solid var(--border-light); display: flex; justify-content: space-between; align-items: center; background: var(--bg-light); }
+        .card-title { font-size: 12px; font-weight: 600; color: var(--text); }
+        .card-subtitle { font-size: 10px; color: var(--text-light); }
+        .card-body { padding: 14px; }
+        .card-body.compact { padding: 10px; }
+        .card-body.flush { padding: 0; }
+        
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+        .grid-4 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 12px; }
+        .grid-5 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr 1fr; gap: 10px; }
+        .grid-6 { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; }
+        .grid-2-1 { display: grid; grid-template-columns: 2fr 1fr; gap: 12px; }
+        .grid-3-1 { display: grid; grid-template-columns: 3fr 1fr; gap: 12px; }
+        .grid-1-3 { display: grid; grid-template-columns: 1fr 3fr; gap: 12px; }
+        
+        .form-group { margin-bottom: 10px; }
+        .form-label { display: block; font-size: 10px; font-weight: 600; color: var(--text); margin-bottom: 3px; }
+        .form-hint { font-size: 9px; color: var(--text-muted); margin-top: 2px; }
+        .form-input, .form-select { width: 100%; padding: 6px 8px; border: 1px solid var(--border); border-radius: 4px; font-size: 11px; background: white; }
+        .form-input:focus, .form-select:focus { outline: none; border-color: var(--secondary); box-shadow: 0 0 0 2px rgba(46,134,171,0.1); }
+        .form-input.mono { font-family: 'Roboto Mono', monospace; }
+        
+        .input-group { display: flex; }
+        .input-group .form-input { border-radius: 4px 0 0 4px; }
+        .input-addon { padding: 6px 8px; background: var(--bg-light); border: 1px solid var(--border); border-left: none; border-radius: 0 4px 4px 0; font-size: 10px; color: var(--text-light); display: flex; align-items: center; }
+        
+        .slider { width: 100%; height: 4px; border-radius: 2px; background: var(--bg-dark); outline: none; -webkit-appearance: none; }
+        .slider::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%; background: var(--secondary); cursor: pointer; }
+        
+        .tabs { display: flex; border-bottom: 2px solid var(--border); margin-bottom: 12px; gap: 4px; }
+        .tab { padding: 8px 14px; font-size: 11px; font-weight: 600; color: var(--text-light); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all 0.2s; }
+        .tab:hover { color: var(--text); }
+        .tab.active { color: var(--secondary); border-bottom-color: var(--secondary); }
+        
+        .badge { padding: 2px 6px; border-radius: 10px; font-size: 9px; font-weight: 600; }
+        .badge-success { background: #d4edda; color: #155724; }
+        .badge-warning { background: #fff3cd; color: #856404; }
+        .badge-danger { background: #f8d7da; color: #721c24; }
+        .badge-info { background: #d1ecf1; color: #0c5460; }
+        .badge-primary { background: #cce5ff; color: #004085; }
+        .badge-secondary { background: #e9ecef; color: #495057; }
+        
+        .metric-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 10px; margin-bottom: 12px; }
+        .metric-card { background: white; border-radius: 6px; padding: 12px; border: 1px solid var(--border-light); }
+        .metric-card.highlight { border-left: 4px solid var(--accent); }
+        .metric-card.success { border-left: 4px solid var(--success); }
+        .metric-card.warning { border-left: 4px solid var(--warning); }
+        .metric-card.danger { border-left: 4px solid var(--danger); }
+        .metric-label { font-size: 9px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); margin-bottom: 4px; }
+        .metric-value { font-size: 20px; font-weight: 700; color: var(--primary); font-family: 'Roboto Mono', monospace; }
+        .metric-value.sm { font-size: 16px; }
+        .metric-value.success { color: var(--success); }
+        .metric-value.warning { color: var(--warning); }
+        .metric-value.danger { color: var(--danger); }
+        .metric-change { font-size: 9px; color: var(--text-light); margin-top: 2px; }
+        
+        .alert { padding: 10px 14px; border-radius: 6px; font-size: 11px; margin-bottom: 12px; display: flex; align-items: flex-start; gap: 8px; }
+        .alert-info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        .alert-warning { background: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
+        .alert-success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .alert-danger { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        
+        .divider { height: 1px; background: var(--border); margin: 12px 0; }
+        
+        .data-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+        .data-table th { text-align: left; padding: 8px 10px; font-size: 9px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-light); background: var(--bg-light); border-bottom: 1px solid var(--border); font-weight: 600; }
+        .data-table td { padding: 8px 10px; border-bottom: 1px solid var(--border-light); }
+        .data-table tr:hover { background: var(--bg-light); }
+        .data-table .mono { font-family: 'Roboto Mono', monospace; font-size: 10px; }
+        
+        .page { display: none; }
+        .page.active { display: block; }
+        
+        /* Map placeholder */
+        .map-container { background: linear-gradient(135deg, #e8f4f8 0%, #d1e8f0 100%); border-radius: 6px; height: 280px; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; }
+        .map-container::before { content: ""; position: absolute; inset: 0; background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%232E86AB' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E"); }
+        .map-marker { position: absolute; width: 24px; height: 24px; background: var(--accent); border-radius: 50% 50% 50% 0; transform: rotate(-45deg); border: 3px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.3); }
+        .map-marker.primary { top: 35%; left: 45%; }
+        .map-marker.secondary { top: 50%; left: 60%; background: var(--secondary); width: 18px; height: 18px; }
+        
+        /* Workload Mixer */
+        .workload-mixer { border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+        .workload-item { display: flex; align-items: center; padding: 10px 12px; border-bottom: 1px solid var(--border-light); }
+        .workload-item:last-child { border-bottom: none; }
+        .workload-color { width: 12px; height: 12px; border-radius: 3px; margin-right: 10px; flex-shrink: 0; }
+        .workload-info { flex: 1; min-width: 0; }
+        .workload-name { font-weight: 600; font-size: 11px; }
+        .workload-desc { font-size: 9px; color: var(--text-light); }
+        .workload-slider { width: 100px; margin: 0 12px; }
+        .workload-value { width: 40px; text-align: right; font-family: 'Roboto Mono', monospace; font-size: 12px; font-weight: 600; }
+        .workload-power { width: 55px; text-align: right; font-family: 'Roboto Mono', monospace; font-size: 11px; color: var(--text-light); }
+        
+        .stacked-bar { height: 24px; border-radius: 4px; overflow: hidden; display: flex; }
+        .stacked-bar-segment { height: 100%; display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 600; color: white; min-width: 20px; }
+        
+        /* Mitigation Stack */
+        .mitigation-layer { display: flex; align-items: center; padding: 8px 10px; border-radius: 4px; font-size: 11px; margin-bottom: 4px; background: var(--bg-light); border: 1px solid var(--border); transition: all 0.2s; }
+        .mitigation-layer:hover { background: white; }
+        .mitigation-layer.highlight { background: #e6f4ff; border-color: var(--secondary); }
+        .mitigation-icon { width: 24px; height: 24px; border-radius: 4px; display: flex; align-items: center; justify-content: center; margin-right: 10px; font-size: 12px; background: white; }
+        .mitigation-info { flex: 1; }
+        .mitigation-name { font-weight: 600; font-size: 11px; }
+        .mitigation-detail { font-size: 9px; color: var(--text-light); }
+        .mitigation-timescale { font-family: 'Roboto Mono', monospace; font-size: 10px; color: var(--secondary); font-weight: 500; }
+        
+        /* Screening Check */
+        .screening-check { display: flex; align-items: flex-start; padding: 10px 12px; border: 1px solid var(--border-light); border-radius: 6px; margin-bottom: 8px; }
+        .screening-check.pass { border-left: 4px solid var(--success); background: #f8fff8; }
+        .screening-check.warn { border-left: 4px solid var(--warning); background: #fffef8; }
+        .screening-check.fail { border-left: 4px solid var(--danger); background: #fff8f8; }
+        .screening-check.needs-study { border-left: 4px solid var(--secondary); background: #f8fbff; }
+        .screening-status { width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; margin-right: 10px; flex-shrink: 0; }
+        .screening-status.pass { background: #d4edda; color: #155724; }
+        .screening-status.warn { background: #fff3cd; color: #856404; }
+        .screening-status.fail { background: #f8d7da; color: #721c24; }
+        .screening-status.needs-study { background: #cce5ff; color: #004085; }
+        .screening-content { flex: 1; }
+        .screening-title { font-weight: 600; font-size: 12px; margin-bottom: 3px; }
+        .screening-detail { font-size: 11px; color: var(--text-light); }
+        .screening-calc { font-family: 'Roboto Mono', monospace; font-size: 10px; background: var(--bg-light); padding: 8px; border-radius: 4px; margin-top: 6px; line-height: 1.7; }
+        
+        /* Chart containers */
+        .chart-container { width: 100%; position: relative; background: white; }
+        .chart-container.h120 { height: 120px; }
+        .chart-container.h150 { height: 150px; }
+        .chart-container.h180 { height: 180px; }
+        .chart-container.h200 { height: 200px; }
+        .chart-container.h250 { height: 250px; }
+        
+        .svg-chart { width: 100%; height: 100%; }
+        
+        /* Timescale buttons */
+        .timescale-selector { display: flex; gap: 4px; }
+        .timescale-btn { padding: 4px 10px; border: 1px solid var(--border); border-radius: 4px; font-size: 10px; font-weight: 500; cursor: pointer; background: white; transition: all 0.2s; }
+        .timescale-btn:hover { background: var(--bg-light); }
+        .timescale-btn.active { background: var(--secondary); color: white; border-color: var(--secondary); }
+        
+        /* Zoom path */
+        .zoom-indicator { display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--text-light); padding: 8px 12px; background: var(--bg-light); border-radius: 6px; margin-bottom: 12px; }
+        .zoom-path { display: flex; align-items: center; gap: 6px; }
+        .zoom-path span { padding: 3px 8px; background: white; border-radius: 4px; border: 1px solid var(--border); cursor: pointer; transition: all 0.2s; }
+        .zoom-path span:hover { background: var(--secondary); color: white; border-color: var(--secondary); }
+        .zoom-path span.current { background: var(--secondary); color: white; border-color: var(--secondary); }
+        .zoom-arrow { color: var(--text-muted); }
+        
+        /* Collapsible */
+        .collapsible { border: 1px solid var(--border-light); border-radius: 6px; margin-bottom: 10px; overflow: hidden; }
+        .collapsible-header { padding: 10px 14px; background: var(--bg-light); cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-weight: 600; font-size: 11px; transition: background 0.2s; }
+        .collapsible-header:hover { background: var(--bg-dark); }
+        .collapsible-icon { transition: transform 0.2s; font-size: 10px; }
+        .collapsible.open .collapsible-icon { transform: rotate(180deg); }
+        .collapsible-body { padding: 14px; display: none; border-top: 1px solid var(--border-light); }
+        .collapsible.open .collapsible-body { display: block; }
+        
+        /* Equipment item */
+        .equipment-card { border: 1px solid var(--border); border-radius: 6px; padding: 12px; margin-bottom: 8px; transition: all 0.2s; cursor: pointer; }
+        .equipment-card:hover { border-color: var(--secondary); background: #f8fbff; }
+        .equipment-card.selected { border-color: var(--accent); background: #fffaf5; border-width: 2px; }
+        .equipment-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
+        .equipment-name { font-weight: 600; font-size: 12px; }
+        .equipment-type { font-size: 10px; color: var(--text-light); }
+        .equipment-specs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; font-size: 10px; }
+        .equipment-spec-label { color: var(--text-muted); font-size: 9px; }
+        .equipment-spec-value { font-family: 'Roboto Mono', monospace; font-weight: 500; }
+        .equipment-quantity { display: flex; align-items: center; gap: 6px; }
+        .quantity-btn { width: 24px; height: 24px; border: 1px solid var(--border); border-radius: 4px; background: white; cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center; }
+        .quantity-btn:hover { background: var(--bg-light); }
+        .quantity-input { width: 50px; text-align: center; padding: 4px; border: 1px solid var(--border); border-radius: 4px; font-size: 12px; font-family: 'Roboto Mono', monospace; }
+        
+        /* Scenario cards */
+        .scenario-card { background: white; border-radius: 6px; border: 2px solid var(--border); padding: 14px; cursor: pointer; transition: all 0.2s; }
+        .scenario-card:hover { border-color: var(--secondary); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .scenario-card.selected { border-color: var(--accent); background: #fffaf5; }
+        .scenario-card.optimal { border-color: var(--success); }
+        .scenario-card.optimal::before { content: "⭐ Recommended"; font-size: 9px; color: var(--success); font-weight: 600; display: block; margin-bottom: 6px; }
+        .scenario-name { font-size: 12px; font-weight: 600; color: var(--primary); margin-bottom: 2px; }
+        .scenario-type { font-size: 10px; color: var(--text-light); margin-bottom: 10px; }
+        .scenario-metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; font-size: 11px; }
+        .scenario-metric { display: flex; justify-content: space-between; }
+        .scenario-metric-label { color: var(--text-light); }
+        .scenario-metric-value { font-weight: 600; font-family: 'Roboto Mono', monospace; }
+        
+        /* Preset buttons */
+        .preset-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+        .preset-btn { padding: 10px 12px; border: 1px solid var(--border); border-radius: 6px; background: white; cursor: pointer; text-align: left; transition: all 0.2s; }
+        .preset-btn:hover { background: var(--bg-light); border-color: var(--secondary); }
+        .preset-btn.active { background: #e6f4ff; border-color: var(--secondary); }
+        .preset-name { font-weight: 600; font-size: 11px; margin-bottom: 3px; }
+        .preset-desc { font-size: 9px; color: var(--text-light); }
+        
+        /* Constraint violation bar */
+        .violation-bar { display: flex; align-items: center; margin-bottom: 6px; font-size: 11px; }
+        .violation-label { width: 100px; }
+        .violation-track { flex: 1; height: 18px; background: var(--bg-light); border-radius: 3px; overflow: hidden; margin: 0 10px; }
+        .violation-fill { height: 100%; display: flex; align-items: center; justify-content: flex-end; padding-right: 6px; font-size: 9px; font-weight: 600; color: white; }
+        .violation-count { width: 30px; text-align: right; font-family: 'Roboto Mono', monospace; font-weight: 600; }
+        
+        /* RAM diagram */
+        .ram-diagram { display: flex; flex-direction: column; gap: 8px; padding: 12px; background: var(--bg-light); border-radius: 6px; }
+        .ram-layer { display: flex; align-items: center; gap: 10px; }
+        .ram-layer-name { width: 80px; font-size: 10px; font-weight: 600; }
+        .ram-layer-bar { flex: 1; height: 24px; background: var(--bg-dark); border-radius: 4px; overflow: hidden; display: flex; }
+        .ram-segment { height: 100%; display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 500; color: white; }
+        .ram-layer-value { width: 60px; text-align: right; font-family: 'Roboto Mono', monospace; font-size: 11px; font-weight: 600; }
+        
+        /* Sticky panel */
+        .sticky-panel { position: sticky; top: 60px; }
+        
+        @media (max-width: 1400px) {
+            .grid-6 { grid-template-columns: repeat(3, 1fr); }
+        }
+        @media (max-width: 1200px) {
+            .grid-4, .grid-5 { grid-template-columns: repeat(2, 1fr); }
+            .sidebar { width: 180px; }
+            .main-content { margin-left: 180px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <div class="logo-icon">⚡</div>
+                    <div class="logo-text">Antigravity</div>
+                </div>
+            </div>
+            
+            <div class="nav-section">
+                <div class="nav-label">Overview</div>
+                <a class="nav-item active" onclick="showPage('dashboard')">📊 Dashboard</a>
+                <a class="nav-item" onclick="showPage('sites')">📍 Sites</a>
+            </div>
+            
+            <div class="nav-section">
+                <div class="nav-label">Load Analysis</div>
+                <a class="nav-item" onclick="showPage('load-composer')">📈 Load Composer</a>
+                <a class="nav-item" onclick="showPage('variability')">📊 Variability</a>
+                <a class="nav-item" onclick="showPage('transient')">⚡ Transient Screen</a>
+            </div>
+            
+            <div class="nav-section">
+                <div class="nav-label">Optimization</div>
+                <a class="nav-item" onclick="showPage('equipment')">🔧 Equipment Library</a>
+                <a class="nav-item" onclick="showPage('optimizer')">🎯 Optimizer</a>
+                <a class="nav-item" onclick="showPage('ram')">🛡️ RAM Analysis</a>
+            </div>
+            
+            <div class="nav-section">
+                <div class="nav-label">Results</div>
+                <a class="nav-item" onclick="showPage('results')">📊 Results <span class="nav-badge">47</span></a>
+                <a class="nav-item" onclick="showPage('dispatch')">⚙️ Dispatch</a>
+            </div>
+        </nav>
+        
+        <!-- Main Content -->
+        <main class="main-content">
+            
+            <!-- ============================================ -->
+            <!-- DASHBOARD PAGE -->
+            <!-- ============================================ -->
+            <div id="page-dashboard" class="page active">
+                <div class="top-bar">
+                    <div class="breadcrumb"><span>Dashboard</span></div>
+                    <div style="display: flex; gap: 6px;">
+                        <button class="btn btn-secondary btn-sm">📥 Import</button>
+                        <button class="btn btn-accent btn-sm">+ New Project</button>
+                    </div>
+                </div>
+                
+                <div class="content-area">
+                    <div class="metric-row">
+                        <div class="metric-card highlight">
+                            <div class="metric-label">Active Project</div>
+                            <div class="metric-value sm">Tulsa Metro Hub</div>
+                            <div class="metric-change">SPP Territory • 200 MW</div>
+                        </div>
+                        <div class="metric-card success">
+                            <div class="metric-label">Best Scenario</div>
+                            <div class="metric-value sm success">14 mo</div>
+                            <div class="metric-change">Time to Power</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-label">Feasible Scenarios</div>
+                            <div class="metric-value sm">47</div>
+                            <div class="metric-change">of 100 analyzed</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-label">Best LCOE</div>
+                            <div class="metric-value sm">$62</div>
+                            <div class="metric-change">per MWh</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-label">Est. CAPEX Range</div>
+                            <div class="metric-value sm">$280-350M</div>
+                        </div>
+                    </div>
+                    
+                    <div class="grid-2">
+                        <div class="card">
+                            <div class="card-header">
+                                <span class="card-title">Project Status</span>
+                            </div>
+                            <div class="card-body">
+                                <div style="margin-bottom: 12px;">
+                                    <div style="display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 4px;">
+                                        <span>Analysis Progress</span>
+                                        <span style="font-weight: 600;">100%</span>
+                                    </div>
+                                    <div style="height: 8px; background: var(--bg-dark); border-radius: 4px; overflow: hidden;">
+                                        <div style="width: 100%; height: 100%; background: var(--success);"></div>
+                                    </div>
+                                </div>
+                                
+                                <table class="data-table">
+                                    <tbody>
+                                        <tr><td>Load Profile</td><td><span class="badge badge-success">Complete</span></td></tr>
+                                        <tr><td>Equipment Selection</td><td><span class="badge badge-success">Complete</span></td></tr>
+                                        <tr><td>Optimization Run</td><td><span class="badge badge-success">Complete</span></td></tr>
+                                        <tr><td>RAM Analysis</td><td><span class="badge badge-success">Complete</span></td></tr>
+                                        <tr><td>Transient Screening</td><td><span class="badge badge-warning">4 Pass / 1 Warn</span></td></tr>
+                                        <tr><td>ETAP Validation</td><td><span class="badge badge-secondary">Pending</span></td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        
+                        <div class="card">
+                            <div class="card-header">
+                                <span class="card-title">Quick Actions</span>
+                            </div>
+                            <div class="card-body">
+                                <div class="grid-2" style="gap: 8px;">
+                                    <button class="btn btn-outline" style="width: 100%; justify-content: flex-start;" onclick="showPage('results')">📊 View Results</button>
+                                    <button class="btn btn-outline" style="width: 100%; justify-content: flex-start;" onclick="showPage('dispatch')">⚙️ Dispatch Analysis</button>
+                                    <button class="btn btn-outline" style="width: 100%; justify-content: flex-start;" onclick="showPage('optimizer')">🎯 Re-run Optimizer</button>
+                                    <button class="btn btn-outline" style="width: 100%; justify-content: flex-start;">📄 Export Report</button>
+                                    <button class="btn btn-outline" style="width: 100%; justify-content: flex-start;">📤 ETAP Export</button>
+                                    <button class="btn btn-outline" style="width: 100%; justify-content: flex-start;">💾 Save Project</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-header">
+                            <span class="card-title">Recommended Scenario: Recip-Heavy Hybrid</span>
+                            <span class="badge badge-success">⭐ Optimal for Time-to-Power</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="grid-6">
+                                <div><div class="metric-label">Configuration</div><div style="font-weight: 600;">6× Wärtsilä 50SG + 100 MWh BESS + 50 MW Solar</div></div>
+                                <div><div class="metric-label">Time-to-Power</div><div style="font-size: 18px; font-weight: 700; color: var(--success);">14 months</div></div>
+                                <div><div class="metric-label">LCOE</div><div style="font-size: 18px; font-weight: 700;">$68/MWh</div></div>
+                                <div><div class="metric-label">CAPEX</div><div style="font-size: 18px; font-weight: 700;">$295M</div></div>
+                                <div><div class="metric-label">Availability</div><div style="font-size: 18px; font-weight: 700;">99.92%</div></div>
+                                <div><div class="metric-label">Carbon</div><div style="font-size: 18px; font-weight: 700;">385 kg/MWh</div></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- ============================================ -->
+            <!-- SITES PAGE -->
+            <!-- ============================================ -->
+            <div id="page-sites" class="page">
+                <div class="top-bar">
+                    <div class="breadcrumb">Overview / <span>Sites</span></div>
+                    <div style="display: flex; gap: 6px;">
+                        <button class="btn btn-secondary btn-sm">📥 Import GeoJSON</button>
+                        <button class="btn btn-accent btn-sm">+ Add Site</button>
+                    </div>
+                </div>
+                
+                <div class="content-area">
+                    <div class="grid-1-3">
+                        <!-- Site List -->
+                        <div>
+                            <div class="card">
+                                <div class="card-header">
+                                    <span class="card-title">Sites</span>
+                                </div>
+                                <div class="card-body flush">
+                                    <div style="padding: 10px; border-bottom: 2px solid var(--accent); background: #fffaf5; cursor: pointer;">
+                                        <div style="font-weight: 600; font-size: 12px;">Tulsa Metro Hub</div>
+                                        <div style="font-size: 10px; color: var(--text-light);">1,200 acres • SPP</div>
+                                        <div style="display: flex; gap: 4px; margin-top: 4px;">
+                                            <span class="badge badge-success">200 MW</span>
+                                            <span class="badge badge-info">Gas Available</span>
+                                        </div>
+                                    </div>
+                                    <div style="padding: 10px; border-bottom: 1px solid var(--border-light); cursor: pointer;">
+                                        <div style="font-weight: 600; font-size: 12px;">Oklahoma Industrial Park</div>
+                                        <div style="font-size: 10px; color: var(--text-light);">800 acres • SPP</div>
+                                        <div style="display: flex; gap: 4px; margin-top: 4px;">
+                                            <span class="badge badge-warning">150 MW</span>
+                                        </div>
+                                    </div>
+                                    <div style="padding: 10px; cursor: pointer;">
+                                        <div style="font-weight: 600; font-size: 12px;">Texas Border Site</div>
+                                        <div style="font-size: 10px; color: var(--text-light);">2,000 acres • ERCOT</div>
+                                        <div style="display: flex; gap: 4px; margin-top: 4px;">
+                                            <span class="badge badge-secondary">Under Review</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Map and Details -->
+                        <div>
+                            <div class="card">
+                                <div class="card-header">
+                                    <span class="card-title">Site Map</span>
+                                    <div style="display: flex; gap: 4px;">
+                                        <button class="btn btn-outline btn-sm active">Satellite</button>
+                                        <button class="btn btn-outline btn-sm">Topo</button>
+                                        <button class="btn btn-outline btn-sm">Grid</button>
+                                    </div>
+                                </div>
+                                <div class="card-body flush">
+                                    <div class="map-container">
+                                        <div class="map-marker primary"></div>
+                                        <div class="map-marker secondary"></div>
+                                        <div style="position: absolute; bottom: 10px; left: 10px; background: white; padding: 6px 10px; border-radius: 4px; font-size: 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.15);">
+                                            <strong>Tulsa Metro Hub</strong><br>
+                                            36.1234°N, -95.9876°W
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="grid-2">
+                                <div class="card">
+                                    <div class="card-header"><span class="card-title">Site Details</span></div>
+                                    <div class="card-body compact">
+                                        <table class="data-table">
+                                            <tbody>
+                                                <tr><td>Acreage</td><td class="mono">1,200 acres</td></tr>
+                                                <tr><td>Zoning</td><td>Industrial / M-2</td></tr>
+                                                <tr><td>ISO/RTO</td><td>SPP</td></tr>
+                                                <tr><td>State</td><td>Oklahoma</td></tr>
+                                                <tr><td>County</td><td>Tulsa County</td></tr>
+                                                <tr><td>Water Access</td><td><span class="badge badge-success">Available</span></td></tr>
+                                                <tr><td>Gas Pipeline</td><td><span class="badge badge-success">On-site</span></td></tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                                
+                                <div class="card">
+                                    <div class="card-header"><span class="card-title">Interconnection</span></div>
+                                    <div class="card-body compact">
+                                        <table class="data-table">
+                                            <tbody>
+                                                <tr><td>Nearest Sub</td><td>Riverside 345kV</td></tr>
+                                                <tr><td>Distance</td><td class="mono">2.3 miles</td></tr>
+                                                <tr><td>Available Capacity</td><td class="mono">150 MW</td></tr>
+                                                <tr><td>Queue Position</td><td class="mono">#47</td></tr>
+                                                <tr><td>Study Status</td><td><span class="badge badge-warning">Facilities</span></td></tr>
+                                                <tr><td>Est. Energization</td><td class="mono">Q2 2028</td></tr>
+                                                <tr><td>Upgrade Cost</td><td class="mono">$12M</td></tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- ============================================ -->
+            <!-- LOAD COMPOSER PAGE -->
+            <!-- ============================================ -->
+            <div id="page-load-composer" class="page">
+                <div class="top-bar">
+                    <div class="breadcrumb">Load Analysis / <span>Load Composer</span></div>
+                    <div style="display: flex; gap: 6px;">
+                        <button class="btn btn-secondary btn-sm">📥 Load Template</button>
+                        <button class="btn btn-secondary btn-sm">💾 Save Profile</button>
+                        <button class="btn btn-accent btn-sm" onclick="showPage('variability')">Analyze Variability →</button>
+                    </div>
+                </div>
+                
+                <div class="content-area">
+                    <div class="alert alert-info">
+                        <strong>💡 Workload Composition:</strong> Different AI workloads have dramatically different power characteristics. Pre-training is steady; inference is bursty. Mix workloads to model your actual facility load shape.
+                    </div>
+                    
+                    <!-- Facility Parameters -->
+                    <div class="card">
+                        <div class="card-header"><span class="card-title">Facility Parameters</span></div>
+                        <div class="card-body">
+                            <div class="grid-6">
+                                <div class="form-group">
+                                    <label class="form-label">IT Capacity</label>
+                                    <div class="input-group">
+                                        <input type="number" class="form-input mono" value="160">
+                                        <span class="input-addon">MW</span>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Design PUE</label>
+                                    <div class="input-group">
+                                        <input type="number" class="form-input mono" value="1.25" step="0.01">
+                                        <span class="input-addon">x</span>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Cooling Type</label>
+                                    <select class="form-select">
+                                        <option>Air Cooled</option>
+                                        <option selected>Direct Liquid (DLC)</option>
+                                        <option>Immersion</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Rack UPS</label>
+                                    <select class="form-select">
+                                        <option>None</option>
+                                        <option selected>30 sec ride-through</option>
+                                        <option>60 sec ride-through</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Design Ambient</label>
+                                    <div class="input-group">
+                                        <input type="number" class="form-input mono" value="95">
+                                        <span class="input-addon">°F</span>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Total Facility Load</label>
+                                    <div style="font-size: 20px; font-weight: 700; color: var(--primary); font-family: 'Roboto Mono';">200 MW</div>
+                                    <div class="form-hint">IT × PUE</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="grid-3-1">
+                        <div>
+                            <!-- Quick Presets -->
+                            <div class="card">
+                                <div class="card-header"><span class="card-title">Quick Presets</span></div>
+                                <div class="card-body">
+                                    <div class="preset-grid">
+                                        <div class="preset-btn" onclick="applyPreset('training')">
+                                            <div class="preset-name">🧠 Training Focused</div>
+                                            <div class="preset-desc">70% pre-train, 15% fine-tune, 15% other. Steady load, high utilization.</div>
+                                        </div>
+                                        <div class="preset-btn active" onclick="applyPreset('balanced')">
+                                            <div class="preset-name">⚖️ Balanced Mix</div>
+                                            <div class="preset-desc">40% train, 35% inference, 25% other. Medium variability.</div>
+                                        </div>
+                                        <div class="preset-btn" onclick="applyPreset('inference')">
+                                            <div class="preset-name">🚀 Inference Heavy</div>
+                                            <div class="preset-desc">20% train, 60% inference, 20% cloud. High variability, bursty.</div>
+                                        </div>
+                                        <div class="preset-btn" onclick="applyPreset('cloud')">
+                                            <div class="preset-name">☁️ Traditional Cloud</div>
+                                            <div class="preset-desc">80% traditional HPC/cloud workloads. Well-understood patterns.</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Workload Mix -->
+                            <div class="card">
+                                <div class="card-header">
+                                    <span class="card-title">Workload Mix (% of IT Capacity)</span>
+                                    <span class="badge badge-primary">Must sum to 100%</span>
+                                </div>
+                                <div class="card-body compact">
+                                    <div class="workload-mixer">
+                                        <div class="workload-item">
+                                            <div class="workload-color" style="background: #7B68EE;"></div>
+                                            <div class="workload-info">
+                                                <div class="workload-name">LLM Pre-Training</div>
+                                                <div class="workload-desc">Sustained high load, checkpointing spikes</div>
+                                            </div>
+                                            <input type="range" class="slider workload-slider" min="0" max="100" value="40">
+                                            <span class="workload-value">40%</span>
+                                            <span class="workload-power">64 MW</span>
+                                        </div>
+                                        <div class="workload-item">
+                                            <div class="workload-color" style="background: #9370DB;"></div>
+                                            <div class="workload-info">
+                                                <div class="workload-name">Fine-Tuning / Post-Training</div>
+                                                <div class="workload-desc">Medium duration, moderate variability</div>
+                                            </div>
+                                            <input type="range" class="slider workload-slider" min="0" max="100" value="15">
+                                            <span class="workload-value">15%</span>
+                                            <span class="workload-power">24 MW</span>
+                                        </div>
+                                        <div class="workload-item">
+                                            <div class="workload-color" style="background: #20B2AA;"></div>
+                                            <div class="workload-info">
+                                                <div class="workload-name">Inference (Batch)</div>
+                                                <div class="workload-desc">Queue-based, smoothable, predictable</div>
+                                            </div>
+                                            <input type="range" class="slider workload-slider" min="0" max="100" value="20">
+                                            <span class="workload-value">20%</span>
+                                            <span class="workload-power">32 MW</span>
+                                        </div>
+                                        <div class="workload-item">
+                                            <div class="workload-color" style="background: #FF6B6B;"></div>
+                                            <div class="workload-info">
+                                                <div class="workload-name">Inference (Real-Time)</div>
+                                                <div class="workload-desc">User-facing, highly variable, bursty</div>
+                                            </div>
+                                            <input type="range" class="slider workload-slider" min="0" max="100" value="10">
+                                            <span class="workload-value">10%</span>
+                                            <span class="workload-power">16 MW</span>
+                                        </div>
+                                        <div class="workload-item">
+                                            <div class="workload-color" style="background: #FFB347;"></div>
+                                            <div class="workload-info">
+                                                <div class="workload-name">Reinforcement Learning</div>
+                                                <div class="workload-desc">Episodic, simulation bursts, very spiky</div>
+                                            </div>
+                                            <input type="range" class="slider workload-slider" min="0" max="100" value="5">
+                                            <span class="workload-value">5%</span>
+                                            <span class="workload-power">8 MW</span>
+                                        </div>
+                                        <div class="workload-item">
+                                            <div class="workload-color" style="background: #87CEEB;"></div>
+                                            <div class="workload-info">
+                                                <div class="workload-name">Traditional Cloud / HPC</div>
+                                                <div class="workload-desc">Well-understood, lower transient magnitude</div>
+                                            </div>
+                                            <input type="range" class="slider workload-slider" min="0" max="100" value="10">
+                                            <span class="workload-value">10%</span>
+                                            <span class="workload-power">16 MW</span>
+                                        </div>
+                                    </div>
+                                    
+                                    <div style="margin-top: 12px;">
+                                        <div style="font-size: 10px; color: var(--text-light); margin-bottom: 6px;">Workload Mix Visualization</div>
+                                        <div class="stacked-bar">
+                                            <div class="stacked-bar-segment" style="width: 40%; background: #7B68EE;">Pre-Train</div>
+                                            <div class="stacked-bar-segment" style="width: 15%; background: #9370DB;">Fine-Tune</div>
+                                            <div class="stacked-bar-segment" style="width: 20%; background: #20B2AA;">Batch</div>
+                                            <div class="stacked-bar-segment" style="width: 10%; background: #FF6B6B;">RT</div>
+                                            <div class="stacked-bar-segment" style="width: 5%; background: #FFB347;">RL</div>
+                                            <div class="stacked-bar-segment" style="width: 10%; background: #87CEEB;">Cloud</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- PUE Seasonal -->
+                            <div class="card">
+                                <div class="card-header"><span class="card-title">PUE & Seasonal Variation</span></div>
+                                <div class="card-body">
+                                    <div class="grid-4">
+                                        <div style="text-align: center; padding: 10px; background: #e8f8f8; border-radius: 6px;">
+                                            <div style="font-size: 9px; color: var(--text-light);">Winter Low</div>
+                                            <div style="font-size: 18px; font-weight: 700; color: var(--success);">1.15</div>
+                                            <div style="font-size: 10px; color: var(--text-muted);">184 MW total</div>
+                                        </div>
+                                        <div style="text-align: center; padding: 10px; background: #f8f8f8; border-radius: 6px;">
+                                            <div style="font-size: 9px; color: var(--text-light);">Spring/Fall</div>
+                                            <div style="font-size: 18px; font-weight: 700;">1.20</div>
+                                            <div style="font-size: 10px; color: var(--text-muted);">192 MW total</div>
+                                        </div>
+                                        <div style="text-align: center; padding: 10px; background: #fff8f0; border-radius: 6px;">
+                                            <div style="font-size: 9px; color: var(--text-light);">Summer Avg</div>
+                                            <div style="font-size: 18px; font-weight: 700; color: var(--warning);">1.25</div>
+                                            <div style="font-size: 10px; color: var(--text-muted);">200 MW total</div>
+                                        </div>
+                                        <div style="text-align: center; padding: 10px; background: #fff0f0; border-radius: 6px;">
+                                            <div style="font-size: 9px; color: var(--text-light);">Summer Peak</div>
+                                            <div style="font-size: 18px; font-weight: 700; color: var(--danger);">1.35</div>
+                                            <div style="font-size: 10px; color: var(--text-muted);">216 MW total</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Right Panel -->
+                        <div>
+                            <div class="card sticky-panel">
+                                <div class="card-header"><span class="card-title">Workload Characteristics</span></div>
+                                <div class="card-body compact">
+                                    <table class="data-table">
+                                        <thead>
+                                            <tr><th>Workload</th><th>Util</th><th>Var</th><th>Trans</th></tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr><td><strong>Pre-Train</strong></td><td class="mono">85-95%</td><td><span class="badge badge-success">Low</span></td><td class="mono">2-3x</td></tr>
+                                            <tr><td><strong>Fine-Tune</strong></td><td class="mono">60-80%</td><td><span class="badge badge-warning">Med</span></td><td class="mono">3-5x</td></tr>
+                                            <tr><td><strong>Batch Inf</strong></td><td class="mono">50-70%</td><td><span class="badge badge-warning">Med</span></td><td class="mono">4-6x</td></tr>
+                                            <tr><td><strong>RT Inference</strong></td><td class="mono">30-60%</td><td><span class="badge badge-danger">High</span></td><td class="mono">8-12x</td></tr>
+                                            <tr><td><strong>RL Training</strong></td><td class="mono">40-90%</td><td><span class="badge badge-danger">V.Hi</span></td><td class="mono">10-15x</td></tr>
+                                            <tr><td><strong>Cloud/HPC</strong></td><td class="mono">40-70%</td><td><span class="badge badge-success">Low</span></td><td class="mono">2-3x</td></tr>
+                                        </tbody>
+                                    </table>
+                                    
+                                    <div class="divider"></div>
+                                    
+                                    <div style="font-weight: 600; font-size: 11px; margin-bottom: 8px;">Calculated Composite</div>
+                                    <div style="font-size: 11px;">
+                                        <div style="display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid var(--border-light);">
+                                            <span>Weighted Avg Utilization</span>
+                                            <span class="mono" style="font-weight: 600;">72%</span>
+                                        </div>
+                                        <div style="display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid var(--border-light);">
+                                            <span>Effective Transient Mag</span>
+                                            <span class="mono" style="font-weight: 600;">5.2x</span>
+                                        </div>
+                                        <div style="display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid var(--border-light);">
+                                            <span>Variability Index</span>
+                                            <span class="mono" style="font-weight: 600;">Med-High</span>
+                                        </div>
+                                        <div style="display: flex; justify-content: space-between; padding: 4px 0;">
+                                            <span>Schedulable Fraction</span>
+                                            <span class="mono" style="font-weight: 600;">65%</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- ============================================ -->
+            <!-- VARIABILITY PAGE -->
+            <!-- ============================================ -->
+            <div id="page-variability" class="page">
+                <div class="top-bar">
+                    <div class="breadcrumb">Load Analysis / <span>Variability Analysis</span></div>
+                    <div style="display: flex; gap: 6px;">
+                        <button class="btn btn-secondary btn-sm" onclick="showPage('load-composer')">← Load Composer</button>
+                        <button class="btn btn-accent btn-sm" onclick="showPage('transient')">Transient Screening →</button>
+                    </div>
+                </div>
+                
+                <div class="content-area">
+                    <div class="alert alert-info">
+                        <strong>💡 Variability by Timescale:</strong> Different timescales of load variation are handled by different parts of the power system. Understanding this helps size equipment correctly and avoid over-engineering.
+                    </div>
+                    
+                    <div class="metric-row">
+                        <div class="metric-card highlight"><div class="metric-label">Peak Facility Load</div><div class="metric-value sm">216 MW</div><div class="metric-change">Summer peak PUE</div></div>
+                        <div class="metric-card highlight"><div class="metric-label">Average Load</div><div class="metric-value sm">156 MW</div><div class="metric-change">72% avg utilization</div></div>
+                        <div class="metric-card highlight"><div class="metric-label">Minimum Load</div><div class="metric-value sm">92 MW</div><div class="metric-change">Winter night low</div></div>
+                        <div class="metric-card highlight"><div class="metric-label">Load Factor</div><div class="metric-value sm">72%</div></div>
+                        <div class="metric-card highlight"><div class="metric-label">Swing Range</div><div class="metric-value sm">124 MW</div><div class="metric-change">57% of peak</div></div>
+                    </div>
+                    
+                    <div class="grid-2">
+                        <!-- Mitigation Stack -->
+                        <div class="card">
+                            <div class="card-header">
+                                <span class="card-title">Variability Mitigation Stack</span>
+                                <span class="card-subtitle">What handles each timescale</span>
+                            </div>
+                            <div class="card-body">
+                                <div class="mitigation-layer">
+                                    <div class="mitigation-icon">⚡</div>
+                                    <div class="mitigation-info">
+                                        <div class="mitigation-name">GPU/Chip Level (VRMs, Capacitors)</div>
+                                        <div class="mitigation-detail">Handles ns-μs transients from die power gating</div>
+                                    </div>
+                                    <div class="mitigation-timescale">1 ns - 10 μs</div>
+                                </div>
+                                <div class="mitigation-layer">
+                                    <div class="mitigation-icon">🔌</div>
+                                    <div class="mitigation-info">
+                                        <div class="mitigation-name">Rack PDU & Board Capacitance</div>
+                                        <div class="mitigation-detail">Filters high-frequency noise</div>
+                                    </div>
+                                    <div class="mitigation-timescale">10 μs - 1 ms</div>
+                                </div>
+                                <div class="mitigation-layer highlight">
+                                    <div class="mitigation-icon">🔋</div>
+                                    <div class="mitigation-info">
+                                        <div class="mitigation-name">Rack UPS (30 sec ride-through)</div>
+                                        <div class="mitigation-detail"><strong>Key layer:</strong> Absorbs GPU cluster startups</div>
+                                    </div>
+                                    <div class="mitigation-timescale">1 ms - 30 s</div>
+                                </div>
+                                <div class="mitigation-layer highlight">
+                                    <div class="mitigation-icon">🧠</div>
+                                    <div class="mitigation-info">
+                                        <div class="mitigation-name">Algorithmic Load Management</div>
+                                        <div class="mitigation-detail">Job scheduling, inference queuing, batch timing</div>
+                                    </div>
+                                    <div class="mitigation-timescale">1 s - 10 min</div>
+                                </div>
+                                <div class="mitigation-layer" style="background: #e6f4ff;">
+                                    <div class="mitigation-icon">⚙️</div>
+                                    <div class="mitigation-info">
+                                        <div class="mitigation-name">BTM BESS (Facility-Level)</div>
+                                        <div class="mitigation-detail"><strong>Optimizer sizes this</strong></div>
+                                    </div>
+                                    <div class="mitigation-timescale">100 ms - 15 min</div>
+                                </div>
+                                <div class="mitigation-layer" style="background: #f0f0ff;">
+                                    <div class="mitigation-icon">🏭</div>
+                                    <div class="mitigation-info">
+                                        <div class="mitigation-name">BTM Generation (Engines/Turbines)</div>
+                                        <div class="mitigation-detail"><strong>Optimizer sizes this</strong></div>
+                                    </div>
+                                    <div class="mitigation-timescale">2 min - 24 hr</div>
+                                </div>
+                                <div class="mitigation-layer">
+                                    <div class="mitigation-icon">🌡️</div>
+                                    <div class="mitigation-info">
+                                        <div class="mitigation-name">Cooling System / Seasonal</div>
+                                        <div class="mitigation-detail">PUE variation, thermal mass</div>
+                                    </div>
+                                    <div class="mitigation-timescale">5 min - Months</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- What BTM Sees -->
+                        <div class="card">
+                            <div class="card-header">
+                                <span class="card-title">What BTM Power System Sees</span>
+                                <span class="badge badge-success">After UPS & Algorithm Smoothing</span>
+                            </div>
+                            <div class="card-body">
+                                <div style="font-size: 11px; margin-bottom: 12px;">
+                                    The rack UPS and algorithmic management filter out most sub-second variability. The BTM system sees a <strong>smoothed envelope</strong> of the raw IT load.
+                                </div>
+                                
+                                <div class="chart-container h150">
+                                    <svg viewBox="0 0 450 130" class="svg-chart">
+                                        <line x1="40" y1="115" x2="430" y2="115" stroke="#dee2e6" stroke-width="1"/>
+                                        <line x1="40" y1="15" x2="40" y2="115" stroke="#dee2e6" stroke-width="1"/>
+                                        
+                                        <text x="235" y="128" style="font-size: 9px; fill: #666;" text-anchor="middle">Time (seconds)</text>
+                                        
+                                        <!-- Raw IT load -->
+                                        <path d="M40,70 L60,30 L65,60 L70,20 L80,55 L90,35 L110,50 L130,25 L150,60 L170,35 L190,55 L210,30 L230,60 L250,40 L270,55 L290,30 L310,60 L330,35 L350,55 L370,40 L390,55 L410,45 L430,50" 
+                                              fill="none" stroke="#DC3545" stroke-width="1" opacity="0.4"/>
+                                        
+                                        <!-- Smoothed -->
+                                        <path d="M40,70 L100,60 L160,55 L220,52 L280,54 L340,52 L400,54 L430,53" 
+                                              fill="none" stroke="#28A745" stroke-width="2.5"/>
+                                        
+                                        <g style="font-size: 8px;">
+                                            <line x1="50" y1="8" x2="70" y2="8" stroke="#DC3545" stroke-width="1" opacity="0.4"/>
+                                            <text x="75" y="11" fill="#666">Raw IT Load (GPU transients)</text>
+                                            <line x1="220" y1="8" x2="240" y2="8" stroke="#28A745" stroke-width="2.5"/>
+                                            <text x="245" y="11" fill="#666">After UPS Smoothing (BTM sees this)</text>
+                                        </g>
+                                    </svg>
+                                </div>
+                                
+                                <div class="divider"></div>
+                                
+                                <div style="font-size: 11px;">
+                                    <div style="display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid var(--border-light);">
+                                        <span>Raw IT transient magnitude</span>
+                                        <span class="mono" style="font-weight: 600; color: var(--danger);">5.2x (83 MW swing)</span>
+                                    </div>
+                                    <div style="display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid var(--border-light);">
+                                        <span>After rack UPS filtering</span>
+                                        <span class="mono" style="font-weight: 600; color: var(--success);">1.8x (29 MW swing)</span>
+                                    </div>
+                                    <div style="display: flex; justify-content: space-between; padding: 4px 0;">
+                                        <span>Reduction factor</span>
+                                        <span class="mono" style="font-weight: 600;">65% smoothed by UPS</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Residual Variability Table -->
+                    <div class="card">
+                        <div class="card-header">
+                            <span class="card-title">Residual Variability by Timescale</span>
+                            <span class="badge badge-warning">What BTM Must Handle</span>
+                        </div>
+                        <div class="card-body">
+                            <table class="data-table">
+                                <thead>
+                                    <tr><th>Timescale</th><th>Swing (MW)</th><th>Ramp Rate</th><th>Handled By</th><th>Notes</th></tr>
+                                </thead>
+                                <tbody>
+                                    <tr><td>Sub-second</td><td class="mono">±5 MW</td><td class="mono">50 MW/s</td><td><span class="badge badge-success">BESS</span></td><td>Instant response required</td></tr>
+                                    <tr><td>1-30 seconds</td><td class="mono">±15 MW</td><td class="mono">1 MW/s</td><td><span class="badge badge-success">BESS</span></td><td>Within UPS window</td></tr>
+                                    <tr><td>30s - 5 min</td><td class="mono">±25 MW</td><td class="mono">0.3 MW/s</td><td><span class="badge badge-primary">BESS + Engine</span></td><td>Handoff zone</td></tr>
+                                    <tr><td>5 min - 1 hr</td><td class="mono">±40 MW</td><td class="mono">0.1 MW/s</td><td><span class="badge badge-info">Engine Dispatch</span></td><td>Normal dispatch changes</td></tr>
+                                    <tr><td>Hourly (daily)</td><td class="mono">±60 MW</td><td class="mono">—</td><td><span class="badge badge-info">8760 Dispatch</span></td><td>Daily load pattern</td></tr>
+                                    <tr><td>Seasonal</td><td class="mono">±30 MW</td><td class="mono">—</td><td><span class="badge badge-secondary">PUE/Cooling</span></td><td>Cooling load variation</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- ============================================ -->
+            <!-- TRANSIENT SCREENING PAGE -->
+            <!-- ============================================ -->
+            <div id="page-transient" class="page">
+                <div class="top-bar">
+                    <div class="breadcrumb">Load Analysis / <span>Transient Screening</span></div>
+                    <div style="display: flex; gap: 6px;">
+                        <button class="btn btn-secondary btn-sm" onclick="showPage('variability')">← Variability</button>
+                        <button class="btn btn-accent btn-sm" onclick="showPage('optimizer')">Optimizer →</button>
+                    </div>
+                </div>
+                
+                <div class="content-area">
+                    <div class="alert alert-warning">
+                        <strong>⚠️ Screening Only - Not Dynamic Simulation:</strong> These checks use simplified physics-based calculations to screen scenarios. <strong>Passing screening does NOT guarantee success.</strong> Final validation requires ETAP or equivalent dynamic simulation tools with validated equipment models.
+                    </div>
+                    
+                    <div class="metric-row">
+                        <div class="metric-card success"><div class="metric-label">Pass</div><div class="metric-value sm success">4</div></div>
+                        <div class="metric-card warning"><div class="metric-label">Warnings</div><div class="metric-value sm warning">1</div></div>
+                        <div class="metric-card"><div class="metric-label">Needs Study</div><div class="metric-value sm" style="color: var(--secondary);">1</div></div>
+                        <div class="metric-card success"><div class="metric-label">Failures</div><div class="metric-value sm success">0</div></div>
+                    </div>
+                    
+                    <!-- Scenario Selection -->
+                    <div class="card">
+                        <div class="card-header">
+                            <span class="card-title">Selected Scenario: Recip-Heavy Hybrid</span>
+                            <select class="form-select" style="width: 220px;">
+                                <option selected>Scenario A: 6x Wärtsilä + 100 MWh BESS</option>
+                                <option>Scenario B: 4x Recip + 2x LM2500</option>
+                                <option>Scenario C: Grid Primary + Backup</option>
+                            </select>
+                        </div>
+                        <div class="card-body">
+                            <div class="grid-5" style="text-align: center;">
+                                <div><div style="font-size: 9px; color: var(--text-light);">Recip Engines</div><div style="font-size: 16px; font-weight: 700;">6 × 18.8 MW</div></div>
+                                <div><div style="font-size: 9px; color: var(--text-light);">BESS Power</div><div style="font-size: 16px; font-weight: 700;">25 MW</div></div>
+                                <div><div style="font-size: 9px; color: var(--text-light);">BESS Energy</div><div style="font-size: 16px; font-weight: 700;">100 MWh</div></div>
+                                <div><div style="font-size: 9px; color: var(--text-light);">Grid (if avail)</div><div style="font-size: 16px; font-weight: 700;">150 MW</div></div>
+                                <div><div style="font-size: 9px; color: var(--text-light);">Rack UPS</div><div style="font-size: 16px; font-weight: 700;">30 sec</div></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Screening Checks -->
+                    <div class="screening-check pass">
+                        <div class="screening-status pass">✓</div>
+                        <div class="screening-content">
+                            <div class="screening-title">1. BESS Energy for Engine Ramp-Up</div>
+                            <div class="screening-detail">Can the BESS provide enough energy to cover the load while engines ramp from cold start?</div>
+                            <div class="screening-calc">
+                                Max step load (after UPS): 29 MW | Engine ramp: 2 min = 120s<br>
+                                Energy gap: 0.5 × 29 MW × (120/3600) hr = <strong>0.48 MWh</strong><br>
+                                BESS available (20-80% SOC): 60 MWh → <strong>125× margin (PASS)</strong>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="screening-check pass">
+                        <div class="screening-status pass">✓</div>
+                        <div class="screening-content">
+                            <div class="screening-title">2. Combined Ramp Rate Adequacy</div>
+                            <div class="screening-detail">Can the equipment combination meet the required ramp rate for residual load variations?</div>
+                            <div class="screening-calc">
+                                Required: 1.0 MW/s (after UPS filtering) | BESS: 25 MW instant | Engine: 4 × 0.16 MW/s = 0.64 MW/s<br>
+                                <strong>PASS - BESS covers any sub-30s transient</strong>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="screening-check pass">
+                        <div class="screening-status pass">✓</div>
+                        <div class="screening-content">
+                            <div class="screening-title">3. N-1 Spinning Reserve</div>
+                            <div class="screening-detail">If the largest single unit trips, can remaining units + BESS cover the load?</div>
+                            <div class="screening-calc">
+                                Peak: 200 MW | Largest unit: 18.8 MW | N-1 capacity: (5 × 18.8) + 25 + 150 = <strong>269 MW</strong><br>
+                                <strong>269 MW > 200 MW (PASS)</strong>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="screening-check warn">
+                        <div class="screening-status warn">!</div>
+                        <div class="screening-content">
+                            <div class="screening-title">4. Inertia & Frequency Stability (Simplified)</div>
+                            <div class="screening-detail">Is there sufficient rotating inertia to limit rate of change of frequency (RoCoF)?</div>
+                            <div class="screening-calc">
+                                Inertia: 6 × 3.5 MJ/MVA × 20 MVA = <strong>420 MJ</strong><br>
+                                RoCoF ≈ (29 × 60) / (2 × 420) = <strong>2.1 Hz/s</strong> (limit: 1-2 Hz/s)<br>
+                                <strong>WARNING - At upper limit, BESS synthetic inertia recommended</strong>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="screening-check pass">
+                        <div class="screening-status pass">✓</div>
+                        <div class="screening-content">
+                            <div class="screening-title">5. Rack UPS Ride-Through Duration</div>
+                            <div class="screening-detail">Is the rack UPS duration sufficient for BTM system to respond?</div>
+                            <div class="screening-calc">
+                                UPS: 30 sec | BESS response: &lt;100 ms | Engine (running): &lt;1 sec<br>
+                                <strong>PASS - Response within 1 second</strong>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="screening-check needs-study">
+                        <div class="screening-status needs-study">?</div>
+                        <div class="screening-content">
+                            <div class="screening-title">6. Islanding Transition Dynamics</div>
+                            <div class="screening-detail">Can the system successfully transition from grid-connected to island mode?</div>
+                            <div class="screening-calc">
+                                <strong>Cannot screen - Requires ETAP study:</strong><br>
+                                • Grid-forming vs grid-following BESS control mode<br>
+                                • Voltage/frequency transients during island detection<br>
+                                • Protection relay coordination
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Conclusion -->
+                    <div class="card" style="border-left: 4px solid var(--success);">
+                        <div class="card-header" style="background: #d4edda;">
+                            <span class="card-title">Screening Conclusion</span>
+                            <span class="badge badge-success">Likely Viable - Proceed to Optimization</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="grid-2">
+                                <div>
+                                    <div style="font-weight: 600; font-size: 12px; margin-bottom: 8px; color: var(--success);">✓ Confident Findings</div>
+                                    <ul style="font-size: 11px; padding-left: 18px; line-height: 1.8;">
+                                        <li>BESS sizing is adequate for ramp coverage</li>
+                                        <li>N-1 redundancy is satisfied</li>
+                                        <li>Rack UPS provides sufficient cushion</li>
+                                        <li>Engine ramp rates meet residual variability needs</li>
+                                    </ul>
+                                </div>
+                                <div>
+                                    <div style="font-weight: 600; font-size: 12px; margin-bottom: 8px; color: var(--warning);">⚠️ Items for ETAP Validation</div>
+                                    <ul style="font-size: 11px; padding-left: 18px; line-height: 1.8;">
+                                        <li>Frequency stability (RoCoF at upper limit)</li>
+                                        <li>Islanding transition dynamics</li>
+                                        <li>BESS control mode optimization</li>
+                                        <li>Protection coordination study</li>
+                                    </ul>
+                                </div>
+                            </div>
+                            <div class="divider"></div>
+                            <div style="display: flex; justify-content: flex-end; gap: 8px;">
+                                <button class="btn btn-outline">📄 Export ETAP Scope</button>
+                                <button class="btn btn-outline">📊 Export Study Input</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- ============================================ -->
+            <!-- EQUIPMENT LIBRARY PAGE -->
+            <!-- ============================================ -->
+            <div id="page-equipment" class="page">
+                <div class="top-bar">
+                    <div class="breadcrumb">Optimization / <span>Equipment Library</span></div>
+                    <div style="display: flex; gap: 6px;">
+                        <button class="btn btn-secondary btn-sm">📥 Import</button>
+                        <button class="btn btn-accent btn-sm">+ Add Equipment</button>
+                    </div>
+                </div>
+                
+                <div class="content-area">
+                    <div class="tabs">
+                        <div class="tab active">Reciprocating Engines</div>
+                        <div class="tab">Gas Turbines</div>
+                        <div class="tab">BESS</div>
+                        <div class="tab">Solar PV</div>
+                        <div class="tab">Grid Connection</div>
+                    </div>
+                    
+                    <div class="equipment-card selected">
+                        <div class="equipment-header">
+                            <div>
+                                <div class="equipment-name">Wärtsilä 50SG</div>
+                                <div class="equipment-type">20-cylinder spark-ignited gas engine</div>
+                            </div>
+                            <div class="equipment-quantity">
+                                <button class="quantity-btn">−</button>
+                                <input type="number" class="quantity-input" value="6">
+                                <button class="quantity-btn">+</button>
+                            </div>
+                        </div>
+                        <div class="equipment-specs">
+                            <div><div class="equipment-spec-label">Capacity</div><div class="equipment-spec-value">18.8 MW</div></div>
+                            <div><div class="equipment-spec-label">Efficiency</div><div class="equipment-spec-value">48.2%</div></div>
+                            <div><div class="equipment-spec-label">Heat Rate</div><div class="equipment-spec-value">7,084 BTU/kWh</div></div>
+                            <div><div class="equipment-spec-label">Start Time</div><div class="equipment-spec-value">2 min (cold)</div></div>
+                            <div><div class="equipment-spec-label">Ramp Rate</div><div class="equipment-spec-value">3 MW/min</div></div>
+                            <div><div class="equipment-spec-label">NOx</div><div class="equipment-spec-value">0.5 g/hp-hr</div></div>
+                            <div><div class="equipment-spec-label">Lead Time</div><div class="equipment-spec-value">12-24 mo</div></div>
+                            <div><div class="equipment-spec-label">CAPEX</div><div class="equipment-spec-value">$850/kW</div></div>
+                        </div>
+                    </div>
+                    
+                    <div class="equipment-card">
+                        <div class="equipment-header">
+                            <div>
+                                <div class="equipment-name">Caterpillar CG260-16</div>
+                                <div class="equipment-type">16-cylinder lean-burn gas engine</div>
+                            </div>
+                            <div class="equipment-quantity">
+                                <button class="quantity-btn">−</button>
+                                <input type="number" class="quantity-input" value="0">
+                                <button class="quantity-btn">+</button>
+                            </div>
+                        </div>
+                        <div class="equipment-specs">
+                            <div><div class="equipment-spec-label">Capacity</div><div class="equipment-spec-value">9.7 MW</div></div>
+                            <div><div class="equipment-spec-label">Efficiency</div><div class="equipment-spec-value">46.5%</div></div>
+                            <div><div class="equipment-spec-label">Heat Rate</div><div class="equipment-spec-value">7,340 BTU/kWh</div></div>
+                            <div><div class="equipment-spec-label">Start Time</div><div class="equipment-spec-value">90 sec</div></div>
+                            <div><div class="equipment-spec-label">Ramp Rate</div><div class="equipment-spec-value">2.5 MW/min</div></div>
+                            <div><div class="equipment-spec-label">NOx</div><div class="equipment-spec-value">0.6 g/hp-hr</div></div>
+                            <div><div class="equipment-spec-label">Lead Time</div><div class="equipment-spec-value">10-18 mo</div></div>
+                            <div><div class="equipment-spec-label">CAPEX</div><div class="equipment-spec-value">$780/kW</div></div>
+                        </div>
+                    </div>
+                    
+                    <div class="equipment-card">
+                        <div class="equipment-header">
+                            <div>
+                                <div class="equipment-name">INNIO Jenbacher J920</div>
+                                <div class="equipment-type">20-cylinder gas engine</div>
+                            </div>
+                            <div class="equipment-quantity">
+                                <button class="quantity-btn">−</button>
+                                <input type="number" class="quantity-input" value="0">
+                                <button class="quantity-btn">+</button>
+                            </div>
+                        </div>
+                        <div class="equipment-specs">
+                            <div><div class="equipment-spec-label">Capacity</div><div class="equipment-spec-value">10.4 MW</div></div>
+                            <div><div class="equipment-spec-label">Efficiency</div><div class="equipment-spec-value">49.3%</div></div>
+                            <div><div class="equipment-spec-label">Heat Rate</div><div class="equipment-spec-value">6,924 BTU/kWh</div></div>
+                            <div><div class="equipment-spec-label">Start Time</div><div class="equipment-spec-value">5 min</div></div>
+                            <div><div class="equipment-spec-label">Ramp Rate</div><div class="equipment-spec-value">2 MW/min</div></div>
+                            <div><div class="equipment-spec-label">NOx</div><div class="equipment-spec-value">0.4 g/hp-hr</div></div>
+                            <div><div class="equipment-spec-label">Lead Time</div><div class="equipment-spec-value">14-20 mo</div></div>
+                            <div><div class="equipment-spec-label">CAPEX</div><div class="equipment-spec-value">$900/kW</div></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- ============================================ -->
+            <!-- OPTIMIZER PAGE -->
+            <!-- ============================================ -->
+            <div id="page-optimizer" class="page">
+                <div class="top-bar">
+                    <div class="breadcrumb">Optimization / <span>Configure & Run</span></div>
+                    <div style="display: flex; gap: 6px;">
+                        <button class="btn btn-secondary btn-sm">💾 Save Config</button>
+                        <button class="btn btn-accent btn-lg" onclick="showPage('results')">⚡ Run Optimization</button>
+                    </div>
+                </div>
+                
+                <div class="content-area">
+                    <div class="grid-3-1">
+                        <div>
+                            <!-- Hard Constraints -->
+                            <div class="collapsible open">
+                                <div class="collapsible-header" onclick="toggleCollapsible(this)">
+                                    <span>🔒 HARD CONSTRAINTS (Must Satisfy - Pass/Fail)</span>
+                                    <span class="collapsible-icon">▼</span>
+                                </div>
+                                <div class="collapsible-body">
+                                    <div class="grid-4">
+                                        <div class="form-group">
+                                            <label class="form-label">Min Capacity</label>
+                                            <div class="input-group"><input type="number" class="form-input mono" value="200"><span class="input-addon">MW</span></div>
+                                            <div class="form-hint">Peak + reserve</div>
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="form-label">Reserve Margin</label>
+                                            <div class="input-group"><input type="number" class="form-input mono" value="10"><span class="input-addon">%</span></div>
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="form-label">N-1 Contingency</label>
+                                            <select class="form-select"><option selected>Required</option><option>N-2</option><option>Not Required</option></select>
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="form-label">Min Availability</label>
+                                            <div class="input-group"><input type="number" class="form-input mono" value="99.9"><span class="input-addon">%</span></div>
+                                        </div>
+                                    </div>
+                                    <div class="grid-4">
+                                        <div class="form-group">
+                                            <label class="form-label">Min Ramp Rate</label>
+                                            <div class="input-group"><input type="number" class="form-input mono" value="1.0"><span class="input-addon">MW/s</span></div>
+                                            <div class="form-hint">After UPS smoothing</div>
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="form-label">Freq Tolerance</label>
+                                            <div class="input-group"><input type="number" class="form-input mono" value="0.5"><span class="input-addon">Hz</span></div>
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="form-label">Voltage Tolerance</label>
+                                            <div class="input-group"><input type="number" class="form-input mono" value="5"><span class="input-addon">%</span></div>
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="form-label">Max Time-to-Power</label>
+                                            <div class="input-group"><input type="number" class="form-input mono" value="24"><span class="input-addon">mo</span></div>
+                                        </div>
+                                    </div>
+                                    <div class="grid-4">
+                                        <div class="form-group">
+                                            <label class="form-label">Max NOx</label>
+                                            <div class="input-group"><input type="number" class="form-input mono" value="99"><span class="input-addon">tpy</span></div>
+                                            <div class="form-hint">Under minor source</div>
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="form-label">Max LCOE</label>
+                                            <div class="input-group"><input type="number" class="form-input mono" value="85"><span class="input-addon">$/MWh</span></div>
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="form-label">Max CAPEX</label>
+                                            <div class="input-group"><input type="number" class="form-input mono" value="400"><span class="input-addon">$M</span></div>
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="form-label">Site Limit</label>
+                                            <div class="input-group"><input type="number" class="form-input mono" value="300"><span class="input-addon">MW</span></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Objectives -->
+                            <div class="collapsible open">
+                                <div class="collapsible-header" onclick="toggleCollapsible(this)">
+                                    <span>🎯 OPTIMIZATION OBJECTIVES</span>
+                                    <span class="collapsible-icon">▼</span>
+                                </div>
+                                <div class="collapsible-body">
+                                    <div class="grid-2">
+                                        <div class="form-group">
+                                            <label class="form-label">Primary Objective (Minimize)</label>
+                                            <select class="form-select">
+                                                <option selected>Time-to-Power (months)</option>
+                                                <option>LCOE ($/MWh)</option>
+                                                <option>Total CAPEX ($)</option>
+                                                <option>Carbon Intensity (kg CO₂/MWh)</option>
+                                            </select>
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="form-label">Method</label>
+                                            <select class="form-select">
+                                                <option selected>ε-Constraint (Pareto frontier)</option>
+                                                <option>Weighted Sum</option>
+                                                <option>Lexicographic</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div style="margin-top: 8px; padding: 10px; background: var(--bg-light); border-radius: 6px; font-size: 11px;">
+                                        <strong>ε-Constraint Method:</strong> Optimize primary objective while treating secondary objectives as bounded constraints. Vary bounds to trace Pareto frontier showing optimal tradeoffs.
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Solver Settings -->
+                            <div class="collapsible">
+                                <div class="collapsible-header" onclick="toggleCollapsible(this)">
+                                    <span>⚙️ Solver Settings</span>
+                                    <span class="collapsible-icon">▼</span>
+                                </div>
+                                <div class="collapsible-body">
+                                    <div class="grid-4">
+                                        <div class="form-group">
+                                            <label class="form-label">Solver</label>
+                                            <select class="form-select"><option selected>Pyomo + Gurobi</option><option>GAMS</option></select>
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="form-label">Scenarios</label>
+                                            <input type="number" class="form-input mono" value="100">
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="form-label">Pareto Points</label>
+                                            <input type="number" class="form-input mono" value="15">
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="form-label">MIP Gap</label>
+                                            <div class="input-group"><input type="number" class="form-input mono" value="0.1"><span class="input-addon">%</span></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Right Panel - Summary -->
+                        <div class="sticky-panel">
+                            <div class="card">
+                                <div class="card-header"><span class="card-title">Configuration Summary</span></div>
+                                <div class="card-body compact">
+                                    <div style="font-size: 11px;">
+                                        <div style="display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid var(--border-light);">
+                                            <span>Target Capacity</span><span class="mono" style="font-weight: 600;">200 MW</span>
+                                        </div>
+                                        <div style="display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid var(--border-light);">
+                                            <span>With Reserve</span><span class="mono" style="font-weight: 600;">220 MW</span>
+                                        </div>
+                                        <div style="display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid var(--border-light);">
+                                            <span>Equipment Types</span><span class="mono" style="font-weight: 600;">4 selected</span>
+                                        </div>
+                                        <div style="display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid var(--border-light);">
+                                            <span>Min Availability</span><span class="mono" style="font-weight: 600;">99.9%</span>
+                                        </div>
+                                        <div style="display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid var(--border-light);">
+                                            <span>Max Time</span><span class="mono" style="font-weight: 600;">24 mo</span>
+                                        </div>
+                                        <div style="display: flex; justify-content: space-between; padding: 4px 0;">
+                                            <span>Max LCOE</span><span class="mono" style="font-weight: 600;">$85/MWh</span>
+                                        </div>
+                                    </div>
+                                    <div class="divider"></div>
+                                    <button class="btn btn-accent" style="width: 100%;" onclick="showPage('results')">⚡ Run Optimization</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- ============================================ -->
+            <!-- RAM ANALYSIS PAGE -->
+            <!-- ============================================ -->
+            <div id="page-ram" class="page">
+                <div class="top-bar">
+                    <div class="breadcrumb">Optimization / <span>RAM Analysis</span></div>
+                    <div style="display: flex; gap: 6px;">
+                        <button class="btn btn-secondary btn-sm">📄 Export Report</button>
+                    </div>
+                </div>
+                
+                <div class="content-area">
+                    <div class="alert alert-info">
+                        <strong>💡 Layered Reliability Framework:</strong> This analysis uses a tiered approach—screening via closed-form approximations, validated by selective Monte Carlo for edge cases. Industry-standard equipment failure data from IEEE Gold Book, NERC GADS, and OEM sources.
+                    </div>
+                    
+                    <div class="metric-row">
+                        <div class="metric-card success"><div class="metric-label">System Availability</div><div class="metric-value sm success">99.92%</div><div class="metric-change">Target: 99.9%</div></div>
+                        <div class="metric-card highlight"><div class="metric-label">MTBF</div><div class="metric-value sm">4,380 hrs</div><div class="metric-change">~6 months</div></div>
+                        <div class="metric-card highlight"><div class="metric-label">MTTR</div><div class="metric-value sm">3.5 hrs</div></div>
+                        <div class="metric-card highlight"><div class="metric-label">Expected Outages</div><div class="metric-value sm">2.0/yr</div></div>
+                        <div class="metric-card highlight"><div class="metric-label">Downtime</div><div class="metric-value sm">7 hrs/yr</div></div>
+                    </div>
+                    
+                    <div class="grid-2">
+                        <div class="card">
+                            <div class="card-header"><span class="card-title">Reliability Block Diagram</span></div>
+                            <div class="card-body">
+                                <div class="ram-diagram">
+                                    <div class="ram-layer">
+                                        <div class="ram-layer-name">Engines</div>
+                                        <div class="ram-layer-bar">
+                                            <div class="ram-segment" style="width: 16.6%; background: #2E86AB;">E1</div>
+                                            <div class="ram-segment" style="width: 16.6%; background: #3498db;">E2</div>
+                                            <div class="ram-segment" style="width: 16.6%; background: #2E86AB;">E3</div>
+                                            <div class="ram-segment" style="width: 16.6%; background: #3498db;">E4</div>
+                                            <div class="ram-segment" style="width: 16.6%; background: #2E86AB;">E5</div>
+                                            <div class="ram-segment" style="width: 16.6%; background: #3498db;">E6</div>
+                                        </div>
+                                        <div class="ram-layer-value">99.85%</div>
+                                    </div>
+                                    <div class="ram-layer">
+                                        <div class="ram-layer-name">BESS</div>
+                                        <div class="ram-layer-bar">
+                                            <div class="ram-segment" style="width: 100%; background: #F18F01;">100 MWh BESS</div>
+                                        </div>
+                                        <div class="ram-layer-value">99.5%</div>
+                                    </div>
+                                    <div class="ram-layer">
+                                        <div class="ram-layer-name">Solar</div>
+                                        <div class="ram-layer-bar">
+                                            <div class="ram-segment" style="width: 100%; background: #28A745;">50 MW PV</div>
+                                        </div>
+                                        <div class="ram-layer-value">98.0%</div>
+                                    </div>
+                                    <div class="ram-layer">
+                                        <div class="ram-layer-name">Grid</div>
+                                        <div class="ram-layer-bar">
+                                            <div class="ram-segment" style="width: 100%; background: #6c757d;">150 MW Import</div>
+                                        </div>
+                                        <div class="ram-layer-value">99.97%</div>
+                                    </div>
+                                </div>
+                                <div style="margin-top: 12px; padding: 10px; background: var(--bg-light); border-radius: 6px; font-size: 11px;">
+                                    <strong>Configuration:</strong> 6-of-6 engines in parallel (5 required for N-1), BESS provides bridge power, Grid as backup. System availability calculated via k-of-n redundancy model.
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="card">
+                            <div class="card-header"><span class="card-title">Equipment Failure Data</span></div>
+                            <div class="card-body compact">
+                                <table class="data-table">
+                                    <thead>
+                                        <tr><th>Equipment</th><th>FOR</th><th>MTBF</th><th>MTTR</th><th>Source</th></tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr><td>Wärtsilä 50SG</td><td class="mono">2.5%</td><td class="mono">2,500 hrs</td><td class="mono">24 hrs</td><td>OEM</td></tr>
+                                        <tr><td>LFP BESS</td><td class="mono">0.5%</td><td class="mono">8,760 hrs</td><td class="mono">4 hrs</td><td>IEEE</td></tr>
+                                        <tr><td>Solar PV</td><td class="mono">2.0%</td><td class="mono">4,380 hrs</td><td class="mono">8 hrs</td><td>NERC</td></tr>
+                                        <tr><td>Grid Import</td><td class="mono">0.03%</td><td class="mono">35,000 hrs</td><td class="mono">2 hrs</td><td>Utility</td></tr>
+                                        <tr><td>Transformer</td><td class="mono">0.1%</td><td class="mono">100,000 hrs</td><td class="mono">72 hrs</td><td>IEEE</td></tr>
+                                        <tr><td>Switchgear</td><td class="mono">0.05%</td><td class="mono">50,000 hrs</td><td class="mono">8 hrs</td><td>IEEE</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-header">
+                            <span class="card-title">Sensitivity Analysis</span>
+                            <span class="card-subtitle">Impact of key parameters on system availability</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="grid-3">
+                                <div style="text-align: center; padding: 12px; background: var(--bg-light); border-radius: 6px;">
+                                    <div style="font-size: 10px; color: var(--text-light); margin-bottom: 4px;">Add 7th Engine</div>
+                                    <div style="font-size: 20px; font-weight: 700; color: var(--success);">99.98%</div>
+                                    <div style="font-size: 10px; color: var(--success);">+0.06%</div>
+                                </div>
+                                <div style="text-align: center; padding: 12px; background: var(--bg-light); border-radius: 6px;">
+                                    <div style="font-size: 10px; color: var(--text-light); margin-bottom: 4px;">Reduce MTTR 50%</div>
+                                    <div style="font-size: 20px; font-weight: 700; color: var(--success);">99.96%</div>
+                                    <div style="font-size: 10px; color: var(--success);">+0.04%</div>
+                                </div>
+                                <div style="text-align: center; padding: 12px; background: var(--bg-light); border-radius: 6px;">
+                                    <div style="font-size: 10px; color: var(--text-light); margin-bottom: 4px;">Double BESS Capacity</div>
+                                    <div style="font-size: 20px; font-weight: 700; color: var(--success);">99.94%</div>
+                                    <div style="font-size: 10px; color: var(--success);">+0.02%</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- ============================================ -->
+            <!-- RESULTS PAGE -->
+            <!-- ============================================ -->
+            <div id="page-results" class="page">
+                <div class="top-bar">
+                    <div class="breadcrumb">Results / <span>Optimization Results</span></div>
+                    <div style="display: flex; gap: 6px;">
+                        <button class="btn btn-secondary btn-sm">📥 Export All</button>
+                        <button class="btn btn-accent btn-sm" onclick="showPage('dispatch')">View Dispatch →</button>
+                    </div>
+                </div>
+                
+                <div class="content-area">
+                    <div class="metric-row">
+                        <div class="metric-card highlight"><div class="metric-label">Scenarios Analyzed</div><div class="metric-value sm">100</div></div>
+                        <div class="metric-card success"><div class="metric-label">Feasible</div><div class="metric-value sm success">47</div></div>
+                        <div class="metric-card danger"><div class="metric-label">Infeasible</div><div class="metric-value sm danger">53</div></div>
+                        <div class="metric-card highlight"><div class="metric-label">Pareto Optimal</div><div class="metric-value sm">12</div></div>
+                        <div class="metric-card success"><div class="metric-label">Best Time</div><div class="metric-value sm success">14 mo</div></div>
+                        <div class="metric-card"><div class="metric-label">Best LCOE</div><div class="metric-value sm">$62/MWh</div></div>
+                    </div>
+                    
+                    <!-- Constraint Violations -->
+                    <div class="card">
+                        <div class="card-header">
+                            <span class="card-title">Constraint Violations (Why 53 Scenarios Failed)</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="violation-bar">
+                                <span class="violation-label">NOx Limit</span>
+                                <div class="violation-track"><div class="violation-fill" style="width: 43%; background: var(--danger);">43%</div></div>
+                                <span class="violation-count">23</span>
+                            </div>
+                            <div class="violation-bar">
+                                <span class="violation-label">Time-to-Power</span>
+                                <div class="violation-track"><div class="violation-fill" style="width: 28%; background: var(--warning);">28%</div></div>
+                                <span class="violation-count">15</span>
+                            </div>
+                            <div class="violation-bar">
+                                <span class="violation-label">Availability</span>
+                                <div class="violation-track"><div class="violation-fill" style="width: 15%; background: var(--warning);">15%</div></div>
+                                <span class="violation-count">8</span>
+                            </div>
+                            <div class="violation-bar">
+                                <span class="violation-label">Ramp Rate</span>
+                                <div class="violation-track"><div class="violation-fill" style="width: 9%; background: var(--secondary);">9%</div></div>
+                                <span class="violation-count">5</span>
+                            </div>
+                            <div class="violation-bar">
+                                <span class="violation-label">LCOE</span>
+                                <div class="violation-track"><div class="violation-fill" style="width: 4%; background: var(--secondary);">4%</div></div>
+                                <span class="violation-count">2</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Pareto Chart -->
+                    <div class="card">
+                        <div class="card-header">
+                            <span class="card-title">Pareto Frontier: Time-to-Power vs LCOE</span>
+                            <span class="card-subtitle">Click points to select scenario • Color = CAPEX (dark = higher)</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="chart-container h200">
+                                <svg viewBox="0 0 700 180" class="svg-chart">
+                                    <line x1="60" y1="160" x2="680" y2="160" stroke="#dee2e6" stroke-width="1"/>
+                                    <line x1="60" y1="20" x2="60" y2="160" stroke="#dee2e6" stroke-width="1"/>
+                                    
+                                    <text x="370" y="178" style="font-size: 10px; fill: #666;" text-anchor="middle">Time-to-Power (months)</text>
+                                    <text x="55" y="160" style="font-size: 9px; fill: #666;" text-anchor="end">$50</text>
+                                    <text x="55" y="90" style="font-size: 9px; fill: #666;" text-anchor="end">$75</text>
+                                    <text x="55" y="25" style="font-size: 9px; fill: #666;" text-anchor="end">$100/MWh</text>
+                                    
+                                    <!-- X axis labels -->
+                                    <text x="100" y="172" style="font-size: 9px; fill: #666;" text-anchor="middle">10</text>
+                                    <text x="200" y="172" style="font-size: 9px; fill: #666;" text-anchor="middle">18</text>
+                                    <text x="300" y="172" style="font-size: 9px; fill: #666;" text-anchor="middle">26</text>
+                                    <text x="400" y="172" style="font-size: 9px; fill: #666;" text-anchor="middle">34</text>
+                                    <text x="500" y="172" style="font-size: 9px; fill: #666;" text-anchor="middle">42</text>
+                                    <text x="600" y="172" style="font-size: 9px; fill: #666;" text-anchor="middle">50</text>
+                                    
+                                    <!-- Pareto frontier line -->
+                                    <polyline points="100,30 140,55 200,72 280,88 400,110 550,135 650,148" fill="none" stroke="#2E86AB" stroke-width="2" stroke-dasharray="4,3"/>
+                                    
+                                    <!-- Non-Pareto points (gray) -->
+                                    <circle cx="170" cy="60" r="5" fill="#ccc" stroke="#999" stroke-width="1"/>
+                                    <circle cx="250" cy="75" r="5" fill="#ccc" stroke="#999" stroke-width="1"/>
+                                    <circle cx="320" cy="85" r="5" fill="#ccc" stroke="#999" stroke-width="1"/>
+                                    <circle cx="450" cy="95" r="5" fill="#ccc" stroke="#999" stroke-width="1"/>
+                                    
+                                    <!-- Pareto optimal points -->
+                                    <circle cx="100" cy="30" r="7" fill="#440154" stroke="white" stroke-width="2"/>
+                                    <circle cx="140" cy="55" r="7" fill="#31688e" stroke="white" stroke-width="2"/>
+                                    <circle cx="200" cy="72" r="9" fill="#35b779" stroke="#F18F01" stroke-width="3"/>
+                                    <circle cx="280" cy="88" r="7" fill="#6ece58" stroke="white" stroke-width="2"/>
+                                    <circle cx="400" cy="110" r="7" fill="#b5de2b" stroke="white" stroke-width="2"/>
+                                    <circle cx="550" cy="135" r="7" fill="#fde725" stroke="white" stroke-width="2"/>
+                                    <circle cx="650" cy="148" r="7" fill="#fde725" stroke="white" stroke-width="2"/>
+                                    
+                                    <!-- Selected annotation -->
+                                    <g transform="translate(200, 45)">
+                                        <rect x="-55" y="-22" width="110" height="22" rx="4" fill="white" stroke="#F18F01" stroke-width="1.5"/>
+                                        <text x="0" y="-8" text-anchor="middle" style="font-size: 10px; font-weight: 600;">⭐ Scenario A: 14mo | $68</text>
+                                    </g>
+                                    
+                                    <!-- Legend -->
+                                    <g transform="translate(520, 20)" style="font-size: 9px;">
+                                        <text x="0" y="0" fill="#666">CAPEX:</text>
+                                        <rect x="40" y="-8" width="12" height="12" fill="#440154"/>
+                                        <text x="55" y="0" fill="#666">$350M</text>
+                                        <rect x="90" y="-8" width="12" height="12" fill="#fde725"/>
+                                        <text x="105" y="0" fill="#666">$150M</text>
+                                    </g>
+                                </svg>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Scenario Cards -->
+                    <div style="font-size: 12px; font-weight: 600; margin-bottom: 10px;">Top Scenarios</div>
+                    <div class="grid-3">
+                        <div class="scenario-card optimal selected">
+                            <div class="scenario-name">Scenario A: Recip-Heavy</div>
+                            <div class="scenario-type">6x Wärtsilä 50SG + 100 MWh BESS + 50 MW Solar</div>
+                            <div class="scenario-metrics">
+                                <div class="scenario-metric"><span class="scenario-metric-label">Time</span><span class="scenario-metric-value" style="color: var(--success);">14 mo</span></div>
+                                <div class="scenario-metric"><span class="scenario-metric-label">LCOE</span><span class="scenario-metric-value">$68</span></div>
+                                <div class="scenario-metric"><span class="scenario-metric-label">CAPEX</span><span class="scenario-metric-value">$295M</span></div>
+                                <div class="scenario-metric"><span class="scenario-metric-label">Availability</span><span class="scenario-metric-value">99.92%</span></div>
+                                <div class="scenario-metric"><span class="scenario-metric-label">NOx</span><span class="scenario-metric-value">87 tpy</span></div>
+                                <div class="scenario-metric"><span class="scenario-metric-label">Carbon</span><span class="scenario-metric-value">385 kg/MWh</span></div>
+                            </div>
+                        </div>
+                        
+                        <div class="scenario-card">
+                            <div class="scenario-name">Scenario B: Hybrid</div>
+                            <div class="scenario-type">4x Recip + 2x LM2500 + 50 MWh BESS</div>
+                            <div class="scenario-metrics">
+                                <div class="scenario-metric"><span class="scenario-metric-label">Time</span><span class="scenario-metric-value" style="color: var(--warning);">22 mo</span></div>
+                                <div class="scenario-metric"><span class="scenario-metric-label">LCOE</span><span class="scenario-metric-value" style="color: var(--success);">$62</span></div>
+                                <div class="scenario-metric"><span class="scenario-metric-label">CAPEX</span><span class="scenario-metric-value">$310M</span></div>
+                                <div class="scenario-metric"><span class="scenario-metric-label">Availability</span><span class="scenario-metric-value">99.95%</span></div>
+                                <div class="scenario-metric"><span class="scenario-metric-label">NOx</span><span class="scenario-metric-value">92 tpy</span></div>
+                                <div class="scenario-metric"><span class="scenario-metric-label">Carbon</span><span class="scenario-metric-value">410 kg/MWh</span></div>
+                            </div>
+                        </div>
+                        
+                        <div class="scenario-card">
+                            <div class="scenario-name">Scenario C: Grid-Primary</div>
+                            <div class="scenario-type">150 MW Grid + 2x Recip + 50 MWh BESS</div>
+                            <div class="scenario-metrics">
+                                <div class="scenario-metric"><span class="scenario-metric-label">Time</span><span class="scenario-metric-value" style="color: var(--danger);">42 mo</span></div>
+                                <div class="scenario-metric"><span class="scenario-metric-label">LCOE</span><span class="scenario-metric-value" style="color: var(--success);">$55</span></div>
+                                <div class="scenario-metric"><span class="scenario-metric-label">CAPEX</span><span class="scenario-metric-value" style="color: var(--success);">$145M</span></div>
+                                <div class="scenario-metric"><span class="scenario-metric-label">Availability</span><span class="scenario-metric-value">99.97%</span></div>
+                                <div class="scenario-metric"><span class="scenario-metric-label">NOx</span><span class="scenario-metric-value">28 tpy</span></div>
+                                <div class="scenario-metric"><span class="scenario-metric-label">Carbon</span><span class="scenario-metric-value">320 kg/MWh</span></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- ============================================ -->
+            <!-- DISPATCH PAGE (8760 + Multi-Scale Zoom) -->
+            <!-- ============================================ -->
+            <div id="page-dispatch" class="page">
+                <div class="top-bar">
+                    <div class="breadcrumb">Results / <span>Dispatch Analysis</span></div>
+                    <div style="display: flex; gap: 6px;">
+                        <select class="form-select" style="width: 200px;">
+                            <option selected>Scenario A: Recip-Heavy</option>
+                            <option>Scenario B: Hybrid</option>
+                            <option>Scenario C: Grid-Primary</option>
+                        </select>
+                        <button class="btn btn-secondary btn-sm">📥 Export CSV</button>
+                        <button class="btn btn-secondary btn-sm">📄 Export Report</button>
+                    </div>
+                </div>
+                
+                <div class="content-area">
+                    <div class="metric-row">
+                        <div class="metric-card highlight"><div class="metric-label">Annual Gen</div><div class="metric-value sm">1,401 GWh</div></div>
+                        <div class="metric-card"><div class="metric-label">Engines</div><div class="metric-value sm">892 GWh</div><div class="metric-change">63.7%</div></div>
+                        <div class="metric-card"><div class="metric-label">BESS</div><div class="metric-value sm">124 GWh</div><div class="metric-change">8.9%</div></div>
+                        <div class="metric-card"><div class="metric-label">Solar</div><div class="metric-value sm">110 GWh</div><div class="metric-change">7.9%</div></div>
+                        <div class="metric-card"><div class="metric-label">Grid</div><div class="metric-value sm">275 GWh</div><div class="metric-change">19.6%</div></div>
+                    </div>
+                    
+                    <!-- Zoom Path -->
+                    <div class="zoom-indicator">
+                        <span style="font-weight: 600;">🔍 Zoom Level:</span>
+                        <div class="zoom-path">
+                            <span class="current" onclick="setZoom('year')">Year</span>
+                            <span class="zoom-arrow">→</span>
+                            <span onclick="setZoom('month')">Jul</span>
+                            <span class="zoom-arrow">→</span>
+                            <span onclick="setZoom('week')">Week 28</span>
+                            <span class="zoom-arrow">→</span>
+                            <span onclick="setZoom('day')">Jul 15</span>
+                            <span class="zoom-arrow">→</span>
+                            <span onclick="setZoom('hour')">14:00</span>
+                            <span class="zoom-arrow">→</span>
+                            <span onclick="setZoom('seconds')">14:32:15</span>
+                        </div>
+                        <span style="margin-left: auto; font-size: 10px; color: var(--text-muted);">Click any level to drill down</span>
+                    </div>
+                    
+                    <!-- Dual Chart View -->
+                    <div class="grid-2">
+                        <!-- 8760 Overview -->
+                        <div class="card">
+                            <div class="card-header">
+                                <span class="card-title">8760 Annual Dispatch</span>
+                                <div class="timescale-selector">
+                                    <button class="timescale-btn active">Year</button>
+                                    <button class="timescale-btn">Month</button>
+                                    <button class="timescale-btn">Week</button>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div class="chart-container h200">
+                                    <svg viewBox="0 0 500 180" class="svg-chart">
+                                        <line x1="45" y1="160" x2="480" y2="160" stroke="#dee2e6" stroke-width="1"/>
+                                        <line x1="45" y1="20" x2="45" y2="160" stroke="#dee2e6" stroke-width="1"/>
+                                        
+                                        <text x="40" y="160" style="font-size: 8px; fill: #666;" text-anchor="end">0</text>
+                                        <text x="40" y="90" style="font-size: 8px; fill: #666;" text-anchor="end">100</text>
+                                        <text x="40" y="25" style="font-size: 8px; fill: #666;" text-anchor="end">200 MW</text>
+                                        
+                                        <!-- Month labels -->
+                                        <text x="70" y="172" style="font-size: 8px; fill: #666;">J</text>
+                                        <text x="105" y="172" style="font-size: 8px; fill: #666;">F</text>
+                                        <text x="140" y="172" style="font-size: 8px; fill: #666;">M</text>
+                                        <text x="175" y="172" style="font-size: 8px; fill: #666;">A</text>
+                                        <text x="210" y="172" style="font-size: 8px; fill: #666;">M</text>
+                                        <text x="245" y="172" style="font-size: 8px; fill: #666;">J</text>
+                                        <text x="280" y="172" style="font-size: 8px; fill: #666;">J</text>
+                                        <text x="315" y="172" style="font-size: 8px; fill: #666;">A</text>
+                                        <text x="350" y="172" style="font-size: 8px; fill: #666;">S</text>
+                                        <text x="385" y="172" style="font-size: 8px; fill: #666;">O</text>
+                                        <text x="420" y="172" style="font-size: 8px; fill: #666;">N</text>
+                                        <text x="455" y="172" style="font-size: 8px; fill: #666;">D</text>
+                                        
+                                        <!-- Stacked areas - Grid (bottom) -->
+                                        <path d="M45,160 L90,145 L160,140 L230,135 L300,128 L370,135 L440,148 L480,155 L480,160 Z" fill="#6c757d" opacity="0.7"/>
+                                        <!-- Engines -->
+                                        <path d="M45,145 L90,95 L160,82 L230,70 L300,62 L370,72 L440,92 L480,110 L480,155 L440,148 L370,135 L300,128 L230,135 L160,140 L90,145 Z" fill="#2E86AB" opacity="0.8"/>
+                                        <!-- BESS -->
+                                        <path d="M45,95 L90,78 L160,68 L230,58 L300,50 L370,58 L440,75 L480,88 L480,110 L440,92 L370,72 L300,62 L230,70 L160,82 L90,95 Z" fill="#F18F01" opacity="0.8"/>
+                                        <!-- Solar (top) -->
+                                        <path d="M45,95 L90,72 L160,52 L230,38 L300,30 L370,40 L440,62 L480,78 L480,88 L440,75 L370,58 L300,50 L230,58 L160,68 L90,78 Z" fill="#28A745" opacity="0.8"/>
+                                        
+                                        <!-- Load line -->
+                                        <path d="M45,50 L90,45 L160,38 L230,30 L300,25 L370,32 L440,45 L480,52" fill="none" stroke="#DC3545" stroke-width="1.5" stroke-dasharray="3,2"/>
+                                        
+                                        <!-- July selection -->
+                                        <rect x="263" y="20" width="35" height="140" fill="rgba(241,143,1,0.15)" stroke="#F18F01" stroke-width="1" stroke-dasharray="3,3"/>
+                                        
+                                        <!-- Legend -->
+                                        <g transform="translate(55, 10)" style="font-size: 8px;">
+                                            <rect x="0" y="0" width="10" height="10" fill="#28A745"/>
+                                            <text x="13" y="8" fill="#666">Solar</text>
+                                            <rect x="45" y="0" width="10" height="10" fill="#F18F01"/>
+                                            <text x="58" y="8" fill="#666">BESS</text>
+                                            <rect x="90" y="0" width="10" height="10" fill="#2E86AB"/>
+                                            <text x="103" y="8" fill="#666">Engine</text>
+                                            <rect x="145" y="0" width="10" height="10" fill="#6c757d"/>
+                                            <text x="158" y="8" fill="#666">Grid</text>
+                                            <line x1="195" y1="5" x2="210" y2="5" stroke="#DC3545" stroke-width="1.5" stroke-dasharray="3,2"/>
+                                            <text x="215" y="8" fill="#666">Load</text>
+                                        </g>
+                                    </svg>
+                                </div>
+                                <div style="font-size: 10px; color: var(--text-light); text-align: center; margin-top: 6px;">
+                                    Click on July to zoom in → See peak summer operation
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Seconds Detail -->
+                        <div class="card">
+                            <div class="card-header">
+                                <span class="card-title">Sub-Second Detail</span>
+                                <div class="timescale-selector">
+                                    <button class="timescale-btn">Day</button>
+                                    <button class="timescale-btn">Hour</button>
+                                    <button class="timescale-btn">Min</button>
+                                    <button class="timescale-btn active">Sec</button>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div class="chart-container h200">
+                                    <svg viewBox="0 0 500 180" class="svg-chart">
+                                        <line x1="45" y1="160" x2="480" y2="160" stroke="#dee2e6" stroke-width="1"/>
+                                        <line x1="45" y1="20" x2="45" y2="160" stroke="#dee2e6" stroke-width="1"/>
+                                        
+                                        <text x="40" y="160" style="font-size: 8px; fill: #666;" text-anchor="end">140</text>
+                                        <text x="40" y="90" style="font-size: 8px; fill: #666;" text-anchor="end">160</text>
+                                        <text x="40" y="25" style="font-size: 8px; fill: #666;" text-anchor="end">180 MW</text>
+                                        
+                                        <!-- Second labels -->
+                                        <text x="70" y="172" style="font-size: 8px; fill: #666;">:00</text>
+                                        <text x="160" y="172" style="font-size: 8px; fill: #666;">:15</text>
+                                        <text x="250" y="172" style="font-size: 8px; fill: #666;">:30</text>
+                                        <text x="340" y="172" style="font-size: 8px; fill: #666;">:45</text>
+                                        <text x="430" y="172" style="font-size: 8px; fill: #666;">:60</text>
+                                        
+                                        <!-- Timestamp -->
+                                        <text x="262" y="12" style="font-size: 10px; font-weight: 600; fill: #333;" text-anchor="middle">Jul 15, 2026 • 14:32:00 - 14:33:00</text>
+                                        
+                                        <!-- Event marker -->
+                                        <line x1="160" y1="20" x2="160" y2="160" stroke="#DC3545" stroke-width="1" stroke-dasharray="3,3"/>
+                                        <text x="165" y="32" style="font-size: 8px; fill: #DC3545;">GPU batch start (+20 MW)</text>
+                                        
+                                        <!-- Load demand (step at :15) -->
+                                        <path d="M45,95 L155,95 L160,55 L480,52" fill="none" stroke="#DC3545" stroke-width="2" stroke-dasharray="4,2"/>
+                                        
+                                        <!-- Engine output (slow ramp) -->
+                                        <path d="M45,110 L155,110 L160,110 L200,102 L260,88 L320,72 L380,60 L440,54 L480,52" fill="none" stroke="#2E86AB" stroke-width="2.5"/>
+                                        
+                                        <!-- BESS (instant response, then discharge) -->
+                                        <path d="M45,135 L155,135 L160,75 L200,82 L260,92 L320,105 L380,118 L440,128 L480,132" fill="none" stroke="#F18F01" stroke-width="2.5"/>
+                                        
+                                        <!-- Combined output (meets load) -->
+                                        <path d="M45,95 L155,95 L160,58 L200,55 L260,53 L320,52 L380,52 L440,52 L480,52" fill="none" stroke="#28A745" stroke-width="3"/>
+                                        
+                                        <!-- Legend -->
+                                        <g transform="translate(300, 145)" style="font-size: 8px;">
+                                            <line x1="0" y1="0" x2="15" y2="0" stroke="#DC3545" stroke-width="2" stroke-dasharray="4,2"/>
+                                            <text x="18" y="3" fill="#666">Load</text>
+                                            <line x1="50" y1="0" x2="65" y2="0" stroke="#F18F01" stroke-width="2.5"/>
+                                            <text x="68" y="3" fill="#666">BESS</text>
+                                            <line x1="100" y1="0" x2="115" y2="0" stroke="#2E86AB" stroke-width="2.5"/>
+                                            <text x="118" y="3" fill="#666">Engine</text>
+                                            <line x1="160" y1="0" x2="175" y2="0" stroke="#28A745" stroke-width="3"/>
+                                            <text x="178" y="3" fill="#666">Total</text>
+                                        </g>
+                                        
+                                        <!-- Annotation box -->
+                                        <g transform="translate(260, 70)">
+                                            <rect x="0" y="0" width="120" height="35" rx="4" fill="white" stroke="#F18F01" stroke-width="1.5"/>
+                                            <text x="60" y="14" text-anchor="middle" style="font-size: 9px; font-weight: 600;">BESS covers gap</text>
+                                            <text x="60" y="26" text-anchor="middle" style="font-size: 8px; fill: #666;">Engines ramp over 45s</text>
+                                        </g>
+                                    </svg>
+                                </div>
+                                <div style="font-size: 10px; color: var(--text-light); text-align: center; margin-top: 6px;">
+                                    20 MW step load at :15 • BESS responds in &lt;100ms • Engine ramps 45s
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Operating Statistics -->
+                    <div class="card">
+                        <div class="card-header">
+                            <span class="card-title">Equipment Operating Statistics</span>
+                        </div>
+                        <div class="card-body">
+                            <table class="data-table">
+                                <thead>
+                                    <tr><th>Equipment</th><th>Capacity</th><th>Hours</th><th>CF</th><th>Starts/yr</th><th>Avg Output</th><th>Fuel/Energy</th></tr>
+                                </thead>
+                                <tbody>
+                                    <tr><td><strong>Wärtsilä #1-4 (Base)</strong></td><td class="mono">75.2 MW</td><td class="mono">7,800</td><td class="mono">89%</td><td class="mono">52</td><td class="mono">67 MW</td><td class="mono">4.2M MMBtu</td></tr>
+                                    <tr><td><strong>Wärtsilä #5-6 (Peak)</strong></td><td class="mono">37.6 MW</td><td class="mono">2,400</td><td class="mono">27%</td><td class="mono">365</td><td class="mono">32 MW</td><td class="mono">0.9M MMBtu</td></tr>
+                                    <tr><td><strong>BESS 100 MWh</strong></td><td class="mono">25 MW</td><td class="mono">4,960</td><td class="mono">57%</td><td class="mono">730</td><td class="mono">17 MW</td><td class="mono">124 GWh cycled</td></tr>
+                                    <tr><td><strong>Solar PV</strong></td><td class="mono">50 MW</td><td class="mono">2,628</td><td class="mono">25%</td><td class="mono">365</td><td class="mono">42 MW</td><td class="mono">—</td></tr>
+                                    <tr><td><strong>Grid Import</strong></td><td class="mono">150 MW</td><td class="mono">8,760</td><td class="mono">21%</td><td class="mono">—</td><td class="mono">31 MW</td><td class="mono">275 GWh</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+        </main>
+    </div>
+    
+    <script>
+        function showPage(pageId) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.getElementById('page-' + pageId).classList.add('active');
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            event.target.classList.add('active');
+        }
+        
+        function toggleCollapsible(header) {
+            header.parentElement.classList.toggle('open');
+        }
+        
+        function applyPreset(preset) {
+            document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+            event.target.closest('.preset-btn').classList.add('active');
+        }
+        
+        function setZoom(level) {
+            document.querySelectorAll('.zoom-path span:not(.zoom-arrow)').forEach(s => s.classList.remove('current'));
+            event.target.classList.add('current');
+        }
+    </script>
+</body>
+</html>

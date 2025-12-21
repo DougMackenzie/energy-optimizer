@@ -1,112 +1,341 @@
 """
 Optimizer Page
-Configure constraints and objectives, run optimization
+Evaluates scenarios against constraints and runs optimization
 """
 
 import streamlit as st
-from config.settings import DEFAULT_CONSTRAINTS
+from app.utils.constraint_validator import validate_configuration
 
 
 def render():
     st.markdown("### 🎯 Optimizer")
     
-    col_header, col_actions = st.columns([3, 1])
-    with col_actions:
-        if st.button("⚡ Run Optimization", type="primary", use_container_width=True):
-            with st.spinner("Running optimization..."):
-                import time
-                time.sleep(2)  # Simulate optimization
-                st.session_state.current_page = 'results'
-                st.rerun()
+    # Check if configuration exists
+    if 'current_config' not in st.session_state:
+        st.warning("⚠️ No configuration loaded. Please configure your energy stack in the Equipment Library page first.")
+        
+        if st.button("📋 Go to Equipment Library", type="primary"):
+            st.session_state.current_page = 'equipment_library'
+            st.rerun()
+        
+        return
     
-    # Hard Constraints Section
-    with st.expander("🔒 HARD CONSTRAINTS (Must Satisfy - Pass/Fail)", expanded=True):
-        st.caption("Scenarios that violate these constraints are marked infeasible")
-        
-        col1, col2, col3, col4 = st.columns(4)
-        
-        with col1:
-            st.number_input("Min Capacity (MW)", value=200, min_value=10, max_value=2000)
-            st.number_input("Min Ramp Rate (MW/s)", value=1.0, min_value=0.1, max_value=10.0, step=0.1)
-        
-        with col2:
-            st.number_input("Reserve Margin (%)", value=10, min_value=0, max_value=50)
-            st.number_input("Freq Tolerance (Hz)", value=0.5, min_value=0.1, max_value=2.0, step=0.1)
-        
-        with col3:
-            st.selectbox("N-1 Contingency", ["Required", "N-2", "Not Required"])
-            st.number_input("Voltage Tolerance (%)", value=5, min_value=1, max_value=15)
-        
-        with col4:
-            st.number_input("Min Availability (%)", value=99.9, min_value=95.0, max_value=99.999, step=0.1)
-            st.number_input("Max Time-to-Power (mo)", value=24, min_value=6, max_value=60)
+    # Load configuration
+    config = st.session_state.current_config
+    site = config['site']
+    scenario = config['scenario']
+    equipment_enabled = config['equipment_enabled']
+    constraints = config['constraints']
+    objectives = config['objectives']
+    
+    # Display Configuration Summary
+    st.markdown("#### 📋 Current Configuration")
+    
+    col1, col2, col3, col4 = st.columns(4)
+    with col1:
+        st.metric("Site", site.get('Site_Name', 'Unknown'))
+        st.caption(f"ISO: {site.get('ISO', 'N/A')}")
+    with col2:
+        st.metric("Scenario", scenario.get('Scenario_Name', 'Unknown')[:20] + "...")
+        st.caption(f"Target: ${scenario.get('Target_LCOE_MWh', 0)}/MWh")
+    with col3:
+        enabled_count = sum(1 for v in equipment_enabled.values() if v)
+        st.metric("Technologies", f"{enabled_count} enabled")
+        tech_list = [k.title() for k, v in equipment_enabled.items() if v]
+        st.caption(", ".join(tech_list[:3]))
+    with col4:
+        if objectives:
+            st.metric("Objective", objectives.get('Primary_Objective', 'N/A')[:15])
+            st.caption(f"Max: {objectives.get('Deployment_Max_Months', 0)} mo")
+        else:
+            st.metric("Objective", "Not Set")
+    
+    st.markdown("---")
+    
+    # Equipment Sizing Section
+    st.markdown("#### ⚙️ Equipment Sizing")
+    st.info("Configure equipment capacities for this scenario. The optimizer will validate against site constraints.")
+    
+    from app.utils.data_io import load_equipment_from_sheets
+    equipment_data = load_equipment_from_sheets()
+    
+    # Create sizing inputs based on enabled equipment
+    sizing = {}
+    
+    if equipment_enabled.get('recip'):
+        with st.expander("🔋 Reciprocating Engines", expanded=True):
+            recip_engines = equipment_data.get("Reciprocating_Engines", [])
+            if recip_engines:
+                st.markdown("**Select model and quantity:**")
+                
+                model_options = [f"{e.get('Model', 'Unknown')} ({e.get('Capacity_MW', 0)} MW)" 
+                                for e in recip_engines if e]
+                selected_model = st.selectbox("Engine Model", model_options, key="recip_model")
+                
+                # Find selected engine
+                model_name = selected_model.split(" (")[0]
+                selected_engine = next((e for e in recip_engines if e and e.get('Model') == model_name), None)
+                
+                if selected_engine:
+                    col1, col2, col3 = st.columns(3)
+                    with col1:
+                        num_units = st.number_input("Number of Units", min_value=1, max_value=20, value=4, key="recip_qty")
+                    with col2:
+                        cap_factor = st.slider("Capacity Factor", 0.0, 1.0, 0.7, key="recip_cf")
+                    with col3:
+                        total_cap = selected_engine.get('Capacity_MW', 0) * num_units
+                        st.metric("Total Capacity", f"{total_cap} MW")
+                    
+                    # Store sizing
+                    sizing['recip_engines'] = [{
+                        'capacity_mw': selected_engine.get('Capacity_MW', 0),
+                        'capacity_factor': cap_factor,
+                        'heat_rate_btu_kwh': selected_engine.get('Heat_Rate_BTU_kWh', 7700),
+                        'nox_lb_mmbtu': selected_engine.get('NOx_lb_MMBtu', 0.099),
+                        'co_lb_mmbtu': selected_engine.get('CO_lb_MMBtu', 0.015),
+                        'capex_per_kw': selected_engine.get('CAPEX_per_kW', 1650),
+                        'quantity': num_units
+                    }] * num_units
+    
+    if equipment_enabled.get('turbine'):
+        with st.expander("⚡ Gas Turbines", expanded=True):
+            turbines = equipment_data.get("Gas_Turbines", [])
+            if turbines:
+                st.markdown("**Select model and quantity:**")
+                
+                model_options = [f"{e.get('Model', 'Unknown')} ({e.get('Capacity_MW', 0)} MW)" 
+                                for e in turbines if e]
+                selected_model = st.selectbox("Turbine Model", model_options, key="turbine_model")
+                
+                model_name = selected_model.split(" (")[0]
+                selected_turbine = next((e for e in turbines if e and e.get('Model') == model_name), None)
+                
+                if selected_turbine:
+                    col1, col2, col3 = st.columns(3)
+                    with col1:
+                        num_units = st.number_input("Number of Units", min_value=1, max_value=10, value=2, key="turbine_qty")
+                    with col2:
+                        cap_factor = st.slider("Capacity Factor", 0.0, 1.0, 0.5, key="turbine_cf")
+                    with col3:
+                        total_cap = selected_turbine.get('Capacity_MW', 0) * num_units
+                        st.metric("Total Capacity", f"{total_cap} MW")
+                    
+                    sizing['gas_turbines'] = [{
+                        'capacity_mw': selected_turbine.get('Capacity_MW', 0),
+                        'capacity_factor': cap_factor,
+                        'heat_rate_btu_kwh': selected_turbine.get('Heat_Rate_BTU_kWh', 8500),
+                        'nox_lb_mmbtu': selected_turbine.get('NOx_lb_MMBtu', 0.099),
+                        'co_lb_mmbtu': selected_turbine.get('CO_lb_MMBtu', 0.015),
+                        'capex_per_kw': selected_turbine.get('CAPEX_per_kW', 1300),
+                        'quantity': num_units
+                    }] * num_units
+    
+    if equipment_enabled.get('bess'):
+        with st.expander("🔋 BESS", expanded=True):
+            bess_systems = equipment_data.get("BESS", [])
+            if bess_systems:
+                st.markdown("**Select model and quantity:**")
+                
+                model_options = [f"{e.get('Model', 'Unknown')} ({e.get('Energy_MWh', 0)} MWh)" 
+                                for e in bess_systems if e]
+                selected_model = st.selectbox("BESS Model", model_options, key="bess_model")
+                
+                model_name = selected_model.split(" (")[0]
+                selected_bess = next((e for e in bess_systems if e and e.get('Model') == model_name), None)
+                
+                if selected_bess:
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        num_units = st.number_input("Number of Units", min_value=1, max_value=50, value=10, key="bess_qty")
+                    with col2:
+                        total_energy = selected_bess.get('Energy_MWh', 0) * num_units
+                        total_power = selected_bess.get('Power_MW', 0) * num_units
+                        st.metric("Total Energy", f"{total_energy:.1f} MWh")
+                        st.metric("Total Power", f"{total_power:.1f} MW")
+                    
+                    sizing['bess'] = [{
+                        'energy_mwh': selected_bess.get('Energy_MWh', 0),
+                        'power_mw': selected_bess.get('Power_MW', 0),
+                        'capex_per_kwh': selected_bess.get('CAPEX_per_kWh', 236),
+                        'quantity': num_units
+                    }] * num_units
+    
+    if equipment_enabled.get('solar'):
+        with st.expander("☀️ Solar PV", expanded=True):
+            solar_systems = equipment_data.get("Solar_PV", [])
+            if solar_systems:
+                st.markdown("**Configure solar capacity:**")
+                
+                # Find appropriate system for this site
+                site_region = "National"  # Default
+                if "Texas" in site.get('State', ''):
+                    site_region = "Southwest"
+                elif "Virginia" in site.get('State', ''):
+                    site_region = "Southeast"
+                elif "Oklahoma" in site.get('State', ''):
+                    site_region = "Midwest"
+                
+                matching_solar = next((s for s in solar_systems if s and site_region in s.get('Region', '')), solar_systems[0] if solar_systems else None)
+                
+                if matching_solar:
+                    col1, col2, col3 = st.columns(3)
+                    with col1:
+                        solar_mw = st.number_input("Solar DC Capacity (MW)", min_value=0, max_value=500, value=25, key="solar_mw")
+                    with col2:
+                        st.metric("Capacity Factor", f"{matching_solar.get('Capacity_Factor_Pct', 0)}%")
+                        st.caption(f"Region: {matching_solar.get('Region', 'Unknown')}")
+                    with col3:
+                        land_needed = solar_mw * matching_solar.get('Land_Use_acres_per_MW', 4.25)
+                        st.metric("Land Required", f"{land_needed:.1f} acres")
+                    
+                    sizing['solar_mw_dc'] = solar_mw
+                    sizing['solar_capex_per_w'] = matching_solar.get('CAPEX_per_W_DC', 0.95)
+    
+    if equipment_enabled.get('grid'):
+        with st.expander("🔌 Grid Connection", expanded=True):
+            st.markdown("**Configure grid import:**")
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                grid_mw = st.number_input("Grid Import (MW)", min_value=0, max_value=500, value=50, key="grid_mw")
+            with col2:
+                avail_grid = constraints.get('Grid_Available_MW', 0)
+                st.metric("Available", f"{avail_grid} MW")
+                if grid_mw > avail_grid:
+                    st.error(f"⚠️ Exceeds available capacity!")
+            
+            sizing['grid_import_mw'] = grid_mw
+    
+    # Run Constraint Validation
+    st.markdown("---")
+    st.markdown("#### ✅ Constraint Validation")
+    
+    if st.button("🔍 Check Constraints", type="primary", use_container_width=False):
+        with st.spinner("Validating configuration against site constraints..."):
+            
+            is_feasible, violations, warnings, metrics = validate_configuration(
+                site, constraints, sizing
+            )
+            
+            # Display Results
+            if is_feasible:
+                st.success("✅ **FEASIBLE** - Configuration meets all hard constraints!")
+            else:
+                st.error(f"❌ **INFEASIBLE** - {len(violations)} constraint violation(s)")
+            
+            # Show violations
+            if violations:
+                st.markdown("##### 🚫 Constraint Violations:")
+                for v in violations:
+                    st.error(f"• {v}")
+            
+            # Show warnings
+            if warnings:
+                st.markdown("##### ⚠️ Warnings:")
+                for w in warnings:
+                    st.warning(f"• {w}")
+            
+            # Show metrics
+            st.markdown("##### 📊 Configuration Metrics:")
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.metric("Total Capacity", f"{metrics.get('total_capacity_mw', 0):.1f} MW")
+            with col2:
+                st.metric("Total CAPEX", f"${metrics.get('total_capex_m', 0):.1f}M")
+            with col3:
+                if sizing.get('solar_mw_dc'):
+                    st.metric("Solar DC", f"{sizing.get('solar_mw_dc', 0)} MW")
+            
+            # Store validation results
+            st.session_state.validation_result = {
+                'feasible': is_feasible,
+                'violations': violations,
+                'warnings': warnings,
+                'metrics': metrics,
+                'sizing': sizing
+            }
+    
+    # Show previous validation if exists
+    if 'validation_result' in st.session_state:
+        result = st.session_state.validation_result
         
         st.markdown("---")
+        st.markdown("#### 📈 Run Full Optimization")
         
-        col5, col6, col7, col8 = st.columns(4)
-        
-        with col5:
-            st.number_input("Max NOx (tpy)", value=99, min_value=0, max_value=500, 
-                           help="99 tpy = minor source threshold")
-        with col6:
-            st.number_input("Max LCOE ($/MWh)", value=85, min_value=30, max_value=200)
-        with col7:
-            st.number_input("Max CAPEX ($M)", value=400, min_value=50, max_value=2000)
-        with col8:
-            st.number_input("Site Limit (MW)", value=300, min_value=50, max_value=2000)
+        if result['feasible']:
+            col_opt1, col_opt2 = st.columns([3, 1])
+            
+            with col_opt1:
+                st.info("""
+                **Full optimization will:**
+                - Calculate LCOE (Levelized Cost of Energy)
+                - Estimate deployment timeline and critical path
+                - Compute annual costs (CAPEX, OPEX, fuel)
+                - Generate detailed economics and ranking
+                """)
+            
+            with col_opt2:
+                if st.button("⚡ Optimize", type="primary", use_container_width=True):
+                    with st.spinner("Running optimization..."):
+                        from app.utils.optimizer import optimize_scenario
+                        
+                        # Run full optimization
+                        opt_result = optimize_scenario(
+                            site=config['site'],
+                            constraints=config['constraints'],
+                            scenario=config['scenario'],
+                            equipment_config=result['sizing'],
+                            objectives=config['objectives']
+                        )
+                        
+                        # Store in session state
+                        st.session_state.optimization_result = opt_result
+                        
+                        # Navigate to results
+                        st.success("✅ Optimization complete! Navigating to Results...")
+                        st.session_state.current_page = 'results'
+                        st.rerun()
+        else:
+            st.error("❌ Cannot optimize - please fix constraint violations first")
     
-    # Objectives Section
-    with st.expander("🎯 OPTIMIZATION OBJECTIVES", expanded=True):
-        col1, col2 = st.columns(2)
+    # Quick Economics Preview (if validated)
+    if 'validation_result' in st.session_state and st.session_state.validation_result.get('feasible'):
+        st.markdown("---")
+        st.markdown("#### 💰 Quick Economics Preview")
         
-        with col1:
-            st.selectbox(
-                "Primary Objective (Minimize)",
-                ["Time-to-Power (months)", "LCOE ($/MWh)", "Total CAPEX ($)", "Carbon Intensity (kg CO₂/MWh)"]
-            )
-        
-        with col2:
-            st.selectbox(
-                "Method",
-                ["ε-Constraint (Pareto frontier)", "Weighted Sum", "Lexicographic"]
-            )
-        
-        st.info(
-            "**ε-Constraint Method:** Optimize primary objective while treating secondary objectives "
-            "as bounded constraints. Vary bounds to trace Pareto frontier showing optimal tradeoffs."
-        )
-    
-    # Solver Settings
-    with st.expander("⚙️ Solver Settings"):
-        col1, col2, col3, col4 = st.columns(4)
-        
-        with col1:
-            st.selectbox("Solver", ["CBC (Free)", "Gurobi (Commercial)", "GLPK"])
-        with col2:
-            st.number_input("Scenarios", value=100, min_value=10, max_value=1000)
-        with col3:
-            st.number_input("Pareto Points", value=15, min_value=5, max_value=50)
-        with col4:
-            st.number_input("MIP Gap (%)", value=0.1, min_value=0.01, max_value=5.0, step=0.1)
-    
-    # Summary Panel
-    st.markdown("---")
-    st.markdown("#### Configuration Summary")
-    
-    cols = st.columns(6)
-    summary = [
-        ("Target Capacity", "200 MW"),
-        ("With Reserve", "220 MW"),
-        ("Equipment Types", "4 selected"),
-        ("Min Availability", "99.9%"),
-        ("Max Time", "24 mo"),
-        ("Max LCOE", "$85/MWh"),
-    ]
-    
-    for i, (label, value) in enumerate(summary):
-        with cols[i]:
-            st.metric(label, value)
+        if st.button("📊 Calculate LCOE", use_container_width=False):
+            with st.spinner("Calculating economics..."):
+                from app.utils.optimizer import calculate_lcoe, calculate_deployment_timeline
+                
+                result = st.session_state.validation_result
+                
+                economics = calculate_lcoe(
+                    result['sizing'],
+                    config['site'],
+                    config.get('objectives', {})
+                )
+                
+                timeline = calculate_deployment_timeline(
+                    result['sizing'],
+                    config['scenario']
+                )
+                
+                # Display results
+                col1, col2, col3, col4 = st.columns(4)
+                
+                with col1:
+                    st.metric("LCOE", f"${economics['lcoe_mwh']:.2f}/MWh")
+                with col2:
+                    st.metric("Total CAPEX", f"${economics['total_capex_m']:.1f}M")
+                with col3:
+                    st.metric("Deployment", f"{timeline['timeline_months']} months")
+                    st.caption(f"{timeline['timeline_years']:.1f} years")
+                with col4:
+                    st.metric("Annual Gen", f"{economics['annual_generation_gwh']:.1f} GWh")
+                
+                st.info(f"**Critical Path:** {timeline['critical_path']}")
 
 
 if __name__ == "__main__":
     render()
+
