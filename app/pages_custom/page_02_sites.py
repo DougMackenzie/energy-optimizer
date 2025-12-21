@@ -120,6 +120,67 @@ def render():
                 load_factor = st.number_input("Load Factor (%)", value=float(site_data.get('Load_Factor_Pct', 70)),
                                             min_value=0.0, max_value=100.0)
             
+            # Load current constraints if editing
+            if st.session_state.editing_site != "new":
+                from app.utils.site_loader import load_site_constraints
+                current_constraints = load_site_constraints(site_data.get('Site_ID', ''))
+            else:
+                current_constraints = {}
+            
+            st.markdown("##### Site Constraints")
+            st.caption("Define hard constraints for optimization")
+            
+            # Air Permits
+            st.markdown("###### 🌫️ Air Quality Permits")
+            col_air1, col_air2, col_air3 = st.columns(3)
+            with col_air1:
+                nox_limit = st.number_input("NOx Limit (tpy)", 
+                    value=float(current_constraints.get('NOx_Limit_tpy', 100)),
+                    min_value=0.0, max_value=500.0, step=10.0)
+            with col_air2:
+                co_limit = st.number_input("CO Limit (tpy)", 
+                    value=float(current_constraints.get('CO_Limit_tpy', 250)),
+                    min_value=0.0, max_value=1000.0, step=10.0)
+            with col_air3:
+                permit_type = st.selectbox("Permit Type",
+                    ["Minor Source", "Major Source", "Synthetic Minor"],
+                    index=["Minor Source", "Major Source", "Synthetic Minor"].index(
+                        current_constraints.get('Air_Permit_Type', 'Minor Source')
+                    ) if current_constraints.get('Air_Permit_Type') in ["Minor Source", "Major Source", "Synthetic Minor"] else 0)
+            
+            # Infrastructure
+            st.markdown("###### ⛽ Infrastructure Constraints")
+            col_infra1, col_infra2, col_infra3 = st.columns(3)
+            with col_infra1:
+                gas_supply = st.number_input("Gas Supply (MCF/day)",
+                    value=float(current_constraints.get('Gas_Supply_MCF_day', 50000)),
+                    min_value=0.0, max_value=500000.0, step=1000.0,
+                    format="%.0f")
+            with col_infra2:
+                grid_available = st.number_input("Grid Available (MW)",
+                    value=float(current_constraints.get('Grid_Available_MW', 200)),
+                    min_value=0.0, max_value=1000.0, step=10.0)
+            with col_infra3:
+                interconnect_months = st.number_input("Grid Timeline (months)",
+                    value=int(current_constraints.get('Estimated_Interconnection_Months', 96)),
+                    min_value=0, max_value=240, step=6)
+            
+            # Land & Reliability
+            st.markdown("###### 🏞️ Land & Reliability")
+            col_land1, col_land2, col_land3 = st.columns(3)
+            with col_land1:
+                available_land = st.number_input("Available Land (acres)",
+                    value=float(current_constraints.get('Available_Land_Acres', 100)),
+                    min_value=0.0, max_value=1000.0, step=5.0)
+            with col_land2:
+                n_minus_1 = st.selectbox("N-1 Required",
+                    ["Yes", "No"],
+                    index=0 if current_constraints.get('N_Minus_1_Required', 'Yes') == 'Yes' else 1)
+            with col_land3:
+                max_transient = st.number_input("Max Transient (%)",
+                    value=float(current_constraints.get('Max_Transient_pct', 30)),
+                    min_value=0.0, max_value=100.0, step=5.0)
+            
             notes = st.text_area("Notes", value=site_data.get('Notes', ''))
             
             # Form buttons
