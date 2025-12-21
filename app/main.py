@@ -219,43 +219,43 @@ def load_page(page_name: str):
     """Load and display the appropriate page"""
     
     if page_name == 'dashboard':
-        from pages import page_01_dashboard
+        from pages_custom import page_01_dashboard
         page_01_dashboard.render()
         
     elif page_name == 'sites':
-        from pages import page_02_sites
+        from pages_custom import page_02_sites
         page_02_sites.render()
         
     elif page_name == 'load_composer':
-        from pages import page_03_load_composer
+        from pages_custom import page_03_load_composer
         page_03_load_composer.render()
         
     elif page_name == 'variability':
-        from pages import page_04_variability
+        from pages_custom import page_04_variability
         page_04_variability.render()
         
     elif page_name == 'transient':
-        from pages import page_05_transient
+        from pages_custom import page_05_transient
         page_05_transient.render()
         
     elif page_name == 'equipment':
-        from pages import page_06_equipment
+        from pages_custom import page_06_equipment
         page_06_equipment.render()
         
     elif page_name == 'optimizer':
-        from pages import page_07_optimizer
+        from pages_custom import page_07_optimizer
         page_07_optimizer.render()
         
     elif page_name == 'ram':
-        from pages import page_08_ram
+        from pages_custom import page_08_ram
         page_08_ram.render()
         
     elif page_name == 'results':
-        from pages import page_09_results
+        from pages_custom import page_09_results
         page_09_results.render()
         
     elif page_name == 'dispatch':
-        from pages import page_10_dispatch
+        from pages_custom import page_10_dispatch
         page_10_dispatch.render()
         
     else:

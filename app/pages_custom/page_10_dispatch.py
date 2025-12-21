@@ -7,6 +7,7 @@ import streamlit as st
 import plotly.graph_objects as go
 import pandas as pd
 import numpy as np
+from app.utils.dispatch_simulation import generate_8760_load_profile, dispatch_equipment, create_dispatch_summary_df
 
 
 def render():
@@ -53,8 +54,6 @@ def render():
     with col_sim2:
         if st.button("⚡ Run 8760 Simulation", type="primary", use_container_width=True):
             with st.spinner("Running 8760-hour dispatch simulation..."):
-                from app.utils.dispatch_simulation import generate_8760_load_profile, dispatch_equipment, create_dispatch_summary_df
-                
                 # Generate load profile
                 load_profile = generate_8760_load_profile(base_load, load_factor)
                 
