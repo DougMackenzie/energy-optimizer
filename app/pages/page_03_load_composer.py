@@ -1,284 +1,206 @@
 """
 Load Composer Page
-Define facility parameters and workload mix
+Define facility load profiles and workload characteristics
 """
 
 import streamlit as st
-import sys
-from pathlib import Path
-
-PROJECT_ROOT = Path(__file__).parent.parent.parent
-sys.path.insert(0, str(PROJECT_ROOT))
-
-from config.settings import (
-    DEFAULT_IT_CAPACITY_MW, DEFAULT_PUE, DEFAULT_RACK_UPS_SECONDS,
-    DEFAULT_WORKLOAD_MIX, WORKLOAD_CHARACTERISTICS, PUE_SEASONAL, COLORS
-)
+import pandas as pd
+import plotly.graph_objects as go
 
 
 def render():
-    """Render the Load Composer page"""
+    st.markdown("### 📈 Load Composer")
     
-    # Header
-    col_header, col_actions = st.columns([3, 1])
-    with col_header:
-        st.markdown("### 📈 Load Composer")
-    with col_actions:
-        col_a, col_b = st.columns(2)
-        with col_a:
-            st.button("💾 Save", use_container_width=True)
-        with col_b:
-            if st.button("Next →", type="primary", use_container_width=True):
-                st.session_state.current_page = 'variability'
-                st.rerun()
+    st.info("""
+    **Define your facility's energy demand profile**
     
-    st.info(
-        "💡 **Workload Composition:** Different AI workloads have dramatically different "
-        "power characteristics. Pre-training is steady; inference is bursty. Mix workloads "
-        "to model your actual facility load shape."
-    )
+    Configure IT workload mix, PUE, and load growth trajectory to model realistic power requirements.
+    """)
     
-    # ==========================================================================
-    # Facility Parameters
-    # ==========================================================================
-    st.markdown("#### Facility Parameters")
+    # Initialize session state for load profile
+    if 'load_profile' not in st.session_state:
+        st.session_state.load_profile = {
+            'it_capacity_mw': 100,
+            'pue': 1.25,
+            'workload_mix': {
+                'Training': 40,
+                'Inference': 30,
+                'HPC': 20,
+                'Enterprise': 10
+            },
+            'load_factor': 75,
+            'growth_trajectory': []
+        }
     
-    cols = st.columns(6)
+    # Workload Configuration
+    st.markdown("#### 🖥️ IT Workload Configuration")
     
-    with cols[0]:
-        it_capacity = st.number_input(
-            "IT Capacity (MW)",
-            min_value=10,
-            max_value=2000,
-            value=DEFAULT_IT_CAPACITY_MW,
-            step=10,
-            help="Total IT load capacity (before PUE)"
-        )
+    col_wl1, col_wl2 = st.columns([3, 2])
     
-    with cols[1]:
-        design_pue = st.number_input(
-            "Design PUE",
-            min_value=1.05,
-            max_value=2.0,
-            value=DEFAULT_PUE,
-            step=0.05,
-            format="%.2f",
-            help="Power Usage Effectiveness at design conditions"
-        )
-    
-    with cols[2]:
-        cooling_type = st.selectbox(
-            "Cooling Type",
-            options=["Air Cooled", "Direct Liquid (DLC)", "Immersion"],
-            index=1
-        )
-    
-    with cols[3]:
-        rack_ups = st.selectbox(
-            "Rack UPS",
-            options=["None", "30 sec", "60 sec", "5 min"],
-            index=1,
-            help="Ride-through time for rack-level UPS"
-        )
-    
-    with cols[4]:
-        design_ambient = st.number_input(
-            "Design Ambient (°F)",
-            min_value=70,
-            max_value=120,
-            value=95,
-            step=5
-        )
-    
-    with cols[5]:
-        total_facility = it_capacity * design_pue
-        st.metric(
-            label="Total Facility Load",
-            value=f"{total_facility:.0f} MW",
-            help="IT Capacity × PUE"
-        )
-    
-    st.markdown("---")
-    
-    # ==========================================================================
-    # Quick Presets
-    # ==========================================================================
-    st.markdown("#### Quick Presets")
-    
-    preset_cols = st.columns(4)
-    
-    presets = {
-        "training": {
-            "name": "🧠 Training Focused",
-            "desc": "70% pre-train, 15% fine-tune, 15% other",
-            "mix": {"pre_training": 0.70, "fine_tuning": 0.15, "batch_inference": 0.05, 
-                    "realtime_inference": 0.05, "rl_training": 0.03, "cloud_hpc": 0.02}
-        },
-        "balanced": {
-            "name": "⚖️ Balanced Mix",
-            "desc": "40% train, 35% inference, 25% other",
-            "mix": {"pre_training": 0.40, "fine_tuning": 0.15, "batch_inference": 0.20, 
-                    "realtime_inference": 0.10, "rl_training": 0.05, "cloud_hpc": 0.10}
-        },
-        "inference": {
-            "name": "🚀 Inference Heavy",
-            "desc": "20% train, 60% inference, 20% cloud",
-            "mix": {"pre_training": 0.15, "fine_tuning": 0.05, "batch_inference": 0.35, 
-                    "realtime_inference": 0.25, "rl_training": 0.05, "cloud_hpc": 0.15}
-        },
-        "cloud": {
-            "name": "☁️ Traditional Cloud",
-            "desc": "80% traditional HPC/cloud workloads",
-            "mix": {"pre_training": 0.05, "fine_tuning": 0.05, "batch_inference": 0.05, 
-                    "realtime_inference": 0.05, "rl_training": 0.0, "cloud_hpc": 0.80}
-        },
-    }
-    
-    # Initialize workload mix in session state
-    if 'workload_mix' not in st.session_state:
-        st.session_state.workload_mix = DEFAULT_WORKLOAD_MIX.copy()
-    
-    for i, (key, preset) in enumerate(presets.items()):
-        with preset_cols[i]:
-            if st.button(preset['name'], use_container_width=True, key=f"preset_{key}"):
-                st.session_state.workload_mix = preset['mix'].copy()
-                st.rerun()
-            st.caption(preset['desc'])
-    
-    st.markdown("---")
-    
-    # ==========================================================================
-    # Workload Mix Sliders
-    # ==========================================================================
-    st.markdown("#### Workload Mix (% of IT Capacity)")
-    
-    col_sliders, col_summary = st.columns([3, 1])
-    
-    with col_sliders:
-        workload_mix = {}
-        total_pct = 0
+    with col_wl1:
+        st.markdown("##### Workload Mix (%)")
+        st.caption("Define the percentage split of your AI/HPC workload types")
         
-        for wl_key, wl_info in WORKLOAD_CHARACTERISTICS.items():
-            col_color, col_slider, col_value, col_mw = st.columns([0.5, 6, 1, 1])
-            
-            with col_color:
-                st.markdown(
-                    f"<div style='width: 16px; height: 16px; background: {wl_info['color']}; "
-                    f"border-radius: 4px; margin-top: 8px;'></div>",
-                    unsafe_allow_html=True
-                )
-            
-            with col_slider:
-                current_val = int(st.session_state.workload_mix.get(wl_key, 0) * 100)
-                new_val = st.slider(
-                    wl_info['name'],
-                    min_value=0,
-                    max_value=100,
-                    value=current_val,
-                    key=f"slider_{wl_key}",
-                    help=wl_info['description']
-                )
-                workload_mix[wl_key] = new_val / 100
-                total_pct += new_val
-            
-            with col_value:
-                st.markdown(f"**{new_val}%**")
-            
-            with col_mw:
-                mw_val = it_capacity * (new_val / 100)
-                st.markdown(f"*{mw_val:.0f} MW*")
+        col_w1, col_w2, col_w3, col_w4 = st.columns(4)
         
-        # Update session state
-        st.session_state.workload_mix = workload_mix
+        with col_w1:
+            training_pct = st.slider("🎯 Training", 0, 100, 
+                                     st.session_state.load_profile['workload_mix']['Training'],
+                                     help="AI model training workloads")
         
-        # Validation
-        if abs(total_pct - 100) > 1:
+        with col_w2:
+            inference_pct = st.slider("⚡ Inference", 0, 100,
+                                     st.session_state.load_profile['workload_mix']['Inference'],
+                                     help="AI inference/serving workloads")
+        
+        with col_w3:
+            hpc_pct = st.slider("🔬 HPC", 0, 100,
+                               st.session_state.load_profile['workload_mix']['HPC'],
+                               help="High-performance computing")
+        
+        with col_w4:
+            enterprise_pct = st.slider("💼 Enterprise", 0, 100,
+                                      st.session_state.load_profile['workload_mix']['Enterprise'],
+                                      help="Traditional enterprise workloads")
+        
+        # Validate mix adds to 100%
+        total_pct = training_pct + inference_pct + hpc_pct + enterprise_pct
+        if total_pct != 100:
             st.warning(f"⚠️ Workload mix totals {total_pct}% (should be 100%)")
         else:
-            st.success(f"✅ Workload mix: {total_pct}%")
+            st.success(f"✅ Workload mix totals 100%")
         
-        # Visualization bar
-        st.markdown("**Workload Mix Visualization**")
-        bar_html = '<div style="display: flex; height: 24px; border-radius: 4px; overflow: hidden;">'
-        for wl_key, wl_info in WORKLOAD_CHARACTERISTICS.items():
-            pct = workload_mix.get(wl_key, 0) * 100
-            if pct > 0:
-                bar_html += f'<div style="width: {pct}%; background: {wl_info["color"]}; display: flex; align-items: center; justify-content: center; color: white; font-size: 9px; font-weight: 600;">'
-                if pct > 8:
-                    bar_html += wl_info['name'].split()[0]
-                bar_html += '</div>'
-        bar_html += '</div>'
-        st.markdown(bar_html, unsafe_allow_html=True)
+        # Update session state
+        st.session_state.load_profile['workload_mix'] = {
+            'Training': training_pct,
+            'Inference': inference_pct,
+            'HPC': hpc_pct,
+            'Enterprise': enterprise_pct
+        }
     
-    with col_summary:
-        st.markdown("**Workload Characteristics**")
+    with col_wl2:
+        st.markdown("##### Workload Characteristics")
         
-        # Calculate composite metrics
-        weighted_util = sum(
-            workload_mix.get(k, 0) * sum(v['utilization_range']) / 2
-            for k, v in WORKLOAD_CHARACTERISTICS.items()
-        )
+        # Show typical load factors by workload type
+        workload_chars = {
+            'Training': {'Load Factor': '85-95%', 'Volatility': 'Low', 'Predictability': 'High'},
+            'Inference': {'Load Factor': '70-90%', 'Volatility': 'Medium', 'Predictability': 'Medium'},
+            'HPC': {'Load Factor': '75-95%', 'Volatility': 'Low', 'Predictability': 'High'},
+            'Enterprise': {'Load Factor': '40-70%', 'Volatility': 'High', 'Predictability': 'Medium'}
+        }
         
-        weighted_transient = sum(
-            workload_mix.get(k, 0) * sum(v['transient_magnitude']) / 2
-            for k, v in WORKLOAD_CHARACTERISTICS.items()
-        )
-        
-        st.metric("Avg Utilization", f"{weighted_util*100:.0f}%")
-        st.metric("Eff. Transient Mag", f"{weighted_transient:.1f}x")
-        
-        # Variability index
-        var_scores = {"low": 1, "medium": 2, "high": 3, "very_high": 4}
-        weighted_var = sum(
-            workload_mix.get(k, 0) * var_scores.get(v['variability'], 2)
-            for k, v in WORKLOAD_CHARACTERISTICS.items()
-        )
-        var_label = "Low" if weighted_var < 1.5 else "Medium" if weighted_var < 2.5 else "High" if weighted_var < 3.5 else "Very High"
-        st.metric("Variability Index", var_label)
+        df_chars = pd.DataFrame(workload_chars).T
+        st.dataframe(df_chars, use_container_width=True)
     
+    # Facility Parameters
     st.markdown("---")
+    st.markdown("#### ⚙️ Facility Parameters")
     
-    # ==========================================================================
-    # PUE Seasonal Variation
-    # ==========================================================================
-    st.markdown("#### PUE & Seasonal Variation")
+    col_fac1, col_fac2, col_fac3, col_fac4 = st.columns(4)
     
-    pue_cols = st.columns(4)
+    with col_fac1:
+        it_capacity = st.number_input("IT Capacity (MW)", 
+                                     min_value=1.0, max_value=1000.0, 
+                                     value=float(st.session_state.load_profile['it_capacity_mw']),
+                                     step=10.0,
+                                     help="Nameplate IT capacity")
+        st.session_state.load_profile['it_capacity_mw'] = it_capacity
     
-    seasonal_labels = [
-        ("Winter Low", "winter_low", "#28A745"),
-        ("Spring/Fall", "spring_fall", "#6c757d"),
-        ("Summer Avg", "summer_avg", "#FFC107"),
-        ("Summer Peak", "summer_peak", "#DC3545"),
-    ]
+    with col_fac2:
+        pue = st.number_input("Design PUE",
+                             min_value=1.0, max_value=3.0,
+                             value=float(st.session_state.load_profile['pue']),
+                             step=0.01,
+                             help="Power Usage Effectiveness")
+        st.session_state.load_profile['pue'] = pue
     
-    for i, (label, key, color) in enumerate(seasonal_labels):
-        with pue_cols[i]:
-            pue_val = PUE_SEASONAL[key]
-            total_load = it_capacity * pue_val
+    with col_fac3:
+        total_facility = it_capacity * pue
+        st.metric("Total Facility Load", f"{total_facility:.1f} MW")
+        st.caption("IT Capacity × PUE")
+    
+    with col_fac4:
+        load_factor = st.slider("Avg Load Factor (%)",
+                               min_value=0, max_value=100,
+                               value=int(st.session_state.load_profile['load_factor']),
+                               help="Average % of capacity utilized")
+        st.session_state.load_profile['load_factor'] = load_factor
+    
+    # Load Growth Trajectory
+    st.markdown("---")
+    st.markdown("#### 📊 Load Growth Trajectory")
+    
+    col_growth1, col_growth2 = st.columns([2, 1])
+    
+    with col_growth1:
+        st.caption("Define how capacity ramps up over time")
+        
+        # Simple 5-year trajectory
+        years = list(range(2026, 2031))
+        
+        col_y1, col_y2, col_y3, col_y4, col_y5 = st.columns(5)
+        
+        with col_y1:
+            y2026_mw = st.number_input("2026 (MW)", min_value=0.0, max_value=1000.0, value=50.0)
+        with col_y2:
+            y2027_mw = st.number_input("2027 (MW)", min_value=0.0, max_value=1000.0, value=100.0)
+        with col_y3:
+            y2028_mw = st.number_input("2028 (MW)", min_value=0.0, max_value=1000.0, value=150.0)
+        with col_y4:
+            y2029_mw = st.number_input("2029 (MW)", min_value=0.0, max_value=1000.0, value=180.0)
+        with col_y5:
+            y2030_mw = st.number_input("2030 (MW)", min_value=0.0, max_value=1000.0, value=200.0)
+        
+        trajectory = [y2026_mw, y2027_mw, y2028_mw, y2029_mw, y2030_mw]
+        st.session_state.load_profile['growth_trajectory'] = list(zip(years, trajectory))
+    
+    with col_growth2:
+        # Plot trajectory
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(x=years, y=trajectory, mode='lines+markers',
+                                name='Load Growth', line=dict(color='#1f77b4', width=3)))
+        fig.update_layout(
+            title="Capacity Ramp",
+            xaxis_title="Year",
+            yaxis_title="MW",
+            height=300,
+            margin=dict(l=20, r=20, t=40, b=20)
+        )
+        st.plotly_chart(fig, use_container_width=True)
+    
+    # Summary and Save
+    st.markdown("---")
+    st.markdown("#### 💾 Load Profile Summary")
+    
+    col_sum1, col_sum2, col_sum3 = st.columns(3)
+    
+    with col_sum1:
+        st.metric("Peak IT Load", f"{it_capacity} MW")
+        st.metric("Peak Facility Load", f"{total_facility:.1f} MW")
+    
+    with col_sum2:
+        avg_load = total_facility * (load_factor / 100)
+        st.metric("Avg Facility Load", f"{avg_load:.1f} MW")
+        st.caption(f"{load_factor}% load factor")
+    
+    with col_sum3:
+        annual_energy = avg_load * 8760 / 1000
+        st.metric("Annual Energy", f"{annual_energy:.0f} GWh")
+        st.caption("At avg load")
+    
+    # Save button
+    col_save1, col_save2 = st.columns([3, 1])
+    
+    with col_save1:
+        st.info("Load profile will be used for dispatch simulation and energy analysis")
+    
+    with col_save2:
+        if st.button("💾 Save Profile", type="primary", use_container_width=True):
+            st.success("✅ Load profile saved to session state!")
             
-            st.markdown(
-                f"""
-                <div style="text-align: center; padding: 12px; background: {color}20; 
-                            border-radius: 6px; border: 1px solid {color}40;">
-                    <div style="font-size: 11px; color: #666;">{label}</div>
-                    <div style="font-size: 24px; font-weight: 700; color: {color};">{pue_val:.2f}</div>
-                    <div style="font-size: 11px; color: #999;">{total_load:.0f} MW total</div>
-                </div>
-                """,
-                unsafe_allow_html=True
-            )
-    
-    # Store load profile in session state
-    st.session_state.project['load_profile'] = {
-        'it_capacity_mw': it_capacity,
-        'design_pue': design_pue,
-        'cooling_type': cooling_type,
-        'rack_ups': rack_ups,
-        'design_ambient_f': design_ambient,
-        'workload_mix': workload_mix,
-        'total_facility_mw': total_facility,
-    }
+            # If configuration exists, update it
+            if 'current_config' in st.session_state:
+                st.session_state.current_config['load_profile'] = st.session_state.load_profile
 
 
 if __name__ == "__main__":
