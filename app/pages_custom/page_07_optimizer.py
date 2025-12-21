@@ -5,6 +5,7 @@ Evaluates scenarios against constraints and runs optimization
 
 import streamlit as st
 from app.utils.constraint_validator import validate_configuration
+from datetime import datetime
 
 
 def render():
@@ -134,6 +135,41 @@ def render():
                             st.success(f"✅ Loading {selected_scenario}...")
                             st.session_state.current_page = 'results'
                             st.rerun()
+            
+            # Export All Scenarios Button
+            st.markdown("---")
+            st.markdown("#### 📄 Export All Scenarios")
+            
+            col_export1, col_export2 = st.columns([3, 1])
+            
+            with col_export1:
+                st.info("Generate a comprehensive Word document containing all scenarios (feasible + infeasible) with comparison table and detailed analysis.")
+            
+            with col_export2:
+                if st.button("📥 Export All Scenarios", use_container_width=True, type="primary"):
+                    with st.spinner("Generating multi-scenario report..."):
+                        from app.utils.multi_scenario_report import generate_multi_scenario_report
+                        
+                        # Generate report
+                        report_bytes = generate_multi_scenario_report(
+                            site=site,
+                            constraints=constraints,
+                            all_results=results,
+                            load_profile=None  # TODO: Add load profile if available
+                        )
+                        
+                        # Create download
+                        filename = f"{site.get('Site_Name', 'Site').replace(' ', '_')}_All_Scenarios_{datetime.now().strftime('%Y%m%d')}.docx"
+                        st.download_button(
+                            label="💾 Download Multi-Scenario Report",
+                            data=report_bytes,
+                            file_name=filename,
+                            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                            use_container_width=True
+                        )
+                        
+                        st.success(f"✅ Report generated! Click above to download.")
+            
             else:
                 st.warning("⚠️ No feasible scenarios to view. All scenarios have constraint violations.")
     
