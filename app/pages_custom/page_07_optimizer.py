@@ -135,8 +135,10 @@ def render():
                             st.success(f"✅ Loading {selected_scenario}...")
                             st.session_state.current_page = 'results'
                             st.rerun()
+            else:
+                st.warning("⚠️ No feasible scenarios to view. All scenarios have constraint violations.")
             
-            # Export All Scenarios Button
+            # Export All Scenarios Button (always show if results exist)
             st.markdown("---")
             st.markdown("#### 📄 Export All Scenarios")
             
@@ -169,9 +171,6 @@ def render():
                         )
                         
                         st.success(f"✅ Report generated! Click above to download.")
-            
-            else:
-                st.warning("⚠️ No feasible scenarios to view. All scenarios have constraint violations.")
     
     st.markdown("---")
     
