@@ -9,6 +9,7 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH
 from datetime import datetime
 from typing import Dict, List
 import io
+import os
 
 
 def generate_multi_scenario_report(
@@ -258,8 +259,102 @@ def generate_multi_scenario_report(
             total_cap += grid_cap
             doc.add_paragraph(f"**Grid Connection:** {grid_cap:.1f} MW")
         
+        
         doc.add_paragraph(f"\\n**Total Capacity:** {total_cap:.1f} MW")
         doc.add_paragraph(f"**BTM Capacity:** {btm_cap:.1f} MW")
+        
+        # Visualizations (same as single-scenario report)
+        doc.add_heading('Dispatch & Power Quality Visualization', 2)
+        
+        try:
+            from app.utils.report_charts import (
+                create_8760_dispatch_chart,
+                create_emissions_chart,
+                create_bess_soc_chart,
+                create_deployment_timeline_chart
+            )
+            
+            # 8760 Dispatch
+            dispatch_chart = create_8760_dispatch_chart(equipment_config, site)
+            if dispatch_chart and os.path.exists(dispatch_chart):
+                doc.add_paragraph("**Hourly Dispatch (First Week):**")
+                doc.add_picture(dispatch_chart, width=Inches(6))
+                os.remove(dispatch_chart)
+            
+            # BESS SOC
+            if equipment_config.get('bess'):
+                bess_chart = create_bess_soc_chart(equipment_config)
+                if bess_chart and os.path.exists(bess_chart):
+                    doc.add_paragraph("**BESS State of Charge:**")
+                    doc.add_picture(bess_chart, width=Inches(5.5))
+                    os.remove(bess_chart)
+            
+            # Emissions
+            emissions_chart = create_emissions_chart(equipment_config, constraints)
+            if emissions_chart and os.path.exists(emissions_chart):
+                doc.add_paragraph("**Hourly Emissions:**")
+                doc.add_picture(emissions_chart, width=Inches(6))
+                os.remove(emissions_chart)
+            
+            # Timeline
+            timeline_chart = create_deployment_timeline_chart(timeline)
+            if timeline_chart and os.path.exists(timeline_chart):
+                doc.add_paragraph("**Deployment Timeline:**")
+                doc.add_picture(timeline_chart, width=Inches(5.5))
+                os.remove(timeline_chart)
+                
+        except Exception as e:
+            doc.add_paragraph(f"Note: Visualization error: {str(e)}")
+        
+        # RAM Analysis
+        if result.get('ram_analysis'):
+            doc.add_heading('Reliability, Availability & Maintainability (RAM)', 2)
+            
+            ram = result['ram_analysis']
+            
+            if ram.get('equipment'):
+                ram_table = doc.add_table(rows=len(ram['equipment']) + 1, cols=5)
+                ram_table.style = 'Light Grid Accent 1'
+                
+                # Header
+                ram_table.rows[0].cells[0].text = 'Equipment'
+                ram_table.rows[0].cells[1].text = 'Qty'
+                ram_table.rows[0].cells[2].text = 'Availability'
+                ram_table.rows[0].cells[3].text = 'MTBF (hrs)'
+                ram_table.rows[0].cells[4].text = 'MTTR (hrs)'
+                
+                for i, eq in enumerate(ram['equipment'], 1):
+                    ram_table.rows[i].cells[0].text = eq.get('Type', '')
+                    ram_table.rows[i].cells[1].text = str(eq.get('Count', 0))
+                    ram_table.rows[i].cells[2].text = str(eq.get('System Availability', 'N/A'))
+                    ram_table.rows[i].cells[3].text = str(eq.get('MTBF (hrs)', 'N/A'))
+                    ram_table.rows[i].cells[4].text = str(eq.get('MTTR (hrs)', 'N/A'))
+            
+            if ram.get('system_availability'):
+                doc.add_paragraph(f"\\n**System Availability:** {ram.get('system_availability', 0)*100:.2f}%")
+        
+        # Transient Analysis
+        if result.get('transient_analysis'):
+            doc.add_heading('Transient & Power Quality', 2)
+            
+            transient = result['transient_analysis']
+            pq_metrics = transient.get('pq_metrics', {})
+            
+            if pq_metrics:
+                pq_table = doc.add_table(rows=5, cols=2)
+                pq_table.style = 'Light Grid Accent 1'
+                
+                pq_data = [
+                    ('Max Frequency Deviation', f"{pq_metrics.get('max_frequency_deviation_hz', 0):.3f} Hz"),
+                    ('Max Ramp Rate', f"{pq_metrics.get('max_ramp_rate_mw_s', 0):.2f} MW/s"),
+                    ('BESS Max Response', f"{pq_metrics.get('bess_max_response_mw', 0):.1f} MW"),
+                    ('Time to Stabilize', f"{pq_metrics.get('time_to_stabilize_s', 0):.0f} sec"),
+                    ('Severity', pq_metrics.get('transient_severity', 'Unknown'))
+                ]
+                
+                for i, (label, value) in enumerate(pq_data):
+                    pq_table.rows[i].cells[0].text = label
+                    pq_table.rows[i].cells[1].text = str(value)
         
         doc.add_page_break()
     

@@ -453,6 +453,70 @@ def generate_comprehensive_word_report(
         for i, (label, value) in enumerate(metrics_data):
             metrics_table.rows[i].cells[0].text = label
             metrics_table.rows[i].cells[1].text = str(value)
+        
+        # RAM Analysis (if available)
+        if optimization_result.get('ram_analysis'):
+            doc.add_heading('6.4 Reliability, Availability & Maintainability (RAM)', 2)
+            
+            ram = optimization_result['ram_analysis']
+            
+            if ram.get('equipment'):
+                doc.add_paragraph("**Equipment Reliability Metrics:**")
+                
+                ram_table = doc.add_table(rows=len(ram['equipment']) + 1, cols=5)
+                ram_table.style = 'Light Grid Accent 1'
+                
+                # Header
+                ram_table.rows[0].cells[0].text = 'Equipment Type'
+                ram_table.rows[0].cells[1].text = 'Quantity'
+                ram_table.rows[0].cells[2].text = 'System Availability'
+                ram_table.rows[0].cells[3].text = 'MTBF (hrs)'
+                ram_table.rows[0].cells[4].text = 'MTTR (hrs)'
+                
+                for i, eq in enumerate(ram['equipment'], 1):
+                    ram_table.rows[i].cells[0].text = eq.get('Type', '')
+                    ram_table.rows[i].cells[1].text = str(eq.get('Count', 0))
+                    ram_table.rows[i].cells[2].text = str(eq.get('System Availability', 'N/A'))
+                    ram_table.rows[i].cells[3].text = str(eq.get('MTBF (hrs)', 'N/A'))
+                    ram_table.rows[i].cells[4].text = str(eq.get('MTTR (hrs)', 'N/A'))
+            
+            # System-level metrics
+            if ram.get('system_availability'):
+                doc.add_paragraph(f"\n**System Availability:** {ram.get('system_availability', 0):.4f} ({ram.get('system_availability', 0)*100:.2f}%)")
+            if ram.get('expected_outages_per_year'):
+                doc.add_paragraph(f"**Expected Outages per Year:** {ram.get('expected_outages_per_year', 0):.1f}")
+            if ram.get('expected_downtime_hours_per_year'):
+                doc.add_paragraph(f"**Expected Downtime:** {ram.get('expected_downtime_hours_per_year', 0):.1f} hours/year")
+        
+        # Transient Analysis (if available)
+        if optimization_result.get('transient_analysis'):
+            doc.add_heading('6.5 Transient & Power Quality Analysis', 2)
+            
+            transient = optimization_result['transient_analysis']
+            pq_metrics = transient.get('pq_metrics', {})
+            
+            if pq_metrics:
+                doc.add_paragraph("**Power Quality Metrics (20% Step Change Event):**")
+                
+                pq_table = doc.add_table(rows=8, cols=2)
+                pq_table.style = 'Light Grid Accent 1'
+                
+                pq_data = [
+                    ('Max Frequency Deviation', f"{pq_metrics.get('max_frequency_deviation_hz', 0):.3f} Hz"),
+                    ('Frequency Nadir', f"{pq_metrics.get('frequency_nadir_hz', 60.0):.2f} Hz"),
+                    ('Frequency Zenith', f"{pq_metrics.get('frequency_zenith_hz', 60.0):.2f} Hz"),
+                    ('Max Ramp Rate', f"{pq_metrics.get('max_ramp_rate_mw_s', 0):.2f} MW/s"),
+                    ('Avg Ramp Rate', f"{pq_metrics.get('avg_ramp_rate_mw_s', 0):.2f} MW/s"),
+                    ('BESS Max Response', f"{pq_metrics.get('bess_max_response_mw', 0):.1f} MW"),
+                    ('Time to Stabilize', f"{pq_metrics.get('time_to_stabilize_s', 0):.0f} seconds"),
+                    ('Transient Severity', pq_metrics.get('transient_severity', 'Unknown'))
+                ]
+                
+                for i, (label, value) in enumerate(pq_data):
+                    pq_table.rows[i].cells[0].text = label
+                    pq_table.rows[i].cells[1].text = str(value)
+                
+                doc.add_paragraph("\n**Analysis:** This transient simulation models a 20% sudden load change to evaluate system response and power quality impacts.")
     
     # Constraint Compliance
     doc.add_page_break()
@@ -493,6 +557,118 @@ def generate_comprehensive_word_report(
     
     for step in methodology_steps:
         doc.add_paragraph(step, style='List Number')
+    
+    # Appendix
+    doc.add_page_break()
+    doc.add_heading('Appendix: Reference Data', 1)
+    
+    # A. Equipment Database Reference
+    doc.add_heading('A. Equipment Specifications Reference', 2)
+    
+    doc.add_heading('Reciprocating Engines', 3)
+    if equipment_config.get('recip_engines') and len(equipment_config['recip_engines']) > 0:
+        recip = equipment_config['recip_engines'][0]
+        recip_ref_table = doc.add_table(rows=7, cols=2)
+        recip_ref_table.style = 'Light Grid Accent 1'
+        
+        recip_ref_data = [
+            ('Unit Capacity', f"{recip.get('capacity_mw', 0):.1f} MW"),
+            ('Heat Rate', f"{recip.get('heat_rate_btu_kwh', 0):,} Btu/kWh"),
+            ('NOx Emission Rate', f"{recip.get('nox_lb_mmbtu', 0):.4f} lb/MMBtu"),
+            ('CO Emission Rate', f"{recip.get('co_lb_mmbtu', 0):.4f} lb/MMBtu"),
+            ('CAPEX', f"${recip.get('capex_per_kw', 0):,}/kW"),
+            ('Lead Time', "18-24 months (typical)"),
+            ('Operational Life', "20-25 years")
+        ]
+        
+        for i, (label, value) in enumerate(recip_ref_data):
+            recip_ref_table.rows[i].cells[0].text = label
+            recip_ref_table.rows[i].cells[1].text = str(value)
+    
+    doc.add_heading('Gas Turbines', 3)
+    if equipment_config.get('gas_turbines') and len(equipment_config['gas_turbines']) > 0:
+        turbine = equipment_config['gas_turbines'][0]
+        turbine_ref_table = doc.add_table(rows=7, cols=2)
+        turbine_ref_table.style = 'Light Grid Accent 1'
+        
+        turbine_ref_data = [
+            ('Unit Capacity', f"{turbine.get('capacity_mw', 0):.1f} MW"),
+            ('Heat Rate', f"{turbine.get('heat_rate_btu_kwh', 0):,} Btu/kWh"),
+            ('NOx Emission Rate', f"{turbine.get('nox_lb_mmbtu', 0):.4f} lb/MMBtu"),
+            ('CO Emission Rate', f"{turbine.get('co_lb_mmbtu', 0):.4f} lb/MMBtu"),
+            ('CAPEX', f"${turbine.get('capex_per_kw', 0):,}/kW"),
+            ('Lead Time', "24-36 months (typical)"),
+            ('Operational Life', "25-30 years")
+        ]
+        
+        for i, (label, value) in enumerate(turbine_ref_data):
+            turbine_ref_table.rows[i].cells[0].text = label
+            turbine_ref_table.rows[i].cells[1].text = str(value)
+    
+    # B. Site Constraints Summary
+    doc.add_heading('B. Site Constraints Summary', 2)
+    
+    constraint_summary_table = doc.add_table(rows=10, cols=3)
+    constraint_summary_table.style = 'Light Grid Accent 1'
+    
+    # Header
+    constraint_summary_table.rows[0].cells[0].text = 'Constraint Type'
+    constraint_summary_table.rows[0].cells[1].text = 'Limit'
+    constraint_summary_table.rows[0].cells[2].text = 'Status'
+    
+    constraint_summary_data = [
+        ('NOx Emissions', f"{constraints.get('NOx_Limit_tpy', 0)} tpy", 'Hard Limit'),
+        ('CO Emissions', f"{constraints.get('CO_Limit_tpy', 0)} tpy", 'Hard Limit'),
+        ('Natural Gas Supply', f"{constraints.get('Gas_Supply_MCF_day', 0):,} MCF/day", 'Hard Limit'),
+        ('Grid Capacity', f"{constraints.get ('Grid_Available_MW', 0)} MW", 'Hard Limit'),
+        ('Available Land', f"{constraints.get('Available_Land_Acres', 0)} acres", 'Hard Limit'),
+        ('N-1 Reliability', constraints.get('N_Minus_1_Required', 'No'), 'Hard Requirement'),
+        ('Max Transient', f"{constraints.get('Max_Transient_pct', 0)}%", 'Soft Guideline'),
+        ('Interconnection Timeline', f"{constraints.get('Estimated_Interconnection_Months', 0)} months", 'Schedule'),
+        ('Permit Type', constraints.get('Air_Permit_Type', 'N/A'), 'Regulatory')
+    ]
+    
+    for i, (ctype, limit, status) in enumerate(constraint_summary_data, 1):
+        constraint_summary_table.rows[i].cells[0].text = ctype
+        constraint_summary_table.rows[i].cells[1].text = str(limit)
+        constraint_summary_table.rows[i].cells[2].text = status
+    
+    # C. Optimization Parameters
+    doc.add_heading('C. Optimization Parameters', 2)
+    
+    doc.add_paragraph("**Optimization Method:** Sequential Least Squares Programming (SLSQP)")
+    doc.add_paragraph("**Solver:** SciPy optimize.minimize")
+    doc.add_paragraph("**Decision Variables:** Equipment quantities, capacity factors, renewable sizing")
+    doc.add_paragraph("**Objective Function:** Weighted combination of LCOE, deployment timeline, and emissions")
+    doc.add_paragraph("**Constraint Handling:** Penalty-based approach with hard limit enforcement")
+    
+    # D. Glossary
+    doc.add_heading('D. Glossary of Terms', 2)
+    
+    glossary_table = doc.add_table(rows=16, cols=2)
+    glossary_table.style = 'Light Grid Accent 1'
+    
+    glossary_data = [
+        ('LCOE', 'Levelized Cost of Energy ($/MWh) - Total lifetime cost divided by total energy produced'),
+        ('CAPEX', 'Capital Expenditure - Upfront equipment and installation costs'),
+        ('OPEX', 'Operating Expenditure - Annual maintenance, labor, and operating costs'),
+        ('PUE', 'Power Usage Effectiveness - Ratio of total facility power to IT equipment power'),
+        ('BESS', 'Battery Energy Storage System'),
+        ('BTM', 'Behind-the-Meter - On-site generation not connected to grid'),
+        ('IFOM', 'In-Front-of-Meter - Grid-connected generation'),
+        ('N-1', 'Reliability criteria - System must function with any single equipment failure'),
+        ('MCF', 'Thousand Cubic Feet (natural gas volume measurement)'),
+        ('tpy', 'Tons per year (emissions measurement)'),
+        ('NOx', 'Nitrogen Oxides - Regulated air pollutant'),
+        ('CO', 'Carbon Monoxide - Regulated air pollutant'),
+        ('SOC', 'State of Charge - Battery energy level as percentage of capacity'),
+        ('MW', 'Megawatt - Unit of power (1,000 kW)'),
+        ('MWh', 'Megawatt-hour - Unit of energy')
+    ]
+    
+    for i, (term, definition) in enumerate(glossary_data):
+        glossary_table.rows[i].cells[0].text = term
+        glossary_table.rows[i].cells[1].text = definition
     
     # Save to bytes
     file_stream = io.BytesIO()
