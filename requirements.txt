@@ -24,3 +24,4 @@ openpyxl>=3.1.0
 
 # Utilities
 requests>=2.31.0python-docx
+scipy>=1.11.0
