@@ -198,9 +198,10 @@ def run_all_scenarios(
 ) -> List[Dict]:
     """
     Run optimization for all scenarios using scipy optimizer
+    Includes automatic RAM and Transient analysis
     
     Returns:
-        List of optimization results with constraint violations
+        List of optimization results with constraint violations, RAM, and Transient data
     """
     
     # Load equipment once
@@ -230,6 +231,39 @@ def run_all_scenarios(
         # Override feasibility with optimizer result
         result['feasible'] = is_feasible
         result['violations'] = violations
+        
+        # AUTO-RUN: RAM Analysis
+        if is_feasible:
+            try:
+                from app.pages_custom.page_08_ram import calculate_ram_metrics
+                ram_metrics = calculate_ram_metrics(equipment_config)
+                result['ram_analysis'] = ram_metrics
+            except Exception as e:
+                result['ram_analysis'] = {'error': str(e)}
+        
+        # AUTO-RUN: Transient Analysis
+        if is_feasible:
+            try:
+                from app.utils.highres_transient import generate_high_res_transient, calculate_power_quality_metrics
+                
+                # Run transient simulation for typical step change
+                total_mw = site.get('Total_Facility_MW', 200)
+                transient_data = generate_high_res_transient(
+                    base_load_mw=total_mw,
+                    event_type='step_change',
+                    duration_seconds=300,
+                    event_magnitude_pct=20  # 20% step change
+                )
+                
+                # Calculate power quality metrics
+                pq_metrics = calculate_power_quality_metrics(transient_data)
+                
+                result['transient_analysis'] = {
+                    'pq_metrics': pq_metrics,
+                    'transient_data': transient_data  # Store for visualization
+                }
+            except Exception as e:
+                result['transient_analysis'] = {'error': str(e)}
         
         results.append(result)
     
