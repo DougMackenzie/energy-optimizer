@@ -1,118 +1,252 @@
 """
-Variability Analysis Page
-Analyze load variability and mitigation stack
+Load Variability Analysis Page
+Analyze workload volatility and seasonal patterns
 """
 
 import streamlit as st
+import numpy as np
+import pandas as pd
 import plotly.graph_objects as go
 
+
 def render():
-    st.markdown("### 📊 Variability Analysis")
+    st.markdown("### 📊 Load Variability Analysis")
+    st.caption("Analyze workload volatility, seasonal patterns, and demand variability")
     
-    st.info(
-        "💡 **Variability by Timescale:** Different timescales of load variation are handled "
-        "by different parts of the power system. Understanding this helps size equipment correctly."
-    )
-    
-    # Metrics row
-    cols = st.columns(5)
-    metrics = [
-        ("Peak Facility Load", "216 MW", "Summer peak PUE"),
-        ("Average Load", "156 MW", "72% avg utilization"),
-        ("Minimum Load", "92 MW", "Winter night low"),
-        ("Load Factor", "72%", None),
-        ("Swing Range", "124 MW", "57% of peak"),
-    ]
-    
-    for i, (label, value, delta) in enumerate(metrics):
-        with cols[i]:
-            st.metric(label=label, value=value, delta=delta)
-    
-    st.markdown("---")
-    
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        st.markdown("#### Variability Mitigation Stack")
+    # Get load profile from session state
+    if 'load_profile' not in st.session_state:
+        st.warning("⚠️ No load profile defined. Please configure in Load Composer first.")
         
-        layers = [
-            ("⚡", "GPU/Chip Level", "VRMs, capacitors", "1 ns - 10 μs", False),
-            ("🔌", "Rack PDU", "High-freq filtering", "10 μs - 1 ms", False),
-            ("🔋", "Rack UPS (30s)", "KEY: Absorbs GPU startups", "1 ms - 30 s", True),
-            ("🧠", "Algorithmic Mgmt", "Job scheduling, queuing", "1 s - 10 min", True),
-            ("⚙️", "BTM BESS", "OPTIMIZER SIZES THIS", "100 ms - 15 min", True),
-            ("🏭", "BTM Generation", "OPTIMIZER SIZES THIS", "2 min - 24 hr", True),
-            ("🌡️", "Cooling/Seasonal", "PUE variation", "5 min - Months", False),
-        ]
+        if st.button("📈 Go to Load Composer", type="primary"):
+            st.session_state.current_page = 'load_composer'
+            st.rerun()
         
-        for icon, name, detail, timescale, highlight in layers:
-            bg_color = "#e6f4ff" if highlight else "#f8f9fa"
-            st.markdown(
-                f"""
-                <div style="display: flex; align-items: center; padding: 8px 12px; 
-                            background: {bg_color}; border-radius: 6px; margin-bottom: 6px;
-                            border: 1px solid #dee2e6;">
-                    <div style="font-size: 18px; margin-right: 12px;">{icon}</div>
-                    <div style="flex: 1;">
-                        <div style="font-weight: 600; font-size: 12px;">{name}</div>
-                        <div style="font-size: 10px; color: #666;">{detail}</div>
-                    </div>
-                    <div style="font-family: monospace; font-size: 11px; color: #2E86AB;">{timescale}</div>
-                </div>
-                """,
-                unsafe_allow_html=True
-            )
+        return
     
-    with col2:
-        st.markdown("#### What BTM Power System Sees")
-        st.caption("After UPS & Algorithm Smoothing")
+    load_config = st.session_state.load_profile
+    
+    st.markdown("#### Workload Variability Characteristics")
+    
+    # Display current workload mix
+    workload_mix = load_config.get('workload_mix', {})
+    
+    col_wl1, col_wl2 = st.columns(2)
+    
+    with col_wl1:
+        st.markdown("##### Current Workload Mix")
         
-        # Create a simple comparison chart
-        fig = go.Figure()
+        # Pie chart of workload mix
+        fig_pie = go.Figure(data=[go.Pie(
+            labels=list(workload_mix.keys()),
+            values=list(workload_mix.values()),
+            hole=0.3
+        )])
+        fig_pie.update_layout(title="Workload Distribution", height=300)
+        st.plotly_chart(fig_pie, use_container_width=True)
+    
+    with col_wl2:
+        st.markdown("##### Variability Characteristics")
         
-        import numpy as np
-        x = np.linspace(0, 60, 200)
-        raw = 160 + 40 * np.sin(x * 2) + 20 * np.sin(x * 10) + 10 * np.random.randn(200)
-        smoothed = 160 + 15 * np.sin(x * 0.5)
+        # Calculate weighted variability
+        variability_by_type = {
+            'Training': 0.05,      # 5% variability (very stable)
+            'Inference': 0.15,     # 15% variability (moderate)
+            'HPC': 0.08,          # 8% variability (stable)
+            'Enterprise': 0.25    # 25% variability (volatile)
+        }
         
-        fig.add_trace(go.Scatter(x=x, y=raw, mode='lines', name='Raw IT Load',
-                                  line=dict(color='#DC3545', width=1), opacity=0.4))
-        fig.add_trace(go.Scatter(x=x, y=smoothed, mode='lines', name='After UPS Smoothing',
-                                  line=dict(color='#28A745', width=2.5)))
-        
-        fig.update_layout(
-            height=250,
-            margin=dict(l=40, r=20, t=20, b=40),
-            xaxis_title="Time (seconds)",
-            yaxis_title="MW",
-            legend=dict(orientation="h", yanchor="bottom", y=1.02),
+        weighted_variability = sum(
+            workload_mix.get(wl, 0) / 100 * variability_by_type.get(wl, 0.1)
+            for wl in workload_mix.keys()
         )
         
-        st.plotly_chart(fig, use_container_width=True)
+        st.metric("Weighted Variability", f"{weighted_variability:.1%}")
+        st.caption("Lower is more stable")
         
-        # Summary stats
-        st.markdown("##### Smoothing Effect")
-        col_a, col_b, col_c = st.columns(3)
-        with col_a:
-            st.metric("Raw transient", "5.2x (83 MW)")
-        with col_b:
-            st.metric("After UPS", "1.8x (29 MW)")
-        with col_c:
-            st.metric("Reduction", "65%")
+        predictability_by_type = {
+            'Training': 0.95,
+            'Inference': 0.75,
+            'HPC': 0.90,
+            'Enterprise': 0.60
+        }
+        
+        weighted_predictability = sum(
+            workload_mix.get(wl, 0) / 100 * predictability_by_type.get(wl, 0.75)
+            for wl in workload_mix.keys()
+        )
+        
+        st.metric("Predictability Score", f"{weighted_predictability:.1%}")
+        st.caption("Higher is more predictable")
     
+    # Seasonal analysis
     st.markdown("---")
+    st.markdown("#### 📅 Seasonal Patterns")
     
-    # Residual variability table
-    st.markdown("#### Residual Variability (What BTM Must Handle)")
+    col_sea1, col_sea2 = st.columns([2, 1])
     
-    variability_data = {
-        "Timescale": ["Sub-second", "1-30 sec", "30s - 5 min", "5 min - 1 hr", "Hourly", "Seasonal"],
-        "Swing (MW)": ["±5 MW", "±15 MW", "±25 MW", "±40 MW", "±60 MW", "±30 MW"],
-        "Ramp Rate": ["50 MW/s", "1 MW/s", "0.3 MW/s", "0.1 MW/s", "—", "—"],
-        "Handled By": ["BESS", "BESS", "BESS + Engine", "Engine", "8760 Dispatch", "PUE/Cooling"],
-    }
+    with col_sea1:
+        # Generate sample seasonal load curve
+        months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
+                 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+        
+        base_load = load_config.get('it_capacity_mw', 100) * load_config.get('pue', 1.25)
+        load_factor = load_config.get('load_factor', 75) / 100
+        
+        # Seasonal factors (cooling load higher in summer)
+        seasonal_factors = [1.02, 1.01, 1.00, 0.98, 0.97, 1.03,
+                           1.05, 1.06, 1.04, 1.00, 0.99, 1.01]
+        
+        monthly_loads = [base_load * load_factor * factor for factor in seasonal_factors]
+        
+        fig_seasonal = go.Figure()
+        fig_seasonal.add_trace(go.Scatter(
+            x=months,
+            y=monthly_loads,
+            mode='lines+markers',
+            name='Monthly Avg Load',
+            line=dict(color='blue', width=3),
+            marker=dict(size=8)
+        ))
+        
+        fig_seasonal.update_layout(
+            title="Seasonal Load Variation",
+            xaxis_title="Month",
+            yaxis_title="Average Load (MW)",
+            height=350
+        )
+        
+        st.plotly_chart(fig_seasonal, use_container_width=True)
     
-    st.dataframe(variability_data, use_container_width=True, hide_index=True)
+    with col_sea2:
+        st.markdown("**Seasonal Drivers:**")
+        st.markdown("""
+        **Summer (Jun-Aug):**
+        - Higher cooling loads
+        - PUE increases 3-5%
+        - Peak demand periods
+        
+        **Winter (Dec-Feb):**
+        - Lower cooling loads
+        - Best PUE performance
+        - Variable heating needs
+        
+        **Spring/Fall:**
+        - Moderate conditions
+        - Optimal efficiency
+        - Planned maintenance windows
+        """)
+    
+    # Peak demand analysis
+    st.markdown("---")
+    st.markdown("#### ⚡ Peak Demand Analysis")
+    
+    col_peak1, col_peak2, col_peak3 = st.columns(3)
+    
+    with col_peak1:
+        peak_load = base_load
+        st.metric("Peak Load", f"{peak_load:.1f} MW")
+        st.caption("Design capacity")
+    
+    with col_peak2:
+        avg_load = base_load * load_factor
+        st.metric("Average Load", f"{avg_load:.1f} MW")
+        st.caption(f"{load_factor:.0%} load factor")
+    
+    with col_peak3:
+        peak_to_avg_ratio = peak_load / avg_load if avg_load > 0 else 1
+        st.metric("Peak/Avg Ratio", f"{peak_to_avg_ratio:.2f}x")
+        st.caption("Load variation")
+    
+    # Daily load profile
+    st.markdown("---")
+    st.markdown("#### 🕐 Daily Load Profile")
+    
+    hours = list(range(24))
+    
+    # Typical datacenter has relatively flat profile, slight peak during business hours
+    daily_factors = [
+        0.95, 0.93, 0.92, 0.91, 0.92, 0.94,  # Midnight-6am
+        0.97, 1.00, 1.02, 1.03, 1.04, 1.05,  # 6am-noon
+        1.05, 1.04, 1.03, 1.04, 1.05, 1.04,  # Noon-6pm
+        1.02, 1.00, 0.99, 0.98, 0.97, 0.96   # 6pm-midnight
+    ]
+    
+    hourly_loads = [avg_load * factor for factor in daily_factors]
+    
+    fig_daily = go.Figure()
+    fig_daily.add_trace(go.Scatter(
+        x=hours,
+        y=hourly_loads,
+        mode='lines',
+        name='Hourly Load',
+        line=dict(color='green', width=2),
+        fill='tozeroy'
+    ))
+    
+    fig_daily.update_layout(
+        title="Typical Daily Load Profile",
+        xaxis_title="Hour of Day",
+        yaxis_title="Load (MW)",
+        height=350
+    )
+    
+    st.plotly_chart(fig_daily, use_container_width=True)
+    
+    # Volatility metrics
+    st.markdown("---")
+    st.markdown("#### 📈 Volatility Metrics")
+    
+    col_vol1, col_vol2 = st.columns(2)
+    
+    with col_vol1:
+        st.markdown("**Load Statistics:**")
+        
+        stats = pd.DataFrame({
+            'Metric': ['Peak Load', 'Average Load', 'Minimum Load', 'Standard Deviation', 'Coefficient of Variation'],
+            'Value': [
+                f"{peak_load:.1f} MW",
+                f"{avg_load:.1f} MW",
+                f"{avg_load * 0.85:.1f} MW",
+                f"{avg_load * 0.08:.1f} MW",
+                f"{0.08:.1%}"
+            ]
+        })
+        
+        st.dataframe(stats, use_container_width=True, hide_index=True)
+    
+    with col_vol2:
+        st.markdown("**Variability Impact:**")
+        
+        if weighted_variability < 0.10:
+            st.success("✅ **Low Variability** - Excellent for baseload generation")
+            st.caption("Stable load enables efficient operation")
+        elif weighted_variability < 0.20:
+            st.info("ℹ️ **Moderate Variability** - Well-suited for combined cycle")
+            st.caption("Some load-following capability needed")
+        else:
+            st.warning("⚠️ **High Variability** - Requires flexible generation")
+            st.caption("BESS and fast-ramping units recommended")
+    
+    # Recommendations
+    st.markdown("---")
+    st.markdown("#### 💡 Design Recommendations")
+    
+    if weighted_variability < 0.15:
+        st.success("""
+        **Stable Load Profile:**
+        - Baseload generation (recip engines, turbines) well-suited
+        - High capacity factors achievable (70-85%)
+        - Predictive maintenance feasible
+        - Lower reserve requirements
+        """)
+    else:
+        st.warning("""
+        **Variable Load Profile:**
+        - Include BESS for load smoothing
+        - Fast-ramping gas turbines recommended
+        - Higher reserve margins (15-20%)
+        - Real-time dispatch optimization critical
+        """)
 
 
 if __name__ == "__main__":
