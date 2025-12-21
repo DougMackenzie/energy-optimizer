@@ -243,13 +243,20 @@ def render():
     
     with col_next3:
         if 'generated_report' in st.session_state:
+            # Create a safe filename
+            safe_scenario_name = result['scenario_name'].replace(' ', '_').replace('+', 'plus').replace('(', '').replace(')', '')
+            filename = f"optimization_report_{safe_scenario_name}.txt"
+            
             st.download_button(
                 label="📥 Download Report",
-                data=st.session_state.generated_report,
-                file_name=f"optimization_report_{result['scenario_name'].replace(' ', '_')}.txt",
+                data=st.session_state.generated_report.encode('utf-8'),
+                file_name=filename,
                 mime="text/plain",
-                use_container_width=True
+                use_container_width=True,
+                key="download_report_btn"
             )
+        else:
+            st.caption("⚠️ Click 'Generate Report' first")
     
     with col_next4:
         if st.button("🔧 Modify Config", use_container_width=True):
