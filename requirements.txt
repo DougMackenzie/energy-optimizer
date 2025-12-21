@@ -1,0 +1,26 @@
+# Antigravity Energy Optimizer - Dependencies
+
+# Core Framework
+streamlit>=1.28.0
+streamlit-option-menu>=0.3.6
+
+# Data Processing
+pandas>=2.0.0
+numpy>=1.24.0
+pyyaml>=6.0
+
+# Visualization
+plotly>=5.18.0
+altair>=5.0.0
+
+# Backend / Data Storage
+gspread>=5.11.0
+google-auth>=2.23.0
+python-dotenv>=1.0.0
+
+# Export / Reporting (optional - for future features)
+python-pptx>=0.6.21
+openpyxl>=3.1.0
+
+# Utilities
+requests>=2.31.0
