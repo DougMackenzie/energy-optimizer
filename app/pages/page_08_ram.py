@@ -6,6 +6,7 @@ Reliability, Availability, and Maintainability analysis
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
+from typing import Dict
 
 
 def calculate_ram_metrics(equipment_config: Dict) -> Dict:
