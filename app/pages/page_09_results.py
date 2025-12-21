@@ -207,19 +207,51 @@ def render():
     
     # Next Steps / Actions
     st.markdown("---")
-    st.markdown("#### 🚀 Next Steps")
+    st.markdown("####🚀 Next Steps")
     
-    col_next1, col_next2, col_next3 = st.columns(3)
+    col_next1, col_next2, col_next3, col_next4 = st.columns(4)
     
     with col_next1:
         if st.button("📈 View Dispatch", use_container_width=True):
-            st.info("Dispatch simulation coming soon!")
+            st.session_state.current_page = 'dispatch'
+            st.rerun()
     
     with col_next2:
-        if st.button("📄 Export Report", use_container_width=True):
-            st.info("PDF/Excel export coming soon!")
+        if st.button("📄 Generate Report", use_container_width=True, type="primary"):
+            # Generate portfolio report
+            from app.utils.report_export import generate_portfolio_report_data, export_to_text_summary
+            
+            # Compile data
+            sites = [st.session_state.current_config['site']] if 'current_config' in st.session_state else []
+            scenarios = [st.session_state.current_config['scenario']] if 'current_config' in st.session_state else []
+            results = [result]
+            
+            report_data = generate_portfolio_report_data(
+                sites=sites,
+                scenarios=scenarios,
+                optimization_results=results
+            )
+            
+            # Generate text export
+            report_text = export_to_text_summary(report_data)
+            
+            # Store for download
+            st.session_state.generated_report = report_text
+            
+            st.success("✅ Report generated! Download below.")
+            st.rerun()
     
     with col_next3:
+        if 'generated_report' in st.session_state:
+            st.download_button(
+                label="📥 Download Report",
+                data=st.session_state.generated_report,
+                file_name=f"optimization_report_{result['scenario_name'].replace(' ', '_')}.txt",
+                mime="text/plain",
+                use_container_width=True
+            )
+    
+    with col_next4:
         if st.button("🔧 Modify Config", use_container_width=True):
             st.session_state.current_page = 'optimizer'
             st.rerun()

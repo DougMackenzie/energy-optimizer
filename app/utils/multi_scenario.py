@@ -31,17 +31,18 @@ def auto_size_equipment(scenario: Dict, site: Dict, equipment_data: Dict, constr
     if recip_enabled:
         recips = equipment_data.get('Reciprocating_Engines', [])
         if recips:
-            # Use smaller engine for better modularity (Wärtsilä 34SG = 4.7 MW)
+            # Use smallest engine for lower emissions (Wärtsilä 34SG = 4.7 MW)
             selected = next((e for e in recips if e and '34SG' in e.get('Model', '')), recips[0])
             
             if selected:
                 unit_mw = selected.get('Capacity_MW', 5)
-                # Size for only 20% of load to avoid emissions violations
-                num_units = max(2, min(4, int((total_mw * 0.20) / unit_mw)))
+                # Size for only 10-15% of load to stay under air permit
+                # For 200 MW site: 2 engines x 4.7 MW = 9.4 MW (~5% of load)
+                num_units = max(1, min(2, int((total_mw * 0.10) / unit_mw)))
                 
                 config['recip_engines'] = [{
                     'capacity_mw': unit_mw,
-                    'capacity_factor': 0.65,  # Reduced CF
+                    'capacity_factor': 0.50,  # Low CF to minimize emissions
                     'heat_rate_btu_kwh': selected.get('Heat_Rate_BTU_kWh', 7700),
                     'nox_lb_mmbtu': selected.get('NOx_lb_MMBtu', 0.099),
                     'co_lb_mmbtu': selected.get('CO_lb_MMBtu', 0.015),
@@ -55,17 +56,17 @@ def auto_size_equipment(scenario: Dict, site: Dict, equipment_data: Dict, constr
     if turbine_enabled:
         turbines = equipment_data.get('Gas_Turbines', [])
         if turbines:
-            # Use medium-size turbine (GE TM2500+ = 35 MW)
+            # Use smallest turbine (TM2500 = 35 MW)
             selected = next((t for t in turbines if t and 'TM2500' in t.get('Model', '')), turbines[0])
             
             if selected:
                 unit_mw = selected.get('Capacity_MW', 35)
-                # Size for 15% of load (peaking only)
-                num_units = max(1, min(2, int((total_mw * 0.15) / unit_mw)))
+                # Size for 10% of load max (peaking only)
+                num_units = max(1, min(1, int((total_mw * 0.10) / unit_mw)))  # Usually just 1 turbine
                 
                 config['gas_turbines'] = [{
                     'capacity_mw': unit_mw,
-                    'capacity_factor': 0.4,  # Low CF for peaking
+                    'capacity_factor': 0.25,  # Very low CF - peaking only
                     'heat_rate_btu_kwh': selected.get('Heat_Rate_BTU_kWh', 8500),
                     'nox_lb_mmbtu': selected.get('NOx_lb_MMBtu', 0.099),
                     'co_lb_mmbtu': selected.get('CO_lb_MMBtu', 0.015),
@@ -83,9 +84,9 @@ def auto_size_equipment(scenario: Dict, site: Dict, equipment_data: Dict, constr
             selected = next((e for e in bess_systems if e and 'Megapack' in e.get('Model', '')), bess_systems[0])
             
             if selected:
-                # Size for 1-2 hours of storage (reduced)
-                storage_hours = 1.5
-                num_units = max(10, min(30, int((total_mw * storage_hours) / selected.get('Energy_MWh', 4))))
+                # Size for 30-50 MW power (enough to handle N-1)
+                target_power_mw = min(total_mw * 0.30, 50)  # 30% of load or 50 MW max
+                num_units = max(10, min(25, int(target_power_mw / selected.get('Power_MW', 2))))
                 
                 config['bess'] = [{
                     'energy_mwh': selected.get('Energy_MWh', 3.9),
@@ -112,12 +113,14 @@ def auto_size_equipment(scenario: Dict, site: Dict, equipment_data: Dict, constr
             selected = next((s for s in solar_systems if s and region in s.get('Region', '')), solar_systems[0])
             
             if selected:
-                # Size solar for 5-10% of load (reduced to fit land)
-                available_land = site.get('Available_Land_Acres', 15)  # Default 15 acres
+                # Size solar conservatively based on AVAILABLE land
+                available_land = constraints.get('Available_Land_Acres', 15)
                 land_limit_mw = available_land / 4.25  # 4.25 acres per MW
-                solar_mw = min(total_mw * 0.08, land_limit_mw * 0.9)  # Use 90% of available land max
                 
-                config['solar_mw_dc'] = solar_mw
+                # Use only 50% of available land to leave margin
+                solar_mw = min(total_mw * 0.05, land_limit_mw * 0.5)
+                
+                config['solar_mw_dc'] = max(0, solar_mw)  # Ensure non-negative
                 config['solar_capex_per_w'] = selected.get('CAPEX_per_W_DC', 0.95)
                 config['solar_cf'] = selected.get('Capacity_Factor_Pct', 30) / 100
     
@@ -129,9 +132,11 @@ def auto_size_equipment(scenario: Dict, site: Dict, equipment_data: Dict, constr
         if 'BTM' in scenario_name or 'Microgrid' in scenario.get('Scenario_Name', ''):
             config['grid_import_mw'] = 0  # No grid if BTM only
         elif 'Grid' in scenario.get('Scenario_Name', ''):
-            config['grid_import_mw'] = min(total_mw * 0.6, grid_available * 0.9)  # Grid primary but respect limit
+            # Grid primary - use 70% of available or 60% of load, whichever is less
+            config['grid_import_mw'] = min(total_mw * 0.60, grid_available * 0.70)
         else:
-            config['grid_import_mw'] = min(total_mw * 0.15, grid_available * 0.5)  # Grid backup
+            # Grid backup - minimal import
+            config['grid_import_mw'] = min(total_mw * 0.10, grid_available * 0.30)
     
     return config
 

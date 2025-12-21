@@ -99,9 +99,88 @@ def render():
             st.metric("CO₂ Emissions", f"{summary['total_co2_tons']:,.0f} tons")
         
         # Detailed summary table
-        st.markdown("##### Detailed Metrics")
+        st.markdown("##### 📋 Annual Summary Metrics")
         df_summary = create_dispatch_summary_df(dispatch)
         st.dataframe(df_summary, use_container_width=True, hide_index=True)
+        
+        # Equipment Utilization Table
+        st.markdown("---")
+        st.markdown("#### ⚙️ Equipment Utilization Breakdown")
+        
+        # Calculate utilization metrics
+        total_hours = 8760
+        
+        recip_capacity = sum(e.get('capacity_mw', 0) for e in result['equipment_config'].get('recip_engines', []))
+        turbine_capacity = sum(e.get('capacity_mw', 0) for e in result['equipment_config'].get('gas_turbines', []))
+        bess_capacity = sum(e.get('power_mw', 0) for e in result['equipment_config'].get('bess', []))
+        solar_capacity = result['equipment_config'].get('solar_mw_dc', 0)
+        
+        utilization_data = []
+        
+        if recip_capacity > 0:
+            recip_gen = np.sum(dispatch['recip_dispatch_mw'])
+            recip_cf = (recip_gen / (recip_capacity * total_hours)) if recip_capacity > 0 else 0
+            recip_hours = summary['recip_hours']
+            utilization_data.append({
+                'Equipment': 'Reciprocating Engines',
+                'Capacity (MW)': f"{recip_capacity:.1f}",
+                'Energy (GWh)': f"{recip_gen/1000:.1f}",
+                'Capacity Factor': f"{recip_cf:.1%}",
+                'Operating Hours': f"{recip_hours:,.0f}",
+                'Utilization': f"{(recip_hours/total_hours):.1%}"
+            })
+        
+        if turbine_capacity > 0:
+            turbine_gen = np.sum(dispatch['turbine_dispatch_mw'])
+            turbine_cf = (turbine_gen / (turbine_capacity * total_hours)) if turbine_capacity > 0 else 0
+            turbine_hours = summary['turbine_hours']
+            utilization_data.append({
+                'Equipment': 'Gas Turbines',
+                'Capacity (MW)': f"{turbine_capacity:.1f}",
+                'Energy (GWh)': f"{turbine_gen/1000:.1f}",
+                'Capacity Factor': f"{turbine_cf:.1%}",
+                'Operating Hours': f"{turbine_hours:,.0f}",
+                'Utilization': f"{(turbine_hours/total_hours):.1%}"
+            })
+        
+        if bess_capacity > 0:
+            bess_discharge = np.sum(dispatch['bess_discharge_mw'])
+            bess_charge = np.sum(dispatch['bess_charge_mw'])
+            utilization_data.append({
+                'Equipment': 'BESS',
+                'Capacity (MW)': f"{bess_capacity:.1f}",
+                'Energy (GWh)': f"{bess_discharge/1000:.1f} ↓ / {bess_charge/1000:.1f} ↑",
+                'Capacity Factor': f"{summary['avg_bess_cycles_per_day']:.2f} cycles/day",
+                'Operating Hours': 'Continuous',
+                'Utilization': '100%'
+            })
+        
+        if solar_capacity > 0:
+            solar_gen = np.sum(dispatch['solar_generation_mw'])
+            solar_cf = summary['avg_solar_cf']
+            utilization_data.append({
+                'Equipment': 'Solar PV',
+                'Capacity (MW)': f"{solar_capacity:.1f}",
+                'Energy (GWh)': f"{solar_gen/1000:.1f}",
+                'Capacity Factor': f"{solar_cf:.1%}",
+                'Operating Hours': '~12/day',
+                'Utilization': 'Daylight Hours'
+            })
+        
+        grid_import = np.sum(dispatch['grid_import_mw'])
+        if grid_import > 0:
+            grid_hours = summary['grid_hours']
+            utilization_data.append({
+                'Equipment': 'Grid Import',
+                'Capacity (MW)': f"{result['equipment_config'].get('grid_import_mw', 0):.1f}",
+                'Energy (GWh)': f"{grid_import/1000:.1f}",
+                'Capacity Factor': 'Variable',
+                'Operating Hours': f"{grid_hours:,.0f}",
+                'Utilization': f"{(grid_hours/total_hours):.1%}"
+            })
+        
+        df_utilization = pd.DataFrame(utilization_data)
+        st.dataframe(df_utilization, use_container_width=True, hide_index=True)
         
         # Time series visualizations
         st.markdown("---")
@@ -259,6 +338,70 @@ def render():
                 height=250
             )
             st.plotly_chart(fig_co2, use_container_width=True)
+        
+        # High-Resolution Transient Analysis
+        st.markdown("---")
+        with st.expander("🔬 High-Resolution Transient Analysis (Second-Level)", expanded=False):
+            st.markdown("#### Detailed Power Quality Analysis")
+            st.caption("Simulate transient events with 1-second resolution")
+            
+            col_trans1, col_trans2, col_trans3 = st.columns(3)
+            
+            with col_trans1:
+                event_type = st.selectbox("Event Type", [
+                    "step_change",
+                    "ramp_up", 
+                    "ramp_down",
+                    "oscillation"
+                ], format_func=lambda x: x.replace('_', ' ').title())
+            
+            with col_trans2:
+                duration = st.slider("Duration (seconds)", 60, 600, 300)
+            
+            with col_trans3:
+                magnitude = st.slider("Event Magnitude (%)", 5, 50, 20)
+            
+            if st.button("⚡ Run High-Res Simulation", type="primary"):
+                with st.spinner("Running second-level transient simulation..."):
+                    from app.utils.highres_transient import generate_high_res_transient, calculate_power_quality_metrics
+                    
+                    transient_data = generate_high_res_transient(
+                        base_load_mw=base_load,
+                        event_type=event_type,
+                        duration_seconds=duration,
+                        event_magnitude_pct=magnitude
+                    )
+                    
+                    pq_metrics = calculate_power_quality_metrics(transient_data)
+                    
+                    st.session_state.transient_highres = transient_data
+                    st.session_state.pq_metrics = pq_metrics
+                    
+                    st.success("✅ High-resolution simulation complete!")
+                    st.rerun()
+            
+            if 'transient_highres' in st.session_state:
+                trans_data = st.session_state.transient_highres
+                pq = st.session_state.pq_metrics
+                
+                st.markdown("---")
+                col_pq1, col_pq2, col_pq3, col_pq4 = st.columns(4)
+                
+                with col_pq1:
+                    st.metric("Max Freq Dev", f"{pq['max_frequency_deviation_hz']:.3f} Hz")
+                with col_pq2:
+                    st.metric("Max Ramp", f"{pq['max_ramp_rate_mw_s']:.1f} MW/s")
+                with col_pq3:
+                    st.metric("BESS Response", f"{pq['bess_max_response_mw']:.1f} MW")
+                with col_pq4:
+                    st.metric("Stabilize Time", f"{pq['time_to_stabilize_s']:.0f} s")
+                
+                fig_highres = go.Figure()
+                fig_highres.add_trace(go.Scatter(x=trans_data['time'], y=trans_data['load_mw'], mode='lines', name='Load', line=dict(color='blue', width=2)))
+                fig_highres.add_trace(go.Scatter(x=trans_data['time'], y=trans_data['generator_response_mw'], mode='lines', name='Generator', line=dict(color='green', width=2)))
+                fig_highres.add_trace(go.Scatter(x=trans_data['time'], y=trans_data['bess_response_mw'], mode='lines', name='BESS', line=dict(color='orange', width=2)))
+                fig_highres.update_layout(title="Transient Response (1-second resolution)", xaxis_title="Time (s)", yaxis_title="Power (MW)", height=400)
+                st.plotly_chart(fig_highres, use_container_width=True)
         
         # Export options
         st.markdown("---")
