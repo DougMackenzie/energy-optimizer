@@ -75,12 +75,16 @@ def render():
                     
                     scenarios = load_scenario_templates()
                     
+                    # Get grid config from session state
+                    grid_config = st.session_state.get('grid_config', None)
+                    
                     # Run all scenarios
                     results = run_all_scenarios(
                         site=site,
                         constraints=constraints,
                         objectives=objectives,
-                        scenarios=scenarios
+                        scenarios=scenarios,
+                        grid_config=grid_config
                     )
                     
                     # Store results
