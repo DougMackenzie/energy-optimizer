@@ -113,21 +113,25 @@ def render():
                 """)
             
             # Option to select a scenario
-            col_sel1, col_sel2 = st.columns([3, 1])
+            scenario_names = [r['scenario_name'] for r in results if r.get('feasible')]
             
-            with col_sel1:
-                scenario_names = [r['scenario_name'] for r in results if r.get('feasible')]
-                if scenario_names:
-                    selected_scenario = st.selectbox("Select scenario to view details:", scenario_names)
-            
-            with col_sel2:
-                if st.button("📋 View Details", use_container_width=True):
-                    # Find selected result
-                    selected_result = next((r for r in results if r['scenario_name'] == selected_scenario), None)
-                    if selected_result:
-                        st.session_state.optimization_result = selected_result
-                        st.session_state.current_page = 'results'
-                        st.rerun()
+            if scenario_names:
+                col_sel1, col_sel2 = st.columns([3, 1])
+                
+                with col_sel1:
+                    selected_scenario = st.selectbox("Select scenario to view details:", scenario_names, key="scenario_selector")
+                
+                with col_sel2:
+                    if st.button("📋 View Details", use_container_width=True, type="primary"):
+                        # Find selected result
+                        selected_result = next((r for r in results if r['scenario_name'] == selected_scenario), None)
+                        if selected_result:
+                            st.session_state.optimization_result = selected_result
+                            st.success(f"✅ Loading {selected_scenario}...")
+                            st.session_state.current_page = 'results'
+                            st.rerun()
+            else:
+                st.warning("⚠️ No feasible scenarios to view. All scenarios have constraint violations.")
     
     st.markdown("---")
     
