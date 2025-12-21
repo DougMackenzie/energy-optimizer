@@ -124,6 +124,14 @@ def create_emissions_chart(equipment_config: Dict, constraints: Dict, save_path:
     """
     Generate hourly emissions chart
     """
+    # Check if there are any generators
+    recip_cap = sum(e.get('capacity_mw', 0) for e in equipment_config.get('recip_engines', []))
+    turbine_cap = sum(t.get('capacity_mw', 0) for t in equipment_config.get('gas_turbines', []))
+    
+    if recip_cap == 0 and turbine_cap == 0:
+        # No generators = no emissions chart needed
+        return None
+    
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 5))
     
     # Simulate hourly emissions for first week
