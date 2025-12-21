@@ -4,6 +4,7 @@ Complete redesign with site constraints and scenario-based selection
 """
 
 import streamlit as st
+from app.components.grid_config import render_grid_configuration
 
 
 def render():
@@ -183,6 +184,23 @@ def render():
             st.caption(f"Max Transient: {constraints.get('Max_Transient_pct', 0)}%")
         else:
             st.info("No constraints loaded")
+    
+    # === GRID INTERCONNECTION CONFIGURATION ===
+    st.markdown("---")
+    if constraints:
+        grid_config = render_grid_configuration(constraints, grid_enabled)
+        st.session_state.grid_config = grid_config
+    else:
+        # Default grid config
+        st.session_state.grid_config = {
+            'voltage_level': '345kV',
+            'transformer_lead_months': 24,
+            'breaker_lead_months': 18,
+            'total_timeline_months': 96,
+            'grid_capacity_override': None,
+            'timeline_override': None,
+            'grid_available_mw': 200
+        }
     
     # === EQUIPMENT SPECIFICATIONS ===
     st.markdown("---")
