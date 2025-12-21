@@ -218,40 +218,58 @@ def render():
     
     with col_next2:
         if st.button("📄 Generate Report", use_container_width=True, type="primary"):
-            # Generate portfolio report
-            from app.utils.report_export import generate_portfolio_report_data, export_to_text_summary
-            
-            # Compile data
-            sites = [st.session_state.current_config['site']] if 'current_config' in st.session_state else []
-            scenarios = [st.session_state.current_config['scenario']] if 'current_config' in st.session_state else []
-            results = [result]
-            
-            report_data = generate_portfolio_report_data(
-                sites=sites,
-                scenarios=scenarios,
-                optimization_results=results
-            )
-            
-            # Generate text export
-            report_text = export_to_text_summary(report_data)
-            
-            # Store for download
-            st.session_state.generated_report = report_text
-            
-            st.success("✅ Report generated! Download below.")
-            st.rerun()
+            with st.spinner("Generating comprehensive Word document..."):
+                from app.utils.word_report import generate_comprehensive_word_report
+                
+                # Get all necessary data
+                site = st.session_state.current_config.get('site', {})
+                constraints = st.session_state.current_config.get('constraints', {})
+                scenario = st.session_state.current_config.get('scenario', {})
+                equipment_config = result.get('equipment_config', {})
+                load_profile = st.session_state.get('load_profile', None)
+                
+                try:
+                    # Generate Word document
+                    word_bytes = generate_comprehensive_word_report(
+                        site=site,
+                        constraints=constraints,
+                        scenario=scenario,
+                        equipment_config=equipment_config,
+                        optimization_result=result,
+                        load_profile=load_profile
+                    )
+                    
+                    # Store for download
+                    st.session_state.generated_report = word_bytes
+                    st.session_state.report_type = 'docx'
+                    
+                    st.success("✅ Comprehensive Word report generated! Download below.")
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Error generating report: {str(e)}")
     
     with col_next3:
         if 'generated_report' in st.session_state:
             # Create a safe filename
             safe_scenario_name = result['scenario_name'].replace(' ', '_').replace('+', 'plus').replace('(', '').replace(')', '')
-            filename = f"optimization_report_{safe_scenario_name}.txt"
+            
+            # Check report type
+            report_type = st.session_state.get('report_type', 'txt')
+            
+            if report_type == 'docx':
+                filename = f"Optimization_Report_{safe_scenario_name}.docx"
+                mime_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                data = st.session_state.generated_report  # Already bytes
+            else:
+                filename = f"optimization_report_{safe_scenario_name}.txt"
+                mime_type = "text/plain"
+                data = st.session_state.generated_report.encode('utf-8') if isinstance(st.session_state.generated_report, str) else st.session_state.generated_report
             
             st.download_button(
                 label="📥 Download Report",
-                data=st.session_state.generated_report.encode('utf-8'),
+                data=data,
                 file_name=filename,
-                mime="text/plain",
+                mime=mime_type,
                 use_container_width=True,
                 key="download_report_btn"
             )
