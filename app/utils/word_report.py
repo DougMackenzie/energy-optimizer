@@ -9,6 +9,7 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH
 from datetime import datetime
 from typing import Dict, List
 import io
+import os
 
 
 def generate_comprehensive_word_report(
@@ -313,15 +314,70 @@ def generate_comprehensive_word_report(
     
     doc.add_page_break()
     
+    # 8760 Dispatch & Power Quality Visualization
+    if optimization_result.get('feasible'):
+        doc.add_heading('5. 8760 Dispatch & Power Quality Analysis', 1)
+        
+        try:
+            from app.utils.report_charts import (
+                create_8760_dispatch_chart,
+                create_emissions_chart,
+                create_bess_soc_chart,
+                create_deployment_timeline_chart
+            )
+            
+            # Generate and embed dispatch chart
+            doc.add_heading('5.1 Hourly Dispatch Visualization', 2)
+            doc.add_paragraph("The following chart shows the equipment dispatch stack for the first week (168 hours).")
+            
+            dispatch_chart = create_8760_dispatch_chart(equipment_config, site)
+            if dispatch_chart and os.path.exists(dispatch_chart):
+                doc.add_picture(dispatch_chart, width=Inches(6.5))
+                os.remove(dispatch_chart)  # Clean up temp file
+            
+            # BESS State of Charge
+            if equipment_config.get('bess'):
+                doc.add_heading('5.2 BESS State of Charge', 2)
+                doc.add_paragraph("Battery state of charge over the first week, showing daily charge/discharge cycles.")
+                
+                bess_chart = create_bess_soc_chart(equipment_config)
+                if bess_chart and os.path.exists(bess_chart):
+                    doc.add_picture(bess_chart, width=Inches(6))
+                    os.remove(bess_chart)
+            
+            # Emissions Analysis
+            doc.add_heading('5.3 Hourly Emissions Analysis', 2)
+            doc.add_paragraph("NOx and CO emissions from generators, compared against annual average limits.")
+            
+            emissions_chart = create_emissions_chart(equipment_config, constraints)
+            if emissions_chart and os.path.exists(emissions_chart):
+                doc.add_picture(emissions_chart, width=Inches(6.5))
+                os.remove(emissions_chart)
+            
+            # Deployment Timeline
+            timeline = optimization_result.get('timeline', {})
+            doc.add_heading('5.4 Equipment Deployment Timeline', 2)
+            doc.add_paragraph("Gantt chart showing deployment phases and critical path.")
+            
+            timeline_chart = create_deployment_timeline_chart(timeline)
+            if timeline_chart and os.path.exists(timeline_chart):
+                doc.add_picture(timeline_chart, width=Inches(6))
+                os.remove(timeline_chart)
+                
+        except Exception as e:
+            doc.add_paragraph(f"Note: Visualization generation encountered an error: {str(e)}")
+    
+    doc.add_page_break()
+    
     # Optimization Results
     if optimization_result.get('feasible'):
-        doc.add_heading('5. Optimization Results', 1)
+        doc.add_heading('6. Optimization Results', 1)
         
         economics = optimization_result['economics']
         timeline = optimization_result['timeline']
         metrics = optimization_result['metrics']
         
-        doc.add_heading('5.1 Economic Analysis', 2)
+        doc.add_heading('6.1 Economic Analysis', 2)
         econ_table = doc.add_table(rows=6, cols=2)
         econ_table.style = 'Light Grid Accent 1'
         
@@ -338,7 +394,7 @@ def generate_comprehensive_word_report(
             econ_table.rows[i].cells[0].text = label
             econ_table.rows[i].cells[1].text = str(value)
         
-        doc.add_heading('5.2 Deployment Timeline', 2)
+        doc.add_heading('6.2 Deployment Timeline', 2)
         time_table = doc.add_table(rows=3, cols=2)
         time_table.style = 'Light Grid Accent 1'
         
@@ -352,7 +408,7 @@ def generate_comprehensive_word_report(
             time_table.rows[i].cells[0].text = label
             time_table.rows[i].cells[1].text = str(value)
         
-        doc.add_heading('5.3 Performance Metrics', 2)
+        doc.add_heading('6.3 Performance Metrics', 2)
         metrics_table = doc.add_table(rows=3, cols=2)
         metrics_table.style = 'Light Grid Accent 1'
         
@@ -400,7 +456,7 @@ def generate_comprehensive_word_report(
     
     # Constraint Compliance
     doc.add_page_break()
-    doc.add_heading('6. Constraint Compliance', 1)
+    doc.add_heading('7. Constraint Compliance', 1)
     
     violations = optimization_result.get('violations', [])
     warnings = optimization_result.get('warnings', [])
@@ -419,7 +475,7 @@ def generate_comprehensive_word_report(
     
     # Methodology
     doc.add_page_break()
-    doc.add_heading('7. Methodology', 1)
+    doc.add_heading('8. Methodology', 1)
     
     doc.add_paragraph(
         "This analysis uses a multi-criteria optimization approach to determine the optimal energy "
