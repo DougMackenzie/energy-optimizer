@@ -356,10 +356,42 @@ def generate_comprehensive_word_report(
         metrics_table = doc.add_table(rows=3, cols=2)
         metrics_table.style = 'Light Grid Accent 1'
         
+        # Calculate capacities from equipment_config
+        total_cap = 0
+        btm_cap = 0
+        grid_cap = equipment_config.get('grid_import_mw', 0)
+        
+        # Reciprocating engines
+        if equipment_config.get('recip_engines'):
+            recip_total = sum(e.get('capacity_mw', 0) for e in equipment_config['recip_engines'])
+            total_cap += recip_total
+            btm_cap += recip_total
+        
+        # Gas turbines
+        if equipment_config.get('gas_turbines'):
+            turbine_total = sum(t.get('capacity_mw', 0) for t in equipment_config['gas_turbines'])
+            total_cap += turbine_total
+            btm_cap += turbine_total
+        
+        # BESS (power capacity)
+        if equipment_config.get('bess'):
+            bess_total = sum(b.get('power_mw', 0) for b in equipment_config['bess'])
+            total_cap += bess_total
+            btm_cap += bess_total
+        
+        # Solar (DC capacity)
+        if equipment_config.get('solar_mw_dc'):
+            solar_dc = equipment_config.get('solar_mw_dc', 0)
+            total_cap += solar_dc
+            btm_cap += solar_dc
+        
+        # Grid
+        total_cap += grid_cap
+        
         metrics_data = [
-            ('Total Capacity', f"{metrics['total_capacity_mw']:.1f} MW"),
-            ('BTM Capacity', f"{metrics.get('btm_capacity_mw', 0):.1f} MW"),
-            ('Grid Capacity', f"{metrics.get('grid_capacity_mw', 0):.1f} MW")
+            ('Total Capacity', f"{total_cap:.1f} MW"),
+            ('BTM Capacity', f"{btm_cap:.1f} MW"),
+            ('Grid Capacity', f"{grid_cap:.1f} MW")
         ]
         
         for i, (label, value) in enumerate(metrics_data):
