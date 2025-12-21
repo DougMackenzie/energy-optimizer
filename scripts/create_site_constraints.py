@@ -80,7 +80,7 @@ template_sites = {
             "Gas_Supply_MCF_day": 120000,
             "Gas_Cost_MMBtu": 3.25,
             # Grid/Interconnection
-            "Grid_Available_MW": 50,
+            "Grid_Available_MW": 200,
             "Interconnection_Voltage_kV": 138,
             "Queue_Position": 23,
             "Estimated_Interconnection_Months": 30,
@@ -154,7 +154,7 @@ template_sites = {
             "Gas_Supply_MCF_day": 75000,
             "Gas_Cost_MMBtu": 2.95,
             # Grid/Interconnection
-            "Grid_Available_MW": 80,
+            "Grid_Available_MW": 150,
             "Interconnection_Voltage_kV": 138,
             "Queue_Position": 12,
             "Estimated_Interconnection_Months": 48,
