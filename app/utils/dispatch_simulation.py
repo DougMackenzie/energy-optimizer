@@ -115,13 +115,25 @@ def dispatch_equipment(
         
         # 1. Solar generation (if available)
         if solar_capacity > 0:
-            # Simple solar profile (peak at noon, zero at night)
+            # Improved solar profile with seasonal variation
             hour_of_day = hour % 24
+            day_of_year = (hour // 24) % 365
+            
+            # Daily solar curve (sunrise to sunset)
             if 6 <= hour_of_day <= 18:
-                # Cosine curve for solar
-                solar_factor = np.cos((hour_of_day - 12) * np.pi / 12) * solar_cf * 2
+                # Cosine curve for daily variation
+                solar_daily = np.cos((hour_of_day - 12) * np.pi / 12)
+                solar_daily = max(0, solar_daily)
+                
+                # Seasonal variation (winter = 0.7x, summer = 1.3x of baseline)
+                # Peak at summer solstice (day 172), minimum at winter solstice (day 355)
+                seasonal_factor = 1.0 + 0.3 * np.sin(2 * np.pi * (day_of_year - 80) / 365)
+                
+                # Apply capacity factor and seasonal adjustment
+                solar_factor = solar_daily * solar_cf * seasonal_factor * 2
                 solar_factor = max(0, solar_factor)
             else:
+                # Night time: no solar
                 solar_factor = 0
             
             solar_gen = solar_capacity * solar_factor
@@ -185,10 +197,16 @@ def dispatch_equipment(
         results['bess_soc_mwh'][hour] = bess_soc
     
     # Calculate summary statistics
+    total_load = np.sum(load_profile)
+    total_unserved = np.sum(results['unserved_energy_mw'])
+    
+    # Add load profile to results for export
+    results['load_profile_mw'] = load_profile
+    
     results['summary'] = {
-        'total_energy_served_gwh': np.sum(load_profile) / 1000,
-        'total_unserved_gwh': np.sum(results['unserved_energy_mw']) / 1000,
-        'reliability_pct': 100 * (1 - np.sum(results['unserved_energy_mw']) / np.sum(load_profile)),
+        'total_energy_served_gwh': total_load / 1000,
+        'total_unserved_gwh': total_unserved / 1000,
+        'reliability_pct': 100 * (1 - total_unserved / total_load) if total_load > 0 else 0,
         'total_fuel_cost_m': np.sum(results['fuel_cost_usd']) / 1_000_000,
         'total_fuel_mmbtu': np.sum(results['fuel_consumption_mmbtu']),
         'total_nox_tons': np.sum(results['emissions_nox_lb']) / 2000,

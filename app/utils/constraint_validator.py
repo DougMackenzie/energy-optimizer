@@ -111,8 +111,8 @@ class ConstraintValidator:
         # Calculate peak gas demand (MCF/day)
         peak_gas_mcf_day = 0
         
-        # Gas heat content: ~1.026 MMBtu/MCF
-        gas_hhv = 1.026
+        # Gas heat content: 1.037 MMBtu/MCF (industry standard)
+        gas_hhv = 1.037
         
         # Reciprocating Engines
         for engine in equipment_config.get('recip_engines', []):

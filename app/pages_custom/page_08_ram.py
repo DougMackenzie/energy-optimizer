@@ -68,9 +68,19 @@ def calculate_ram_metrics(equipment_config: Dict) -> Dict:
         recip_cap = sum(e.get('capacity_mw', 0) for e in equipment_config.get('recip_engines', []))
         params = equipment_params['recip']
         
-        # Parallel redundancy increases availability
         unit_avail = params['availability']
-        system_avail = 1 - (1 - unit_avail) ** recip_count
+        
+        # For N-1 reliability, we need at least (n-1) units working
+        # Use binomial probability formula: P(X >= k) where k = n-1
+        if recip_count > 1:
+            from math import comb
+            system_avail = 0
+            # Sum probability of (n-1) or n units working
+            for i in range(recip_count - 1, recip_count + 1):
+                system_avail += comb(recip_count, i) * (unit_avail ** i) * ((1 - unit_avail) ** (recip_count - i))
+        else:
+            # Single unit: no redundancy
+            system_avail = unit_avail
         
         results['equipment'].append({
             'Type': 'Reciprocating Engines',
@@ -92,7 +102,15 @@ def calculate_ram_metrics(equipment_config: Dict) -> Dict:
         params = equipment_params['turbine']
         
         unit_avail = params['availability']
-        system_avail = 1 - (1 - unit_avail) ** turbine_count
+        
+        # For N-1 reliability, we need at least (n-1) units working
+        if turbine_count > 1:
+            from math import comb
+            system_avail = 0
+            for i in range(turbine_count - 1, turbine_count + 1):
+                system_avail += comb(turbine_count, i) * (unit_avail ** i) * ((1 - unit_avail) ** (turbine_count - i))
+        else:
+            system_avail = unit_avail
         
         results['equipment'].append({
             'Type': 'Gas Turbines',

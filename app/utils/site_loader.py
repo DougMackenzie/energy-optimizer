@@ -92,6 +92,42 @@ def load_scenario_templates(
 ) -> List[Dict]:
     """Load pre-defined scenario templates"""
     
+    # Return 2 comprehensive scenarios with full equipment combination testing
+    scenarios = [
+        {
+            'Scenario_ID': 1,
+            'Scenario_Name': 'BTM Only',
+            'Description': 'Behind-the-meter only. Tests all equipment combinations (Recips, Turbines, BESS, Solar) across 10-year deployment timeline. Maximizes power within all constraints.',
+            'Recip_Enabled': True,
+            'Turbine_Enabled': True,
+            'BESS_Enabled': True,
+            'Solar_Enabled': True,
+            'Grid_Enabled': False,
+            'Objective_Priority': 'Maximum Power',
+            'Grid_Timeline_Months': 0
+        },
+        {
+            'Scenario_ID': 2,
+            'Scenario_Name': 'All Technologies',
+            'Description': 'All available technologies including grid. Tests comprehensive equipment combinations across 10-year timeline. Grid available after 36 months as backup/baseload.',
+            'Recip_Enabled': True,
+            'Turbine_Enabled': True,
+            'BESS_Enabled': True,
+            'Solar_Enabled': True,
+            'Grid_Enabled': True,
+            'Objective_Priority': 'Maximum Power',
+            'Grid_Timeline_Months': 36
+        }
+    ]
+    
+    # Cache in session state
+    if use_cache:
+        st.session_state.scenarios = scenarios
+    
+    return scenarios
+    
+    # ORIGINAL CODE (disabled):
+    """
     # Check cache first
     if use_cache and 'scenarios' in st.session_state:
         return st.session_state.scenarios
@@ -113,6 +149,7 @@ def load_scenario_templates(
     except Exception as e:
         print(f"Error loading scenarios: {e}")
         return []
+    """
 
 
 def load_optimization_objectives(

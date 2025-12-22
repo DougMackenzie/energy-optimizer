@@ -66,7 +66,7 @@ def render():
         col_batch1, col_batch2 = st.columns([3, 1])
         
         with col_batch1:
-            st.caption("This will run: All Sources, BTM Only, BESS+GT, Grid+Solar, IFOM Bridge")
+            st.caption("This will run: BTM Only, All Sources, Bridge to Backup")
         
         with col_batch2:
             if st.button("⚡ Run All Scenarios", type="primary", use_container_width=True):
@@ -106,6 +106,74 @@ def render():
             
             # Display table
             st.dataframe(df, use_container_width=True, hide_index=True)
+            
+            # DETAILED EQUIPMENT COMBINATION ANALYSIS
+            st.markdown("---")
+            st.markdown("### 🔍 Equipment Combination Analysis")
+            st.markdown("All equipment combinations tested within each scenario, ranked by performance")
+            
+            import pandas as pd
+            
+            for result in results:
+                scenario_name = result.get('scenario_name', 'Unknown')
+                equipment_config = result.get('equipment_config', {})
+                
+                if '_combination_results' in equipment_config:
+                    combination_results = equipment_config['_combination_results']
+                    
+                    with st.expander(f"📋 {scenario_name} - {len(combination_results)} Combinations Tested", expanded=True):
+                        # Create comparison dataframe
+                        combo_data = []
+                        for idx, combo in enumerate(combination_results):
+                            combo_data.append({
+                                'Rank': idx + 1,
+                                'Equipment Combination': combo['combination_name'],
+                                'Feasible': '✅' if combo['feasible'] else '❌',
+                                'Power (MW-years)': f"{combo['total_power_delivered']:.0f}",
+                                'LCOE ($/MWh)': f"${combo['lcoe']:.2f}",
+                                'Timeline (mo)': combo['critical_path_months'],
+                                'Violations': len(combo['violations']) if combo['violations'] else 0
+                            })
+                        
+                        combo_df = pd.DataFrame(combo_data)
+                        st.dataframe(combo_df, use_container_width=True, hide_index=True)
+                        
+                        # Summary
+                        feasible = [c for c in combination_results if c['feasible']]
+                        st.markdown(f"**Summary:** {len(feasible)}/{len(combination_results)} combinations feasible")
+                        
+                        if feasible:
+                            best = feasible[0]
+                            st.success(f"🏆 Best: {best['combination_name']} - {best['total_power_delivered']:.0f} MW-years @ ${best['lcoe']:.2f}/MWh")
+            
+            # Add annual capacity stack charts for feasible scenarios
+            feasible_results = [r for r in results if r.get('feasible')]
+            if feasible_results:
+                st.markdown("---")
+                st.markdown("### 📊 Annual Capacity Deployment")
+                st.markdown("Stacked capacity by technology showing phased deployment over time")
+                
+                from app.utils.phased_charts import create_annual_capacity_stack_chart
+                
+                for idx, result in enumerate(feasible_results):
+                    equipment_config = result.get('equipment_config', {})
+                    if '_phased_deployment' in equipment_config:
+                        st.markdown(f"#### {result['scenario_name']}")
+                        
+                        deployment = equipment_config['_phased_deployment']
+                        load_trajectory = site.get('load_trajectory', {
+                            2026: 0, 2027: 0, 2028: 150, 2029: 300, 2030: 450, 2031: 600,
+                            2032: 600, 2033: 600, 2034: 600, 2035: 600
+                        })
+                        
+                        fig = create_annual_capacity_stack_chart(
+                            deployment=deployment,
+                            load_trajectory=load_trajectory,
+                            years=list(range(2026, 2036))  # 2026-2035 (10 years)
+                        )
+                        
+                        # Use unique key for each chart to avoid Streamlit duplicate ID error
+                        st.plotly_chart(fig, use_container_width=True, key=f"capacity_chart_{idx}")
             
             # Show top recommendation
             if len(results) > 0 and results[0].get('feasible'):

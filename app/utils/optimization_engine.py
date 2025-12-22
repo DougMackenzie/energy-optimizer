@@ -354,10 +354,12 @@ class OptimizationEngine:
         
         if 'bess' in config:
             for bess in config['bess']:
-                total_capex += bess['energy_mwh'] * 1000 * bess['capex_per_kwh']
+                # Apply 30% ITC for BESS (Inflation Reduction Act)
+                total_capex += bess['energy_mwh'] * 1000 * bess['capex_per_kwh'] * 0.70
         
         if 'solar_mw_dc' in config:
-            total_capex += config['solar_mw_dc'] * 1e6 * config['solar_capex_per_w']
+            # Apply 30% ITC for Solar (Inflation Reduction Act)
+            total_capex += config['solar_mw_dc'] * 1e6 * config['solar_capex_per_w'] * 0.70
         
         # Calculate annual O&M and fuel costs
         annual_opex = 0
@@ -458,8 +460,11 @@ class OptimizationEngine:
     
     def combined_objective(self, x: np.ndarray, weights: Dict[str, float]) -> float:
         """
-        Combined weighted objective function
+        Combined weighted objective function with constraint penalties
         weights = {'lcoe': w1, 'timeline': w2, 'emissions': w3}
+        
+        For differential_evolution, we add penalty terms for constraint violations
+        to guide the optimizer toward feasible regions.
         """
         # Normalize objectives to similar scales
         lcoe = self.objective_lcoe(x) / 100  # Normalize to ~0-2 range
@@ -471,6 +476,45 @@ class OptimizationEngine:
             weights.get('timeline', 0.33) * timeline +
             weights.get('emissions', 0.34) * emissions
         )
+        
+        # Add penalty terms for constraint violations
+        # Large penalty (1000x) to strongly discourage infeasible solutions
+        penalty_multiplier = 1000
+        
+        # NOx constraint penalty
+        nox_violation = -self.constraint_nox_emissions(x)  # Negative = violation
+        if nox_violation > 0:
+            total_objective += penalty_multiplier * nox_violation
+        
+        # CO constraint penalty
+        co_violation = -self.constraint_co_emissions(x)
+        if co_violation > 0:
+            total_objective += penalty_multiplier * co_violation
+        
+        # Gas supply constraint penalty
+        gas_violation = -self.constraint_gas_supply(x)
+        if gas_violation > 0:
+            total_objective += penalty_multiplier * gas_violation
+        
+        # Land area constraint penalty
+        land_violation = -self.constraint_land_area(x)
+        if land_violation > 0:
+            total_objective += penalty_multiplier * land_violation
+        
+        # Grid capacity constraint penalty
+        grid_violation = -self.constraint_grid_capacity(x)
+        if grid_violation > 0:
+            total_objective += penalty_multiplier * grid_violation
+        
+        # N-1 reliability constraint penalty
+        reliability_violation = -self.constraint_n_minus_1_reliability(x)
+        if reliability_violation > 0:
+            total_objective += penalty_multiplier * reliability_violation
+        
+        # Min capacity constraint penalty
+        min_cap_violation = -self.constraint_min_capacity(x)
+        if min_cap_violation > 0:
+            total_objective += penalty_multiplier * min_cap_violation
         
         return total_objective
     
@@ -527,14 +571,22 @@ class OptimizationEngine:
             {'type': 'ineq', 'fun': self.constraint_min_capacity}
         ]
         
-        # Run optimization
-        result = minimize(
-            fun=lambda x: self.combined_objective(x, objective_weights),
-            x0=x0,
-            method='SLSQP',
+        # Run optimization using differential_evolution (handles discrete variables better)
+        # Note: differential_evolution is a global optimizer that doesn't rely on gradients
+        # This makes it suitable for problems with integer variables (num_engines, num_bess, etc.)
+        
+        # differential_evolution requires NonlinearConstraint objects (scipy >= 1.4.0)
+        # For compatibility, we'll use it without explicit constraints, then validate afterward
+        result = differential_evolution(
+            func=lambda x: self.combined_objective(x, objective_weights),
             bounds=bounds,
-            constraints=constraints,
-            options={'maxiter': 200, 'ftol': 1e-6}
+            maxiter=100,
+            popsize=15,
+            tol=0.01,
+            atol=0,
+            workers=1,
+            updating='deferred',
+            seed=42  # Reproducible results
         )
         
         # Decode solution

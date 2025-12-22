@@ -82,9 +82,36 @@ def generate_high_res_transient(
     # Calculate net load (what grid sees)
     net_load = load_profile - bess_response - gen_response
     
-    # Frequency deviation (simplified)
-    # Assume 60 Hz nominal, ±0.5 Hz max deviation
-    frequency = 60.0 + (net_load - base_load_mw) / base_load_mw * 0.5
+    # Frequency deviation using Swing Equation (physics-based)
+    # df/dt = (f0 / 2H) * (P_imbalance / P_base)
+    # where H = inertia constant (seconds), f0 = nominal frequency
+    
+    # System parameters
+    f0 = 60.0  # Hz
+    H = 4.0    # Inertia constant (typical for grid-connected system = 2-6 seconds)
+    dt = 1.0   # Time step (1 second)
+    
+    # Initialize frequency array
+    frequency = np.zeros(num_points)
+    frequency[0] = f0
+    
+    # Guard against division by zero
+    if base_load_mw > 0:
+        # Integrate frequency deviation over time
+        for i in range(1, num_points):
+            # Power imbalance (MW)
+            p_imbalance = net_load[i] - base_load_mw
+            
+            # Rate of frequency change (Hz/s)
+            df_dt = (f0 / (2 * H)) * (p_imbalance / base_load_mw)
+            
+            # Integrate: f[i] = f[i-1] + df_dt * dt
+            frequency[i] = frequency[i-1] + df_dt * dt
+    else:
+        # If no base load, frequency stays constant
+        frequency[:] = f0
+    
+    # Clip to realistic bounds (± 0.5 Hz from nominal)
     frequency = np.clip(frequency, 59.5, 60.5)
     
     return {

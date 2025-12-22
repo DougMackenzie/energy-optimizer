@@ -20,6 +20,20 @@ def calculate_lcoe(
         Dict with LCOE, CAPEX, OPEX, fuel costs, etc.
     """
     
+    # Check if phased optimizer provided lifecycle LCOE
+    if '_lifecycle_lcoe' in equipment_config:
+        lifecycle_lcoe = equipment_config['_lifecycle_lcoe']
+        # Use stored total CAPEX from phased deployment
+        total_capex = equipment_config.get('_total_capex', 0)
+        return {
+            'lcoe_mwh': lifecycle_lcoe,
+            'total_capex_m': total_capex / 1_000_000,
+            'annual_opex_m': 0,  # Included in lifecycle LCOE
+            'annual_fuel_cost_m': 0,  # Included in lifecycle LCOE
+            'annual_generation_gwh': 0,  # Not needed for phased optimizer
+            'capacity_factor_pct': 0
+        }
+    
     # Constants
     gas_price_mmbtu = 3.50  # $/MMBtu
     discount_rate = 0.08  # 8% WACC
@@ -83,7 +97,9 @@ def calculate_lcoe(
         fom_per_kw_yr = bess.get('fom_per_kw_yr', 8.0)
         power_mw = bess.get('power_mw', 0)
         
-        total_capex += energy_mwh * 1000 * capex_per_kwh
+        # Apply 30% Investment Tax Credit (ITC) for BESS
+        itc_multiplier = 0.70
+        total_capex += energy_mwh * 1000 * capex_per_kwh * itc_multiplier
         
         # Assume 1 cycle per day
         annual_discharge = energy_mwh * 365
@@ -99,7 +115,10 @@ def calculate_lcoe(
         solar_vom = 2.0  # $/MWh
         solar_fom = 15.0  # $/kW-yr
         
-        total_capex += solar_mw_dc * 1_000_000 * solar_capex_per_w
+        # Apply 30% Investment Tax Credit (ITC) under Inflation Reduction Act
+        # Net CAPEX = 70% of gross CAPEX
+        itc_multiplier = 0.70
+        total_capex += solar_mw_dc * 1_000_000 * solar_capex_per_w * itc_multiplier
         
         annual_gen = solar_mw_dc * solar_cf * 8760
         annual_generation_mwh += annual_gen
@@ -126,13 +145,19 @@ def calculate_lcoe(
     
     total_annual_cost = annual_vom + annual_fom + annual_fuel_cost
     
-    # NPV of costs
+    # NPV of costs with fuel escalation
     npv_opex = 0
     npv_generation = 0
+    fuel_escalation_rate = 0.025  # 2.5% annual escalation for natural gas
     
     for year in range(1, years + 1):
         discount_factor = 1 / ((1 + discount_rate) ** year)
-        npv_opex += total_annual_cost * discount_factor
+        
+        # Fuel costs escalate, O&M stays constant (conservative assumption)
+        escalated_fuel = annual_fuel_cost * ((1 + fuel_escalation_rate) ** year)
+        annual_cost_with_escalation = annual_vom + annual_fom + escalated_fuel
+        
+        npv_opex += annual_cost_with_escalation * discount_factor
         npv_generation += annual_generation_mwh * discount_factor
     
     # LCOE
@@ -197,12 +222,35 @@ def calculate_deployment_timeline(equipment_config: Dict, scenario: Dict) -> Dic
         stages.append(('Transformer (Critical)', lead_times['transformer']))
     
     # Critical path = longest lead time for parallel execution
-    # For series execution, it could be sum, but assume parallel where possible
+    # BUT: If scenario has substantial BTM capacity, don't let grid dictate timeline
     
     if stages:
-        critical_path_item = max(stages, key=lambda x: x[1])
-        critical_path = critical_path_item[0]
-        timeline_months = critical_path_item[1]
+        # Calculate BTM capacity (non-grid)
+        btm_capacity = total_capacity  # recips + turbines
+        btm_capacity += sum(e.get('power_mw', 0) for e in equipment_config.get('bess', []))
+        btm_capacity += equipment_config.get('solar_mw_dc', 0) * 0.25  # Solar capacity credit
+        
+        grid_mw = equipment_config.get('grid_import_mw', 0)
+        total_mw_needed = 200  # Default assumption
+        
+        # If BTM can meet most of the load (>70%), use BTM timeline (ignore grid)
+        if btm_capacity >= total_mw_needed * 0.70:
+            # Filter out grid from stages
+            btm_stages = [s for s in stages if 'Grid' not in s[0]]
+            if btm_stages:
+                critical_path_item = max(btm_stages, key=lambda x: x[1])
+                critical_path = critical_path_item[0]
+                timeline_months = critical_path_item[1]
+            else:
+                # Fallback to all stages if no BTM
+                critical_path_item = max(stages, key=lambda x: x[1])
+                critical_path = critical_path_item[0]
+                timeline_months = critical_path_item[1]
+        else:
+            # Grid is primary - use its timeline
+            critical_path_item = max(stages, key=lambda x: x[1])
+            critical_path = critical_path_item[0]
+            timeline_months = critical_path_item[1]
     else:
         critical_path = "No equipment"
         timeline_months = 0

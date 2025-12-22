@@ -1,14 +1,16 @@
 """
 Multi-Scenario Runner
 Batch run multiple scenarios and compare results
-Uses scipy optimization engine for equipment sizing
+Uses multi-year phased deployment optimization
 """
 
 from typing import List, Dict, Tuple
 from app.utils.optimizer import optimize_scenario, rank_scenarios
 from app.utils.data_io import load_equipment_from_sheets
 from app.utils.optimization_engine import optimize_equipment_configuration, calculate_pareto_frontier
+from app.utils.phased_optimizer import PhasedDeploymentOptimizer
 import pandas as pd
+import numpy as np
 
 
 def auto_size_equipment_optimized(
@@ -19,42 +21,189 @@ def auto_size_equipment_optimized(
     grid_config: Dict = None
 ) -> Tuple[Dict, bool, List[str]]:
     """
-    Use scipy optimizer to find optimal equipment configuration
+    Use multi-year phased deployment optimizer.
     
-    Returns:
-        (equipment_config, feasible, violations)
+   Returns:
+        (deployment_schedule, feasible, violations)
     """
     
-    # Use default grid config if not provided
-    if grid_config is None:
-        grid_config = {
-            'voltage_level': '345kV',
-            'transformer_lead_months': 24,
-            'breaker_lead_months': 18,
-            'total_timeline_months': constraints.get('Estimated_Interconnection_Months', 96),
-            'grid_capacity_override': None,
-            'timeline_override': None,
-            'grid_available_mw': constraints.get('Grid_Available_MW', 200)
-        }
+    # Get load trajectory from site - 10 years
+    load_trajectory = site.get('load_trajectory', {
+        2026: 0, 2027: 0, 2028: 150, 2029: 300, 2030: 450, 2031: 600,
+        2032: 600, 2033: 600, 2034: 600, 2035: 600
+    })
     
-    # Define objective weights (balanced approach)
-    objectives = {
-        'lcoe': {'weight': 0.4},
-        'timeline': {'weight': 0.3},
-        'emissions': {'weight': 0.3}
-    }
+    # Ensure constraints have realistic defaults for datacenter projects
+    # Override any missing or unrealistically tight constraints
+    if 'land_area_acres' not in constraints or constraints.get('land_area_acres', 0) < 200:
+        constraints['land_area_acres'] = 1000  # 1000 acres for 10-year planning
+        print(f"  ⚠️ Land constraint missing or too low, setting to 1000 acres (10-year campus)")
     
-    # Run optimization
-    config, feasible, violations = optimize_equipment_configuration(
-        scenario=scenario,
+    if 'nox_tpy_annual' not in constraints:
+        constraints['nox_tpy_annual'] = 100  # 100 tpy with SCR (realistic)
+    
+    if 'co_tpy_annual' not in constraints:
+        constraints['co_tpy_annual'] = 100  # 100 tpy with OxCat
+    
+    if 'gas_supply_mcf_day' not in constraints:
+        constraints['gas_supply_mcf_day'] = 50000  # 50k MCF/day
+    
+    # Use COMBINATION OPTIMIZER to test different equipment type combinations
+    from app.utils.combination_optimizer import CombinationOptimizer
+    
+    combo_optimizer = CombinationOptimizer(
         site=site,
+        scenario=scenario,
         equipment_data=equipment_data,
-        constraints=constraints,
-        grid_config=grid_config,
-        objectives=objectives
+        constraints=constraints
     )
     
-    return config, feasible, violations
+    # Run combination optimization
+    try:
+        import streamlit as st
+        st.write(f"🔄 Testing equipment combinations for '{scenario.get('Scenario_Name', 'Unknown')}'...")
+        print(f"🔄 Testing combinations for '{scenario.get('Scenario_Name', 'Unknown')}'...")
+        
+        all_results = combo_optimizer.optimize_all()
+        feasible_results = [r for r in all_results if r['feasible']]
+        
+        if not feasible_results:
+            st.error(f"❌ No feasible combinations")
+            return auto_size_equipment(scenario, site, equipment_data, constraints), False, ["No feasible combinations"]
+        
+        best = feasible_results[0]
+        deployment = best['deployment']
+        lcoe = best['lcoe']
+        violations = best['violations']
+        feasible = True
+        
+        st.success(f"✅ {best['combination_name']}: ${lcoe:.2f}/MWh")
+        print(f"  ✅ Best: {best['combination_name']}")
+        
+        # Convert deployment schedule to equipment config format
+        years = list(range(2026, 2036))  # 2026-2035 (10 years)
+        final_year = max(years)
+        
+        # Calculate total CAPEX from deployment
+        total_capex = 0
+        for year in years:
+            recip_added = deployment['recip_mw'].get(year, 0)
+            turbine_added = deployment['turbine_mw'].get(year, 0)
+            bess_added = deployment['bess_mwh'].get(year, 0)
+            solar_added = deployment['solar_mw'].get(year, 0)
+            
+            total_capex += (
+                recip_added * 1000 * 1650 +           # $1650/kW for recips
+                turbine_added * 1000 * 1300 +         # $1300/kW for turbines
+                bess_added * 1000 * 236 * 0.70 +      # $236/kWh * 70% (30% ITC)
+                solar_added * 1000000 * 0.95 * 0.70   # $0.95/W * 70% (30% ITC)
+            )
+        
+        # Calculate annual OPEX from final year deployment
+        total_recip_mw_final = deployment['cumulative_recip_mw'].get(final_year, 0)
+        total_turbine_mw_final = deployment['cumulative_turbine_mw'].get(final_year, 0)
+        total_bess_mwh_final = deployment['cumulative_bess_mwh'].get(final_year, 0)
+        total_solar_mw_final = deployment['cumulative_solar_mw'].get(final_year, 0)
+        
+        # Variable O&M (depends on generation)
+        recip_gen_mwh = total_recip_mw_final * 0.70 * 8760  # 70% CF
+        turbine_gen_mwh = total_turbine_mw_final * 0.30 * 8760  # 30% CF
+        bess_cycles = (total_bess_mwh_final / 4) * 365  # Daily cycling, 4-hr BESS
+        solar_gen_mwh = total_solar_mw_final * 0.25 * 8760  # 25% CF
+        
+        vom_annual = (
+            recip_gen_mwh * 8.5 +      # $8.50/MWh
+            turbine_gen_mwh * 6.5 +    # $6.50/MWh
+            bess_cycles * 1.5 +        # $1.50/MWh
+            solar_gen_mwh * 2.0        # $2.00/MWh
+        )
+        
+        # Fixed O&M (depends on capacity)
+        fom_annual = (
+            total_recip_mw_final * 1000 * 18.5 +      # $18.50/kW-yr
+            total_turbine_mw_final * 1000 * 12.5 +    # $12.50/kW-yr
+            (total_bess_mwh_final / 4) * 1000 * 8.0 + # $8.00/kW-yr (power capacity)
+            total_solar_mw_final * 1000 * 15.0        # $15.00/kW-yr
+        )
+        
+        total_opex_annual = vom_annual + fom_annual
+        
+        equipment_config = {
+            'recip_engines': [],
+            'gas_turbines': [],
+            'bess': [],
+            'solar_mw_dc': deployment['cumulative_solar_mw'].get(final_year, 0),
+            'grid_import_mw': deployment['grid_mw'].get(final_year, 0),
+            '_phased_deployment': deployment,  # Store full deployment schedule
+            '_lifecycle_lcoe': lcoe,
+            '_total_capex': total_capex,  # Store total CAPEX
+            '_annual_opex': total_opex_annual,  # Store annual OPEX ($)
+            '_annual_vom': vom_annual,  # Variable O&M
+            '_annual_fom': fom_annual,  # Fixed O&M
+            '_combination_results': all_results  # ALL combinations tested for comparison
+        }
+        
+        # Add recips
+        total_recip_mw = deployment['cumulative_recip_mw'].get(final_year, 0)
+        if total_recip_mw > 0:
+            num_units = int(np.ceil(total_recip_mw / 4.7))  # 4.7 MW Wärtsilä units
+            # Create individual items (not quantity field) for constraint_validator
+            equipment_config['recip_engines'] = []
+            for i in range(num_units):
+                equipment_config['recip_engines'].append({
+                    'capacity_mw': 4.7,
+                    'capacity_factor': 0.70,
+                    'heat_rate_btu_kwh': 7700,
+                    'nox_lb_mmbtu': 0.099,
+                    'co_lb_mmbtu': 0.015,
+                    'capex_per_kw': 1650,
+                    'vom_per_mwh': 8.5,
+                    'fom_per_kw_yr': 18.5
+                })
+        
+        # Add turbines
+        total_turbine_mw = deployment['cumulative_turbine_mw'].get(final_year, 0)
+        if total_turbine_mw > 0:
+            num_units = int(np.ceil(total_turbine_mw / 35.0))  # 35 MW GE TM2500
+            # Create individual items (not quantity field)
+            equipment_config['gas_turbines'] = []
+            for i in range(num_units):
+                equipment_config['gas_turbines'].append({
+                    'capacity_mw': 35.0,
+                    'capacity_factor': 0.30,
+                    'heat_rate_btu_kwh': 8500,
+                    'nox_lb_mmbtu': 0.099,
+                    'co_lb_mmbtu': 0.015,
+                    'capex_per_kw': 1300,
+                    'vom_per_mwh': 6.5,
+                    'fom_per_kw_yr': 12.5
+                })
+        
+        # Add BESS
+        total_bess_mwh = deployment['cumulative_bess_mwh'].get(final_year, 0)
+        if total_bess_mwh > 0:
+            equipment_config['bess'] = [{
+                'energy_mwh': total_bess_mwh,
+                'power_mw': total_bess_mwh / 4,  # 4-hour duration
+                'capex_per_kwh': 236,
+                'vom_per_mwh': 1.5,
+                'fom_per_kw_yr': 8.0
+            }]
+        
+        return equipment_config, feasible, violations
+        
+    except Exception as e:
+        # Fallback to simple sizing if optimizer fails
+        import traceback
+        error_msg = f"⚠️ Phased optimizer failed: {str(e)}\n{traceback.format_exc()}"
+        print(error_msg)
+        try:
+            import streamlit as st
+            st.error(error_msg)
+        except:
+            pass
+        return auto_size_equipment(scenario, site, equipment_data, constraints), False, [str(e)]
+
 
 
 def auto_size_equipment(scenario: Dict, site: Dict, equipment_data: Dict, constraints: Dict) -> Dict:
@@ -84,20 +233,21 @@ def auto_size_equipment(scenario: Dict, site: Dict, equipment_data: Dict, constr
             
             if selected:
                 unit_mw = selected.get('Capacity_MW', 5)
-                # Size for only 10-15% of load to stay under air permit
-                # For 200 MW site: 2 engines x 4.7 MW = 9.4 MW (~5% of load)
-                num_units = max(1, min(2, int((total_mw * 0.10) / unit_mw)))
+                # Size to meet full load with N+1 redundancy
+                # For 200 MW: need 43 units (200/4.7) + 1 for N+1 = 44 engines
+                num_units_needed = int(np.ceil(total_mw / unit_mw))
+                num_units = min(num_units_needed + 1, 50)  # Cap at 50 engines max
                 
                 config['recip_engines'] = [{
                     'capacity_mw': unit_mw,
-                    'capacity_factor': 0.50,  # Low CF to minimize emissions
+                    'capacity_factor': 0.70,  # 70% CF for baseload
                     'heat_rate_btu_kwh': selected.get('Heat_Rate_BTU_kWh', 7700),
                     'nox_lb_mmbtu': selected.get('NOx_lb_MMBtu', 0.099),
                     'co_lb_mmbtu': selected.get('CO_lb_MMBtu', 0.015),
                     'capex_per_kw': selected.get('CAPEX_per_kW', 1650),
                     'vom_per_mwh': 8.5,
                     'fom_per_kw_yr': 18.5,
-                    'quantity': num_units
+                    'quantity': 1
                 }] * num_units
     
     # Gas Turbines (if enabled)
@@ -109,19 +259,21 @@ def auto_size_equipment(scenario: Dict, site: Dict, equipment_data: Dict, constr
             
             if selected:
                 unit_mw = selected.get('Capacity_MW', 35)
-                # Size for 10% of load max (peaking only)
-                num_units = max(1, min(1, int((total_mw * 0.10) / unit_mw)))  # Usually just 1 turbine
+                # Size to meet full load with N+1 redundancy
+                # For 200 MW: need 6 units (200/35) + 1 for N+1 = 7 turbines
+                num_units_needed = int(np.ceil(total_mw / unit_mw))
+                num_units = num_units_needed + 1  # N+1 redundancy
                 
                 config['gas_turbines'] = [{
                     'capacity_mw': unit_mw,
-                    'capacity_factor': 0.25,  # Very low CF - peaking only
+                    'capacity_factor': 0.30,  # Lower CF for peaking capability
                     'heat_rate_btu_kwh': selected.get('Heat_Rate_BTU_kWh', 8500),
                     'nox_lb_mmbtu': selected.get('NOx_lb_MMBtu', 0.099),
                     'co_lb_mmbtu': selected.get('CO_lb_MMBtu', 0.015),
                     'capex_per_kw': selected.get('CAPEX_per_kW', 1300),
                     'vom_per_mwh': 6.5,
                     'fom_per_kw_yr': 12.5,
-                    'quantity': num_units
+                    'quantity': 1
                 }] * num_units
     
     # BESS (if enabled)
@@ -174,17 +326,18 @@ def auto_size_equipment(scenario: Dict, site: Dict, equipment_data: Dict, constr
     
     # Grid (if enabled)
     if grid_enabled:
-        # Size based on scenario
+        # Check scenario name to determine if grid should be primary or backup
         grid_available = constraints.get('Grid_Available_MW', 200)
         
+        # BTM scenarios should have NO grid
         if 'BTM' in scenario_name or 'Microgrid' in scenario.get('Scenario_Name', ''):
-            config['grid_import_mw'] = 0  # No grid if BTM only
+            config['grid_import_mw'] = 0  # Explicitly zero for BTM
         elif 'Grid' in scenario.get('Scenario_Name', ''):
-            # Grid primary - use 70% of available or 60% of load, whichever is less
-            config['grid_import_mw'] = min(total_mw * 0.60, grid_available * 0.70)
+            # Grid primary - use majority of available capacity
+            config['grid_import_mw'] = min(total_mw * 0.80, grid_available * 0.90)
         else:
-            # Grid backup - minimal import
-            config['grid_import_mw'] = min(total_mw * 0.10, grid_available * 0.30)
+            # Backup grid - minimal import
+            config['grid_import_mw'] = min(total_mw * 0.15, grid_available * 0.30)
     
     return config
 
