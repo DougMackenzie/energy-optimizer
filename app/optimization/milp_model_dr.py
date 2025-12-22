@@ -316,15 +316,23 @@ class bvNexusMILP_DR:
         m.grid_capex_con = Constraint(m.Y, rule=grid_capex_tracking)
         
         # RAM Reliability Constraint (User Request: 99.9% Uptime)
-        # Implemented as N-1 Redundancy for firm generation
-        # With typical engine FOR of 2-3%, N-1 provides >99.9% system availability
+        # Implemented conservatively: Total Capacity - Largest Single Unit
+        # This ensures N-1 redundancy regardless of technology mix
+        # With typical FOR of 2-3%, this provides >99.9% system availability
         def ram_reliability(m, y):
             recip_cap = 5  # MW per engine
-            turbine_cap = 20
-            # Firm capacity with largest single unit out (N-1)
-            # Note: Solar is NOT firm. BESS is firm for duration. Grid is firm.
-            firm = ((m.n_recip[y] - 1) * recip_cap + m.n_turbine[y] * turbine_cap
-                   + m.bess_mw[y] + m.grid_mw[y])
+            turbine_cap = 20  # MW per turbine
+            
+            # Total system capacity
+            total_cap = (m.n_recip[y] * recip_cap + m.n_turbine[y] * turbine_cap
+                        + m.bess_mw[y] + m.grid_mw[y])
+            
+            # Largest single contingency (one turbine = 20 MW)
+            # Conservative: assumes largest unit that could fail
+            largest_unit = 20  # MW
+            
+            # Firm capacity = Total - Largest Unit (N-1 redundancy)
+            firm = total_cap - largest_unit
             
             # Must meet Peak Load
             peak_load = np.percentile(self.load_data['total_load_mw'], 98)
