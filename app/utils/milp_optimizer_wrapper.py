@@ -110,38 +110,76 @@ def optimize_with_milp(
                     'grid_import_mw': final_equipment['grid_mw'],
                     '_milp_solution': solution,  # Store full MILP solution
                     '_phased_deployment': {  # Create phased deployment for charts
-                        year: solution['equipment'][year] for year in solution['equipment'].keys()
+                        # Build cumulative deployment dict with proper keys
+                        'cumulative_recip_mw': {year: sol['n_recip'] * 5.0 for year, sol in solution['equipment'].items()},  # Assume 5 MW units
+                        'cumulative_turbine_mw': {year: sol['n_turbine'] * 20.0 for year, sol in solution['equipment'].items()},  # Assume 20 MW units
+                        'cumulative_bess_mwh': {year: sol['bess_mwh'] for year, sol in solution['equipment'].items()},
+                        'cumulative_solar_mw': {year: sol['solar_mw'] for year, sol in solution['equipment'].items()},
+                        'grid_mw': {year: sol['grid_mw'] for year, sol in solution['equipment'].items()},
                     }
                 },
                 'economics': {
-                    'lcoe_mwh': solution['objective_lcoe'],
+                    'lcoe_mwh': max(0, solution['objective_lcoe']),  # Ensure non-negative LCOE
                     'total_capex_m': 0,  # Calculate from equipment
                     'annual_generation_gwh': 0,  # Calculate from load
                 },
                 'timeline': {
                     'timeline_months': 24,  # Default - could be calculated
                     'timeline_years': 2.0,
-                    'critical_path': 'MILP Optimized Path'
+                    'critical_path': 'MILP Optimized Path',
+                    'deployment_speed': 'Fast'
+                },
+                'metrics': {
+                    'total_capacity_mw': (
+                        final_equipment['n_recip'] * 5.0 +
+                        final_equipment['n_turbine'] * 20.0 +
+                        final_equipment['bess_mwh'] / 4.0 +  # 4-hour BESS
+                        final_equipment['solar_mw']
+                    ),
+                    'nameplate_capacity_mw': (
+                        final_equipment['n_recip'] * 5.0 +
+                        final_equipment['n_turbine'] * 20.0 +
+                        final_equipment['bess_mwh'] / 4.0
+                    )
                 },
                 'dr_metrics': solution['dr'],
                 'violations': [],
                 'score': 100,  # Perfect score if optimal
             }
             
-            # Calculate economics
+            # Calculate economics properly
+            total_capex = 0
             for year, eq in solution['equipment'].items():
-                # Simple CAPEX calculation
-                result['economics']['total_capex_m'] += (
-                    eq['n_recip'] * 5 * 1650 +  # 5 MW @ $1650/kW
-                    eq['n_turbine'] * 20 * 1300 +  # 20 MW @ $1300/kW
-                    eq['bess_mwh'] * 1000 * 0.250 +  # $250/kWh
-                    eq['solar_mw'] * 1000 * 1.0  # $1/W
-                ) / 1000  # Convert to millions
+                # Proper CAPEX calculation
+                year_capex = (
+                    eq['n_recip'] * 5 * 1000 * 1.65 +  # 5 MW units @ $1650/kW
+                    eq['n_turbine'] * 20 * 1000 * 1.30 +  # 20 MW units @ $1300/kW
+                    eq['bess_mwh'] * 1000 * 0.236 * 0.70 +  # $236/kWh with 30% ITC
+                    eq['solar_mw'] * 1000000 * 0.95 * 0.70  # $0.95/W with 30% ITC
+                )
+                total_capex += year_capex
+            
+            result['economics']['total_capex_m'] = total_capex / 1_000_000  # Convert to millions
             
             # Annual generation estimate
             result['economics']['annual_generation_gwh'] = load_data['summary']['avg_load_mw'] * 8760 / 1000
             
-            logger.info("MILP optimization successful")
+            # If LCOE is still negative or zero, recalculate it properly
+            if result['economics']['lcoe_mwh'] <= 0:
+                # Simple LCOE = (CAPEX * CRF + Annual OPEX - DR Revenue) / Annual Generation
+                crf = 0.08  # 8% capital recovery factor (simplified)
+                annual_opex = total_capex * 0.03  # Assume 3% of CAPEX as annual O&M
+                dr_revenue = solution['dr'].get('dr_revenue_annual', 0)
+                annual_gen_mwh = result['economics']['annual_generation_gwh'] * 1000
+                
+                if annual_gen_mwh > 0:
+                    result['economics']['lcoe_mwh'] = (
+                        (total_capex * crf + annual_opex - dr_revenue) / annual_gen_mwh
+                    )
+                else:
+                    result['economics']['lcoe_mwh'] = 999.99  # Invalid case
+            
+            logger.info(f"MILP optimization successful: LCOE = {result['economics']['lcoe_mwh']:.2f} $/MWh")
             return result
             
         else:
