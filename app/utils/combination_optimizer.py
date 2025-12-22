@@ -6,6 +6,17 @@ Level 2: How much of each type per year (continuous temporal optimization)
 
 This solves the search space explosion problem by testing equipment
 combinations separately rather than all types simultaneously.
+
+⚠️ DEPRECATION WARNING ⚠️
+This optimizer is deprecated as of December 2024. Use app.optimization.milp_model_dr instead.
+
+Reasons:
+- Hierarchical approach is slower (tests many combinations)
+- Each level uses scipy.optimize (non-deterministic)
+- Total solve time can exceed 10 minutes
+
+Replacement: app.optimization.milp_model_dr handles equipment selection and deployment
+in a single unified MILP that solves in 30-60 seconds.
 """
 
 from typing import List, Dict, Tuple

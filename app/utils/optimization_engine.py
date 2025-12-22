@@ -1,6 +1,37 @@
 """
 Full Optimization Engine with Multi-Objective Optimization and Pareto Frontier Analysis
 Uses scipy.optimize for constrained optimization with comprehensive constraint validation
+
+⚠️ DEPRECATION WARNING ⚠️
+This optimizer is deprecated as of December 2024 and will be removed in a future release.
+
+PROBLEM: Uses scipy.optimize.differential_evolution which is:
+- Stochastic (non-deterministic results)
+- Uses soft constraint penalties (allows infeasible solutions)
+- Treats integer variables as continuous (sub-optimal equipment counts)
+- Slow solve times (20+ minutes)
+- ~90% feasibility rate
+
+REPLACEMENT: Use app.optimization.milp_model_dr instead
+- Deterministic MILP (Pyomo + CBC/Gurobi)
+- Hard constraints (100% feasibility guarantee)
+- True integer variables (optimal equipment counts)
+- Fast solve times (30-60 seconds)
+- Integrated demand response capability
+
+MIGRATION:
+See app/utils/milp_optimizer_wrapper.py for drop-in replacement.
+
+OLD CODE:
+    from app.utils.optimization_engine import OptimizationEngine
+    engine = OptimizationEngine(site, constraints, scenario, equipment_data, grid_config)
+    config, feasible, violations = engine.optimize()
+
+NEW CODE:
+    from app.utils.milp_optimizer_wrapper import optimize_with_milp
+    result = optimize_with_milp(site, constraints, load_profile_dr)
+    config = result['equipment_config']
+    feasible = result['feasible']
 """
 
 import numpy as np

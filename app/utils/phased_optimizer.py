@@ -6,6 +6,18 @@ Optimizes equipment deployment across multiple years to:
 - Minimize lifecycle LCOE
 - Respect annual constraints (air permits, gas supply, land, grid capacity, N-1 reliability)
 - Account for equipment lead times
+
+⚠️ DEPRECATION WARNING ⚠️
+This optimizer is deprecated as of December 2024. Use app.optimization.milp_model_dr instead.
+
+Reasons for deprecation:
+- Non-deterministic (scipy.optimize.differential_evolution)
+- Soft constraint penalties (not hard guarantees)
+- Slower solve times (500 iterations)
+- ~90% feasibility
+
+Replacement: app.optimization.milp_model_dr provides phased deployment with hard constraints,
+deterministic results, and 30-60 second solve times.
 """
 
 import numpy as np

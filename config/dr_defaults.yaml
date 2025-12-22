@@ -1,0 +1,103 @@
+# AI Datacenter Demand Response Default Parameters
+# Based on research findings with QA/QC modifications
+
+# === COMPUTATIONAL TRACTABILITY ===
+optimization:
+  use_representative_periods: true   # Critical for solve time
+  n_representative_weeks: 6          # 1008 hours instead of 8760
+  scale_factor: 8.69                 # 8760 / 1008
+  solver: glpk                       # glpk (free), cbc (better), or gurobi (best)
+  time_limit_seconds: 300
+  mip_gap: 0.01
+
+# === BESS CONFIGURATION (Fixed to preserve linearity) ===
+bess:
+  duration_hours: 4                  # FIXED - DO NOT make this a variable!
+  charge_efficiency: 0.92
+  discharge_efficiency: 0.92
+  min_soc_pct: 0.10
+  capex_per_kwh: 250
+
+# === GRID INTERCONNECTION ===
+grid:
+  capex_usd: 5000000                 # $5M typical interconnection cost
+  lead_time_months: 96               # 8 years typical
+  max_capacity_mw: 500
+
+# === BROWNFIELD DEFAULTS ===
+existing_equipment:
+  n_recip: 0
+  n_turbine: 0
+  bess_mwh: 0
+  solar_mw: 0
+  grid_mw: 0
+
+# === WORKLOAD FLEXIBILITY (Research-based) ===
+workload_flexibility:
+  pre_training:
+    flexibility_pct: 0.30
+    response_time_min: 15
+    min_run_hours: 3
+    checkpoint_overhead_pct: 0.05
+  fine_tuning:
+    flexibility_pct: 0.50
+    response_time_min: 5
+    min_run_hours: 1
+    checkpoint_overhead_pct: 0.02
+  batch_inference:
+    flexibility_pct: 0.90
+    response_time_min: 1
+    min_run_hours: 0
+    checkpoint_overhead_pct: 0
+  realtime_inference:
+    flexibility_pct: 0.05
+    response_time_min: null  # Cannot interrupt
+    min_run_hours: null
+    checkpoint_overhead_pct: 0
+  rl_training:
+    flexibility_pct: 0.40
+    response_time_min: 10
+    min_run_hours: 2
+    checkpoint_overhead_pct: 0.03
+  cloud_hpc:
+    flexibility_pct: 0.25
+    response_time_min: 20
+    min_run_hours: 4
+    checkpoint_overhead_pct: 0.01
+
+# === COOLING FLEXIBILITY ===
+cooling_flexibility:
+  max_reduction_pct: 0.25
+  thermal_time_constant_min: 30
+  response_time_min: 15
+  power_reduction_per_degree_pct: 4
+
+# === DR PRODUCTS ===
+dr_products:
+  spinning_reserve:
+    response_time_min: 10
+    payment_per_mw_hr: 15
+    activation_per_mwh: 50
+    max_events_per_year: 50
+    peak_window_hours: [16, 17, 18, 19, 20, 21]  # 4-9 PM
+  non_spinning_reserve:
+    response_time_min: 30
+    payment_per_mw_hr: 8
+    activation_per_mwh: 40
+    max_events_per_year: 100
+    peak_window_hours: [16, 17, 18, 19, 20, 21]
+  economic_dr:
+    response_time_min: 60
+    payment_per_mw_hr: 5
+    activation_per_mwh: 100
+    max_events_per_year: 200
+    peak_window_hours: [14, 15, 16, 17, 18, 19, 20, 21]  # 2-9 PM
+  emergency_dr:
+    response_time_min: 120
+    payment_per_mw_hr: 3
+    activation_per_mwh: 200
+    max_events_per_year: 20
+    peak_window_hours: null  # All hours
+
+# === ANNUAL CURTAILMENT BUDGET ===
+annual_curtailment_budget_pct: 0.01  # 1% from research

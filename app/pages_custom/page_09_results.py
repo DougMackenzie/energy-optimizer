@@ -210,6 +210,94 @@ def render():
             st.warning(f"🐢 **{speed}** Deployment")
             st.caption("> 48 months")
     
+    # DEMAND RESPONSE METRICS (New Section)
+    if 'dr_metrics' in result and result['dr_metrics']:
+        st.markdown("---")
+        st.markdown("#### 💡 Demand Response Metrics")
+        
+        dr = result['dr_metrics']
+        
+        # Key DR metrics
+        col_dr1, col_dr2, col_dr3, col_dr4 = st.columns(4)
+        
+        with col_dr1:
+            st.metric("Annual Curtailment", 
+                     f"{dr.get('total_curtailment_mwh', 0):.0f} MWh",
+                     delta=f"{dr.get('curtailment_pct', 0):.2f}% of load")
+        
+        with col_dr2:
+            st.metric("DR Revenue", 
+                     f"${dr.get('dr_revenue_annual', 0):,.0f}/yr")
+        
+        with col_dr3:
+            # Calculate LCOE benefit
+            if economics.get('lcoe_mwh') and economics.get('annual_generation_gwh'):
+                lcoe_benefit = (dr.get('dr_revenue_annual', 0) / 
+                               (economics['annual_generation_gwh'] * 1000))
+                st.metric("LCOE Benefit", 
+                         f"${lcoe_benefit:.2f}/MWh",
+                         delta="Lower is better",
+                         delta_color="inverse")
+            else:
+                st.metric("LCOE Benefit", "N/A")
+        
+        with col_dr4:
+            # Total flexibility percentage
+            if 'load_data' in st.session_state.get('load_profile_dr', {}):
+                load_data = st.session_state.load_profile_dr['load_data']
+                flex_pct = load_data['summary'].get('avg_flexibility_pct', 0)
+                st.metric("Avg Flexibility", f"{flex_pct:.1f}%")
+            else:
+                st.metric("Avg Flexibility", f"{dr.get('curtailment_pct', 0):.1f}%")
+        
+        # DR capacity breakdown by product
+        if dr.get('dr_capacity_by_product'):
+            st.markdown("##### DR Capacity Enrolled by Product")
+            
+            dr_products = dr['dr_capacity_by_product']
+            product_data = []
+            
+            for product, capacity_mw in dr_products.items():
+                if capacity_mw > 0:
+                    product_data.append({
+                        'Product': product.replace('_', ' ').title(),
+                        'Enrolled Capacity (MW)': f"{capacity_mw:.1f}",
+                        'Status': '✅ Active' if capacity_mw > 0 else '❌ Inactive'
+                    })
+            
+            if product_data:
+                df_dr = pd.DataFrame(product_data)
+                st.dataframe(df_dr, use_container_width=True, hide_index=True)
+            else:
+                st.info("No DR products enrolled in this optimization")
+        
+        # Flexibility composition (if available)
+        if 'load_data' in st.session_state.get('load_profile_dr', {}):
+            with st.expander("📊 View Flexibility Breakdown"):
+                load_data = st.session_state.load_profile_dr['load_data']
+                
+                col_flex1, col_flex2 = st.columns(2)
+                
+                with col_flex1:
+                    st.markdown("**IT Workload Flexibility**")
+                    workload_flex = {
+                        'Pre-Training': load_data['summary'].get('pre_training_flex_avg', 0),
+                        'Fine-Tuning': load_data['summary'].get('fine_tuning_flex_avg', 0),
+                        'Batch Inference': load_data['summary'].get('batch_flex_avg', 0),
+                        'Real-Time': load_data['summary'].get('realtime_flex_avg', 0),
+                    }
+                    
+                    for wl, flex in workload_flex.items():
+                        if flex > 0:
+                            st.caption(f"• {wl}: {flex:.1f} MW")
+                
+                with col_flex2:
+                    st.markdown("**Cooling Flexibility**")
+                    cooling_flex = load_data['summary'].get('cooling_flex_avg', 0)
+                    st.caption(f"• Cooling systems: {cooling_flex:.1f} MW")
+                    st.caption(f"• Thermal time constant: 30 min (typical)")
+
+    
     # Equipment Configuration
     st.markdown("---")
     st.markdown("#### ⚙️ Equipment Configuration")
