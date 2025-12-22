@@ -420,7 +420,8 @@ def run_all_scenarios(
                 result['dr_metrics'] = milp_result.get('dr_metrics', {})
                 result['milp_optimized'] = True
                 
-                print(f"  ✓ LCOE: ${milp_result['economics']['lcoe_mwh']:.2f}/MWh")
+                if milp_result.get('economics', {}).get('lcoe_mwh'):
+                    print(f"  ✓ LCOE: ${milp_result['economics']['lcoe_mwh']:.2f}/MWh")
                 if milp_result.get('dr_metrics'):
                     print(f"  ✓ DR Revenue: ${milp_result['dr_metrics'].get('dr_revenue_annual', 0):,.0f}/yr")
                 
@@ -567,11 +568,11 @@ def create_comparison_table(results: List[Dict]) -> pd.DataFrame:
             'Rank': result.get('rank', 999),
             'Scenario': result.get('scenario_name', 'Unknown'),
             'Feasible': '✅' if result.get('feasible') else '❌',
-            'LCOE ($/MWh)': f"${result['economics']['lcoe_mwh']:.2f}" if result.get('feasible') else 'N/A',
-            'CAPEX ($M)': f"${result['economics']['total_capex_m']:.1f}" if result.get('feasible') else 'N/A',
-            'Timeline (mo)': result['timeline']['timeline_months'] if result.get('feasible') else 'N/A',
-            'Speed': result['timeline']['deployment_speed'] if result.get('feasible') else 'N/A',
-            'Total MW': f"{result['metrics']['total_capacity_mw']:.0f}" if result.get('feasible') else 'N/A',
+            'LCOE ($/MWh)': f"${result['economics']['lcoe_mwh']:.2f}" if result.get('feasible') and result.get('economics', {}).get('lcoe_mwh') else 'N/A',
+            'CAPEX ($M)': f"${result['economics']['total_capex_m']:.1f}" if result.get('feasible') and result.get('economics', {}).get('total_capex_m') else 'N/A',
+            'Timeline (mo)': result['timeline']['timeline_months'] if result.get('feasible') and result.get('timeline', {}).get('timeline_months') else 'N/A',
+            'Speed': result['timeline']['deployment_speed'] if result.get('feasible') and result.get('timeline', {}).get('deployment_speed') else 'N/A',
+            'Total MW': f"{result['metrics']['total_capacity_mw']:.0f}" if result.get('feasible') and result.get('metrics', {}).get('total_capacity_mw') else 'N/A',
             'Score': f"{result.get('score', 0):.1f}" if result.get('feasible') else '0',
             'Constraint Violations': violations_text
         }
