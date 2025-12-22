@@ -122,6 +122,7 @@ def optimize_with_milp(
                     'lcoe_mwh': max(0, solution['objective_lcoe']),  # Ensure non-negative LCOE
                     'total_capex_m': 0,  # Calculate from equipment
                     'annual_generation_gwh': 0,  # Calculate from load
+                    'annual_opex_m': 0,  # Calculate from equipment
                 },
                 'timeline': {
                     'timeline_months': 24,  # Default - could be calculated
