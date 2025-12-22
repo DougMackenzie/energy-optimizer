@@ -62,9 +62,8 @@ optimizer.build(
 )
 
 print("   ✓ Model built successfully")
-print(f"   ✓ Variables: ~{optimizer.n_hours * 3 * 10} (approx)")
-print(f"   ✓ Representative hours: {optimizer.n_hours}")
-print(f"   ✓ Scale factor: {optimizer.scale_factor:.2f}")
+print(f"   ✓ Years: {len(optimizer.years)}")
+print(f"   ✓ Representative periods: {optimizer.use_representative}")
 
 # Solve
 print("\n3. Solving MILP...")
@@ -89,10 +88,20 @@ try:
         print(f"     - Solar: {eq['solar_mw']:.1f} MW")
         print(f"     - Grid: {eq['grid_mw']:.1f} MW (active={eq['grid_active']})")
         
-        dr = solution['dr']
-        print(f"\n   Demand Response:")
-        print(f"     - Annual curtailment: {dr['total_curtailment_mwh']:.1f} MWh ({dr['curtailment_pct']:.2f}%)")
-        print(f"     - Annual DR revenue: ${dr['dr_revenue_annual']:,.0f}")
+        # Power coverage metrics (NEW)
+        cov = solution['power_coverage'][final_year]
+        print(f"\n   Power Coverage (Year {final_year}):")
+        print(f"     - Coverage: {cov['coverage_pct']:.1f}%")
+        print(f"     - Power gap: {cov['power_gap_mw']:.1f} MW")
+        print(f"     - Fully served: {cov['is_fully_served']}")
+        
+        # DR metrics
+        dr_year = solution['dr'][final_year]
+        print(f"\n   Demand Response (Year {final_year}):")
+        print(f"     - Total DR capacity: {dr_year.get('total_dr_mw', 0):.1f} MW")
+        print(f"     - Spinning reserve: {dr_year.get('spinning_reserve', 0):.1f} MW")
+        print(f"     - Non-spinning: {dr_year.get('non_spinning_reserve', 0):.1f} MW")
+
         
         print("\n" + "=" * 60)
         print("✅ bvNexus MILP TEST PASSED")
