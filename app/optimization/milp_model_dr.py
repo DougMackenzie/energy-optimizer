@@ -647,25 +647,55 @@ class bvNexusMILP_DR:
         """Extract solution to dictionary."""
         m = self.model
         
-        solution = {
-            'status': str(results.solver.status),
-            'termination': str(results.solver.termination_condition),
-            'objective_lcoe': value(m.obj) if hasattr(m, 'obj') else None,
-            'equipment': {},
-            'dr': {},
-            'dispatch': {},
-        }
+        # Check if solver found a solution
+        termination = str(results.solver.termination_condition)
+        status = str(results.solver.status)
         
-        # Equipment by year
-        for y in m.Y:
-            solution['equipment'][y] = {
-                'n_recip': int(value(m.n_recip[y])),
-                'n_turbine': int(value(m.n_turbine[y])),
-                'bess_mwh': value(m.bess_mwh[y]),
-                'bess_mw': value(m.bess_mw[y]),
-                'solar_mw': value(m.solar_mw[y]),
-                'grid_mw': value(m.grid_mw[y]),
-                'grid_active': int(value(m.grid_active[y])),
+        # If solver failed or problem is infeasible, return early with minimal info
+        if termination in ['infeasible', 'infeasibleOrUnbounded', 'invalidProblem', 'solverFailure', 'error']:
+            logger.warning(f"Solver failed with termination: {termination}")
+            return {
+                'status': status,
+                'termination': termination,
+                'objective_lcoe': None,
+                'equipment': {},
+                'dr': {},
+                'dispatch': {},
+                'feasible': False,
+            }
+        
+        # Try to extract solution (may still fail if solver timed out without finding feasible solution)
+        try:
+            solution = {
+                'status': status,
+                'termination': termination,
+                'objective_lcoe': value(m.obj) if hasattr(m, 'obj') else None,
+                'equipment': {},
+                'dr': {},
+                'dispatch': {},
+            }
+            
+            # Equipment by year
+            for y in m.Y:
+                solution['equipment'][y] = {
+                    'n_recip': int(value(m.n_recip[y])),
+                    'n_turbine': int(value(m.n_turbine[y])),
+                    'bess_mwh': value(m.bess_mwh[y]),
+                    'bess_mw': value(m.bess_mw[y]),
+                    'solar_mw': value(m.solar_mw[y]),
+                    'grid_mw': value(m.grid_mw[y]),
+                    'grid_active': int(value(m.grid_active[y])),
+                }
+        except (ValueError, KeyError) as e:
+            logger.error(f"Failed to extract solution values: {e}")
+            return {
+                'status': status,
+                'termination': termination,
+                'objective_lcoe': None,
+                'equipment': {},
+                'dr': {},
+                'dispatch': {},
+                'feasible': False,
             }
         
         # DR metrics
