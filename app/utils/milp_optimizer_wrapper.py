@@ -165,6 +165,9 @@ def optimize_with_milp(
             # Annual generation estimate
             result['economics']['annual_generation_gwh'] = load_data['summary']['avg_load_mw'] * 8760 / 1000
             
+            # Set annual OPEX
+            result['economics']['annual_opex_m'] = (total_capex * 0.03) / 1_000_000 if total_capex > 0 else 0
+            
             # If LCOE is still negative or zero, recalculate it properly
             if result['economics']['lcoe_mwh'] <= 0:
                 # Simple LCOE = (CAPEX * CRF + Annual OPEX - DR Revenue) / Annual Generation
