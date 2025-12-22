@@ -238,10 +238,24 @@ class bvNexusMILP_DR:
         # Grid interconnection capital cost
         m.GRID_CAPEX = Param(initialize=self.site.get('grid_capex', 5_000_000))  # $5M default
         
-        # Constraint limits
+        
+        # Constraint limits - Scale defaults based on peak load for reasonableness
+        peak_load_estimate = np.percentile(self.load_data['total_load_mw'], 98)
+        
+        # Gas default: Assume peak load might run 24/7 at 80% capacity factor
+        # peak_load * 0.8 * 24 hr * 7.7 MMBtu/MWh / 1.03 MMBtu/MCF
+        default_gas_mcf_day = peak_load_estimate * 0.8 * 24 * 7.7 / 1.03
+        
+        # CO2 default: Assume annual emissions from running at 60% capacity factor
+        # peak_load * 0.6 * 8760 hr * 7.7 MMBtu/MWh * 117 lb/MMBtu / 2000
+        default_co2_tpy = peak_load_estimate * 0.6 * 8760 * 7.7 * 117 / 2000
+        
         m.NOX_MAX = Param(initialize=self.constraints.get('nox_tpy', 99))
         m.LAND_MAX = Param(initialize=self.constraints.get('land_acres', 500))
-        m.GAS_MAX = Param(initialize=self.constraints.get('gas_mcf_day', 50000))
+        m.GAS_MAX = Param(initialize=self.constraints.get('gas_mcf_day', default_gas_mcf_day))
+        m.CO2_MAX = Param(initialize=self.constraints.get('co2_tpy', default_co2_tpy))
+        
+        logger.info(f"Constraint defaults: GAS={m.GAS_MAX.value:.0f} MCF/day, CO2={m.CO2_MAX.value:.0f} tpy")
         
         # Economic
         m.discount_rate = Param(initialize=0.08)
@@ -518,9 +532,7 @@ class bvNexusMILP_DR:
             
             total_co2_tons = (recip_mmbtu + turbine_mmbtu) * m.SCALE_FACTOR * co2_factor / 2000
             
-            # Default CO2 limit if not specified (e.g. 100,000 tons/year)
-            CO2_LIMIT = self.constraints.get('co2_tpy', 100000)
-            return total_co2_tons <= CO2_LIMIT
+            return total_co2_tons <= m.CO2_MAX
         m.co2_con = Constraint(m.Y, rule=co2_emissions_limit)
         
         # 3. Ramp Rate / PQ Constraint
