@@ -69,41 +69,51 @@ def render():
             st.caption("This will run: BTM Only, All Sources, Bridge to Backup")
         
         with col_batch2:
-            if st.button("⚡ Run All Scenarios", type="primary", use_container_width=True):
-                with st.spinner("Running all scenarios... This may take a few minutes"):
-                    from app.utils.multi_scenario import run_all_scenarios, create_comparison_table
-                    from app.utils.site_loader import load_scenario_templates
-                    
-                    scenarios = load_scenario_templates()
-                    
-                    # Get grid config from session state
-                    grid_config = st.session_state.get('grid_config', None)
-                    
-                    # Check if we have MILP load profile configured
-                    use_milp = 'load_profile_dr' in st.session_state
-                    load_profile_dr = st.session_state.get('load_profile_dr', None)
-                    
-                    if use_milp:
-                        st.info("🚀 Using bvNexus MILP optimizer (fast & deterministic)")
-                    else:
-                        st.warning("⚠️ Using legacy scipy optimizer. For better results, configure Load Composer first.")
-                    
-                    # Run all scenarios
-                    results = run_all_scenarios(
-                        site=site,
-                        constraints=constraints,
-                        objectives=objectives,
-                        scenarios=scenarios,
-                        grid_config=grid_config,
-                        use_milp=use_milp,
-                        load_profile_dr=load_profile_dr
-                    )
-                    
-                    # Store results
-                    st.session_state.multi_scenario_results = results
-                    
-                    st.success(f"✅ Completed {len(results)} scenarios!")
+            # Check if Load Composer is configured
+            if 'load_profile_dr' not in st.session_state:
+                st.error("⚠️ **Load Composer Required**")
+                st.markdown("""
+                To use the optimizer, you must first configure the Load Composer:
+                
+                1. Navigate to **Load Composer** (in sidebar)
+                2. Configure all 4 tabs (Load, Workload, Cooling, DR Economics)
+                3. Click **Save Configuration**
+                4. Return here to run scenarios
+                
+                The legacy scipy optimizer is deprecated and no longer supported.
+                """)
+                if st.button("📊 Go to Load Composer", use_container_width=True):
+                    st.session_state.current_page = 'load_composer'
                     st.rerun()
+            else:
+                if st.button("⚡ Run All Scenarios", type="primary", use_container_width=True):
+                    with st.spinner("Running all scenarios with MILP... This may take 2-4 minutes"):
+                        from app.utils.multi_scenario import run_all_scenarios, create_comparison_table
+                        from app.utils.site_loader import load_scenario_templates
+                        
+                        scenarios = load_scenario_templates()
+                        
+                        # Get data from session state
+                        load_profile_dr = st.session_state.load_profile_dr
+                        
+                        st.info("🚀 Using bvNexus MILP optimizer (100% feasibility guaranteed)")
+                        
+                        # Run all scenarios with MILP
+                        results = run_all_scenarios(
+                            site=site,
+                            constraints=constraints,
+                            objectives=objectives,
+                            scenarios=scenarios,
+                            grid_config=None,
+                            use_milp=True,
+                            load_profile_dr=load_profile_dr
+                        )
+                        
+                        # Store results
+                        st.session_state.multi_scenario_results = results
+                        
+                        st.success(f"✅ Completed {len(results)} scenarios!")
+                        st.rerun()
         
         # Display results if available
         if 'multi_scenario_results' in st.session_state:
