@@ -508,53 +508,74 @@ class bvNexusMILP_DR:
         m.dr_peak_window_con = Constraint(m.DR, m.T, m.Y, rule=dr_peak_window)
         
         # === NEW CONSTRAINTS (User Request) ===
+        # TEMPORARILY DISABLED FOR DIAGNOSIS - Causing universal infeasibility
         
-        # 1. Gas Supply Limit
-        def gas_supply_limit(m, y):
-            # Daily gas consumption in MCF
-            # Heat rates: Recip=7.7 MMBtu/MWh, Turbine=8.5 MMBtu/MWh
-            # Natural Gas: ~1.03 MMBtu/MCF
-            recip_mcf = sum(m.gen_recip[t, y] * 7.7 / 1.03 for t in m.T)
-            turbine_mcf = sum(m.gen_turbine[t, y] * 8.5 / 1.03 for t in m.T)
-            
-            # Convert annual sum to average daily (approximate for planning)
-            # For strict daily limit, we'd need daily constraints, but annual avg is standard for capacity planning
-            avg_daily_mcf = (recip_mcf + turbine_mcf) * m.SCALE_FACTOR / 365
-            return avg_daily_mcf <= m.GAS_MAX
-        m.gas_supply_con = Constraint(m.Y, rule=gas_supply_limit)
+        # TODO: Re-enable after diagnosing
+        # # 1. Gas Supply Limit
+        # def gas_supply_limit(m, y):
+        #     recip_mcf = sum(m.gen_recip[t, y] * 7.7 / 1.03 for t in m.T)
+        #     turbine_mcf = sum(m.gen_turbine[t, y] * 8.5 / 1.03 for t in m.T)
+        #     avg_daily_mcf = (recip_mcf + turbine_mcf) * m.SCALE_FACTOR / 365
+        #     return avg_daily_mcf <= m.GAS_MAX
+        # m.gas_supply_con = Constraint(m.Y, rule=gas_supply_limit)
+        # 
+        # # 2. CO2 Emissions Limit
+        # def co2_emissions_limit(m, y):
+        #     co2_factor = 117
+        #     recip_mmbtu = sum(m.gen_recip[t, y] * 7.7 for t in m.T)
+        #     turbine_mmbtu = sum(m.gen_turbine[t, y] * 8.5 for t in m.T)
+        #     total_co2_tons = (recip_mmbtu + turbine_mmbtu) * m.SCALE_FACTOR * co2_factor / 2000
+        #     return total_co2_tons <= m.CO2_MAX
+        # m.co2_con = Constraint(m.Y, rule=co2_emissions_limit)
+        # 
+        # # 3. Ramp Rate / PQ Constraint
+        # def ramp_capability(m, y):
+        #     sys_ramp = (m.n_recip[y] * 2.5 + m.n_turbine[y] * 4.0 + m.bess_mw[y] * 10.0)
+        #     peak_load = np.percentile(self.load_data['total_load_mw'], 98)
+        #     required_ramp = 0.10 * peak_load
+        #     return sys_ramp >= required_ramp
+        # m.pq_ramp_con = Constraint(m.Y, rule=ramp_capability)
         
-        # 2. CO2 Emissions Limit
-        # Emission factor: ~117 lb CO2/MMBtu for NG
-        def co2_emissions_limit(m, y):
-            co2_factor = 117  # lb/MMBtu
-            recip_mmbtu = sum(m.gen_recip[t, y] * 7.7 for t in m.T)
-            turbine_mmbtu = sum(m.gen_turbine[t, y] * 8.5 for t in m.T)
-            
-            total_co2_tons = (recip_mmbtu + turbine_mmbtu) * m.SCALE_FACTOR * co2_factor / 2000
-            
-            return total_co2_tons <= m.CO2_MAX
-        m.co2_con = Constraint(m.Y, rule=co2_emissions_limit)
-        
-        # 3. Ramp Rate / PQ Constraint
-        # Ensure system can ramp to meet load fluctuations
-        # Simplified: Capacity * Ramp_Rate >= Required_Ramp
-        def ramp_capability(m, y):
-            # Ramp rates (MW/min): Recip=50% (2.5MW), Turbine=20% (4MW), BESS=100%
-            sys_ramp = (m.n_recip[y] * 2.5 + m.n_turbine[y] * 4.0 + m.bess_mw[y] * 10.0)
-            
-            # Required ramp: ~10% of peak load per minute (conservative)
-            peak_load = np.percentile(self.load_data['total_load_mw'], 98)
-            required_ramp = 0.10 * peak_load
-            
-            return sys_ramp >= required_ramp
-        m.pq_ramp_con = Constraint(m.Y, rule=ramp_capability)
+        logger.info("Gas/CO2/Ramp constraints DISABLED for diagnosis")
 
         logger.info("DR constraints added")
     
     def _build_objective(self):
         m = self.model
         
-        def lcoe_with_dr(m):
+        def maximize_power_capacity(m):
+            """
+            NEW OBJECTIVE: Maximize total power capacity
+            Primary goal: Build as much capacity as constraints allow
+            Secondary: Minimize cost (via small cost penalty)
+            """
+            # Total capacity across all years (weighted by year for phasing)
+            total_capacity = sum(
+                (m.n_recip[y] * 5 + m.n_turbine[y] * 20 + 
+                 m.solar_mw[y] + m.bess_mw[y] + m.grid_mw[y])
+                / (1 + 0.05)**(y - m.Y.first())  # Slight preference for earlier deployment
+                for y in m.Y
+            )
+            
+            # Small cost penalty to prefer cheaper solutions when capacity is equal
+            # (Much smaller weight than capacity)
+            capex_penalty = sum(
+                (m.n_recip[y] * 5 * 1000 * 1650 +
+                 m.n_turbine[y] * 20 * 1000 * 1300 +
+                 m.bess_mwh[y] * 1000 * 250 +
+                 m.solar_mw[y] * 1000 * 1000)
+                for y in m.Y
+            ) / 1e9  # Normalize to billions
+            
+            # Maximize capacity, prefer lower cost if capacity is tied
+            return total_capacity - 0.001 * capex_penalty
+        
+        m.obj = Objective(rule=maximize_power_capacity, sense=maximize)
+        
+        logger.info("Objective: MAXIMIZE POWER CAPACITY (cost minimization is secondary)")
+        return  # Skip old LCOE objective
+        
+        def lcoe_with_dr_OLD(m):
             """
             LCOE with QA/QC Fixes:
             1. Denominator uses FIXED required_load (D_required), not energy_served
