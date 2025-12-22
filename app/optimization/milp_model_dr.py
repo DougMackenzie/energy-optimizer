@@ -491,7 +491,8 @@ class bvNexusMILP_DR:
             LCOE with QA/QC Fixes:
             1. Denominator uses FIXED required_load (D_required), not energy_served
             2. Grid interconnection CAPEX included
-            3. Costs scaled for representative periods
+            3. Grid electricity cost included (critical fix for BTM competitiveness)
+            4. Costs scaled for representative periods
             """
             r = 0.08
             n = 20
@@ -518,6 +519,17 @@ class bvNexusMILP_DR:
                 for y in m.Y
             )
             
+            # Grid electricity cost - CRITICAL FIX
+            # Without this, grid appears "free" and MILP picks grid-only solutions
+            grid_cost_mwh = 75  # $/MWh average grid electricity cost
+            grid_electricity = sum(
+                m.SCALE_FACTOR * sum(
+                    m.grid_import[t, y] * grid_cost_mwh / 1000  # Convert to thousands
+                    for t in m.T
+                ) / (1 + r)**(y - m.Y.first())
+                for y in m.Y
+            )
+            
             # DR Revenue (using peak-window guaranteed capacity)
             dr_rev = sum(
                 sum(m.dr_capacity[dr, y] * 8760 * m.DR_payment[dr] for dr in m.DR)
@@ -532,11 +544,11 @@ class bvNexusMILP_DR:
                 for y in m.Y
             )
             
-            return (capex + fuel - dr_rev) / energy if energy > 0 else 1e6
+            return (capex + fuel + grid_electricity - dr_rev) / energy if energy > 0 else 1e6
         
         m.obj = Objective(rule=lcoe_with_dr, sense=minimize)
         
-        logger.info("Objective function created")
+        logger.info("Objective function created with grid electricity cost")
     
     def solve(self, solver: str = 'glpk', time_limit: int = 300, verbose: bool = True) -> Dict:
         """Solve the optimization model."""
