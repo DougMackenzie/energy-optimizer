@@ -100,24 +100,39 @@ def optimize_with_milp(
                 logger.info("Disabling Recip Engines")
                 for y in m.Y:
                     m.n_recip[y].fix(0)
+                    # Also fix dispatch variables to prevent uninitialized errors
+                    for t in m.T:
+                        m.gen_recip[t, y].fix(0)
             
             # 2. Turbines
             if not scenario.get('Turbine_Enabled', True):
                 logger.info("Disabling Turbines")
                 for y in m.Y:
                     m.n_turbine[y].fix(0)
+                    # Also fix dispatch variables
+                    for t in m.T:
+                        m.gen_turbine[t, y].fix(0)
             
             # 3. BESS
             if not scenario.get('BESS_Enabled', True):
                 logger.info("Disabling BESS")
                 for y in m.Y:
                     m.bess_mwh[y].fix(0)
+                    m.bess_mw[y].fix(0)
+                    # Also fix dispatch variables
+                    for t in m.T:
+                        m.charge[t, y].fix(0)
+                        m.discharge[t, y].fix(0)
+                        m.soc[t, y].fix(0)
             
             # 4. Solar
             if not scenario.get('Solar_Enabled', True):
                 logger.info("Disabling Solar")
                 for y in m.Y:
                     m.solar_mw[y].fix(0)
+                    # Also fix dispatch variables
+                    for t in m.T:
+                        m.gen_solar[t, y].fix(0)
             
             # 5. Grid
             if not scenario.get('Grid_Enabled', True):
@@ -125,6 +140,9 @@ def optimize_with_milp(
                 for y in m.Y:
                     m.grid_mw[y].fix(0)
                     m.grid_active[y].fix(0)
+                    # Also fix dispatch variables
+                    for t in m.T:
+                        m.grid_import[t, y].fix(0)
             else:
                 # Check for Grid Timeline (delay)
                 grid_delay_months = scenario.get('Grid_Timeline_Months', 0)
@@ -135,6 +153,9 @@ def optimize_with_milp(
                         if (y - start_year) < delay_years:
                             m.grid_mw[y].fix(0)
                             m.grid_active[y].fix(0)
+                            for t in m.T:
+                                m.grid_import[t, y].fix(0)
+        
         
         # Solve
         logger.info(f"Solving MILP with {solver}")
