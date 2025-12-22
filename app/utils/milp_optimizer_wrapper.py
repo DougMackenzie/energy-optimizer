@@ -140,6 +140,7 @@ def optimize_with_milp(
                 for y in m.Y:
                     m.grid_mw[y].fix(0)
                     m.grid_active[y].fix(0)
+                    m.grid_capex_incurred[y].fix(0)  # Fix CAPEX variable
                     # Also fix dispatch variables
                     for t in m.T:
                         m.grid_import[t, y].fix(0)

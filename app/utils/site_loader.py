@@ -92,69 +92,42 @@ def load_scenario_templates(
 ) -> List[Dict]:
     """Load pre-defined scenario templates"""
     
-    # Return 2 comprehensive scenarios with full equipment combination testing
-    scenarios = [
-        {
-            'Scenario_ID': 1,
-            'Scenario_Name': 'BTM Only',
-            'Description': 'Behind-the-meter only. Tests all equipment combinations (Recips, Turbines, BESS, Solar) across 10-year deployment timeline. Maximizes power within all constraints.',
-            'Recip_Enabled': True,
-            'Turbine_Enabled': True,
-            'BESS_Enabled': True,
-            'Solar_Enabled': True,
-            'Grid_Enabled': False,
-            'Objective_Priority': 'Maximum Power',
-            'Grid_Timeline_Months': 0
-        },
-        {
-            'Scenario_ID': 2,
-            'Scenario_Name': 'All Technologies',
-            'Description': 'All available technologies including grid. Tests comprehensive equipment combinations across 10-year timeline. Grid available after 36 months as backup/baseload.',
-            'Recip_Enabled': True,
-            'Turbine_Enabled': True,
-            'BESS_Enabled': True,
-            'Solar_Enabled': True,
-            'Grid_Enabled': True,
-            'Objective_Priority': 'Maximum Power',
-            'Grid_Timeline_Months': 36
-        },
-        {
-            'Scenario_ID': 3,
-            'Scenario_Name': 'Recip Engines Only',
-            'Description': 'Reciprocating engines only. No grid, no renewables.',
-            'Recip_Enabled': True,
-            'Turbine_Enabled': False,
-            'BESS_Enabled': False,
-            'Solar_Enabled': False,
-            'Grid_Enabled': False,
-            'Objective_Priority': 'Maximum Power',
-            'Grid_Timeline_Months': 0
-        },
-        {
-            'Scenario_ID': 4,
-            'Scenario_Name': 'Turbines Only',
-            'Description': 'Gas turbines only. No grid, no renewables.',
-            'Recip_Enabled': False,
-            'Turbine_Enabled': True,
-            'BESS_Enabled': False,
-            'Solar_Enabled': False,
-            'Grid_Enabled': False,
-            'Objective_Priority': 'Maximum Power',
-            'Grid_Timeline_Months': 0
-        },
-        {
-            'Scenario_ID': 5,
-            'Scenario_Name': 'Solar + BESS + Grid',
-            'Description': 'Renewables and grid only. No fossil generation.',
-            'Recip_Enabled': False,
-            'Turbine_Enabled': False,
-            'BESS_Enabled': True,
-            'Solar_Enabled': True,
-            'Grid_Enabled': True,
-            'Objective_Priority': 'Maximum Power',
-            'Grid_Timeline_Months': 0
-        }
-    ]
+    # Return 31 comprehensive scenarios with full equipment combination testing
+    import itertools
+    
+    # Technologies to permute
+    techs = ['Recip', 'Turbine', 'BESS', 'Solar', 'Grid']
+    
+    scenarios = []
+    idx = 1
+    
+    # Generate all combinations (1 to 5 technologies)
+    for r in range(1, len(techs) + 1):
+        for combo in itertools.combinations(techs, r):
+            # Create scenario dict
+            name = " + ".join(combo)
+            
+            # Determine enablement
+            recip = 'Recip' in combo
+            turbine = 'Turbine' in combo
+            bess = 'BESS' in combo
+            solar = 'Solar' in combo
+            grid = 'Grid' in combo
+            
+            scenario = {
+                'Scenario_ID': idx,
+                'Scenario_Name': name,
+                'Description': f"Combination: {name}. Maximizes power subject to constraints.",
+                'Recip_Enabled': recip,
+                'Turbine_Enabled': turbine,
+                'BESS_Enabled': bess,
+                'Solar_Enabled': solar,
+                'Grid_Enabled': grid,
+                'Objective_Priority': 'Maximum Power',
+                'Grid_Timeline_Months': 36 if grid else 0  # Default 36mo delay for grid
+            }
+            scenarios.append(scenario)
+            idx += 1
     
     # Cache in session state
     if use_cache:

@@ -98,35 +98,35 @@ def render():
     with equip_col1:
         recip_enabled = st.checkbox(
             "🔋 Recip Engines",
-            value=to_bool(selected_scenario.get('Recip_Engines', 'False')),
+            value=to_bool(selected_scenario.get('Recip_Enabled', 'False')),
             key="enable_recip"
         )
     
     with equip_col2:
         turbine_enabled = st.checkbox(
             "⚡ Gas Turbines",
-            value=to_bool(selected_scenario.get('Gas_Turbines', 'False')),
+            value=to_bool(selected_scenario.get('Turbine_Enabled', 'False')),
             key="enable_turbine"
         )
     
     with equip_col3:
         bess_enabled = st.checkbox(
             "🔋 BESS",
-            value=to_bool(selected_scenario.get('BESS', 'False')),
+            value=to_bool(selected_scenario.get('BESS_Enabled', 'False')),
             key="enable_bess"
         )
     
     with equip_col4:
         solar_enabled = st.checkbox(
             "☀️ Solar PV",
-            value=to_bool(selected_scenario.get('Solar_PV', 'False')),
+            value=to_bool(selected_scenario.get('Solar_Enabled', 'False')),
             key="enable_solar"
         )
     
     with equip_col5:
         grid_enabled = st.checkbox(
             "🔌 Grid",
-            value=to_bool(selected_scenario.get('Grid_Connection', 'False')),
+            value=to_bool(selected_scenario.get('Grid_Enabled', 'False')),
             key="enable_grid"
         )
     
