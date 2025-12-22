@@ -143,6 +143,10 @@ if 'project' not in st.session_state:
 if 'current_page' not in st.session_state:
     st.session_state.current_page = 'dashboard'
 
+# Preload default data for faster testing (runs once per session)
+from app.utils.session_init import initialize_default_data
+initialize_default_data()
+
 # =============================================================================
 # Sidebar Navigation
 # =============================================================================

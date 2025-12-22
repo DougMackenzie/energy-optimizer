@@ -14,9 +14,66 @@ def render():
     if 'optimization_result' not in st.session_state:
         st.warning("⚠️ No optimization results available. Please run optimization from the Optimizer page first.")
         
-        if st.button("🎯 Go to Optimizer", type="primary"):
-            st.session_state.current_page = 'optimizer'
-            st.rerun()
+        col_btn1, col_btn2 = st.columns(2)
+        
+        with col_btn1:
+            if st.button("🎯 Go to Optimizer", type="primary"):
+                st.session_state.current_page = 'optimizer'
+                st.rerun()
+        
+        with col_btn2:
+            if st.button("🎲 Load Demo Results", type="secondary"):
+                # Load demo results instantly for testing
+                from app.utils.multi_scenario import run_all_scenarios
+                from app.utils.site_loader import load_sites, load_site_constraints, load_scenario_templates
+                
+                with st.spinner("Loading demo data..."):
+                    try:
+                        sites = load_sites()
+                        if sites:
+                            site = sites[0]  # Dallas campus
+                            constraints = load_site_constraints(site.get('Site_Name', ''))
+                            scenarios = load_scenario_templates()
+                            
+                            objectives = {
+                                'Primary_Objective': 'LCOE',
+                                'Deployment_Max_Months': 36,
+                                'LCOE_Weight': 0.5,
+                                'Timeline_Weight': 0.3,
+                                'Emissions_Weight': 0.2
+                            }
+                            
+                            # Run all scenarios and pick the first feasible one
+                            all_results = run_all_scenarios(site, constraints, objectives, scenarios, None)
+                            
+                            if all_results:
+                                # Find first feasible result
+                                result = next((r for r in all_results if r.get('feasible')), None)
+                                
+                                if result:
+                                    scenario = next((s for s in scenarios if s.get('Scenario_Name') == result.get('scenario_name')), scenarios[0])
+                                    
+                                    st.session_state.optimization_result = result
+                                    st.session_state.multi_scenario_results = all_results
+                                    st.session_state.current_config = {
+                                        'site': site,
+                                        'scenario': scenario,
+                                        'constraints': constraints,
+                                        'objectives': objectives,
+                                        'equipment_enabled': {
+                                            'recip': True,
+                                            'turbine': True,
+                                            'bess': True,
+                                            'solar': True,
+                                            'grid': True
+                                        }
+                                    }
+                                    st.success("✅ Demo data loaded!")
+                                    st.rerun()
+                                else:
+                                    st.error("No feasible scenarios found")
+                    except Exception as e:
+                        st.error(f"Error loading demo data: {str(e)}")
         
         return
     

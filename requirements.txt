@@ -25,5 +25,6 @@ python-pptx>=0.6.21
 openpyxl>=3.1.0
 
 # Utilities
-requests>=2.31.0python-docx
+requests>=2.31.0
+python-docx>=0.8.11
 scipy>=1.11.0
