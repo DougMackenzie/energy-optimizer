@@ -395,7 +395,8 @@ def run_all_scenarios(
                     load_profile_dr=load_profile_dr,
                     years=list(range(2026, 2036)),
                     solver='glpk',  # or 'cbc' if available
-                    time_limit=300
+                    time_limit=300,
+                    scenario=scenario
                 )
                 
                 # Format result to match existing structure

@@ -117,6 +117,42 @@ def load_scenario_templates(
             'Grid_Enabled': True,
             'Objective_Priority': 'Maximum Power',
             'Grid_Timeline_Months': 36
+        },
+        {
+            'Scenario_ID': 3,
+            'Scenario_Name': 'Recip Engines Only',
+            'Description': 'Reciprocating engines only. No grid, no renewables.',
+            'Recip_Enabled': True,
+            'Turbine_Enabled': False,
+            'BESS_Enabled': False,
+            'Solar_Enabled': False,
+            'Grid_Enabled': False,
+            'Objective_Priority': 'Maximum Power',
+            'Grid_Timeline_Months': 0
+        },
+        {
+            'Scenario_ID': 4,
+            'Scenario_Name': 'Turbines Only',
+            'Description': 'Gas turbines only. No grid, no renewables.',
+            'Recip_Enabled': False,
+            'Turbine_Enabled': True,
+            'BESS_Enabled': False,
+            'Solar_Enabled': False,
+            'Grid_Enabled': False,
+            'Objective_Priority': 'Maximum Power',
+            'Grid_Timeline_Months': 0
+        },
+        {
+            'Scenario_ID': 5,
+            'Scenario_Name': 'Solar + BESS + Grid',
+            'Description': 'Renewables and grid only. No fossil generation.',
+            'Recip_Enabled': False,
+            'Turbine_Enabled': False,
+            'BESS_Enabled': True,
+            'Solar_Enabled': True,
+            'Grid_Enabled': True,
+            'Objective_Priority': 'Maximum Power',
+            'Grid_Timeline_Months': 0
         }
     ]
     

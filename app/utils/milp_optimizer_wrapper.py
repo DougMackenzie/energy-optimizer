@@ -18,7 +18,8 @@ def optimize_with_milp(
     years: List[int] = None,
     existing_equipment: Dict = None,
     solver: str = 'glpk',
-    time_limit: int = 300
+    time_limit: int = 300,
+    scenario: Dict = None  # Added scenario argument
 ) -> Dict:
     """
     Run MILP optimization for datacenter power system.
@@ -31,6 +32,7 @@ def optimize_with_milp(
         existing_equipment: Brownfield equipment (default: greenfield)
         solver: MILP solver to use ('glpk', 'cbc', or 'gurobi')
         time_limit: Maximum solve time in seconds
+        scenario: Scenario configuration with equipment enablement flags
     
     Returns:
         Dict with optimization results including equipment sizing, economics, and DR metrics
@@ -85,6 +87,54 @@ def optimize_with_milp(
             existing_equipment=existing_equipment,
             use_representative_periods=True  # Use 1008 hours for speed
         )
+        
+        # === APPLY SCENARIO CONSTRAINTS ===
+        if scenario:
+            logger.info(f"Applying scenario constraints for: {scenario.get('Scenario_Name', 'Unknown')}")
+            m = optimizer.model
+            yrs = years or list(range(2026, 2036))
+            start_year = min(yrs)
+            
+            # 1. Recip Engines
+            if not scenario.get('Recip_Enabled', True):
+                logger.info("Disabling Recip Engines")
+                for y in m.Y:
+                    m.n_recip[y].fix(0)
+            
+            # 2. Turbines
+            if not scenario.get('Turbine_Enabled', True):
+                logger.info("Disabling Turbines")
+                for y in m.Y:
+                    m.n_turbine[y].fix(0)
+            
+            # 3. BESS
+            if not scenario.get('BESS_Enabled', True):
+                logger.info("Disabling BESS")
+                for y in m.Y:
+                    m.bess_mwh[y].fix(0)
+            
+            # 4. Solar
+            if not scenario.get('Solar_Enabled', True):
+                logger.info("Disabling Solar")
+                for y in m.Y:
+                    m.solar_mw[y].fix(0)
+            
+            # 5. Grid
+            if not scenario.get('Grid_Enabled', True):
+                logger.info("Disabling Grid")
+                for y in m.Y:
+                    m.grid_mw[y].fix(0)
+                    m.grid_active[y].fix(0)
+            else:
+                # Check for Grid Timeline (delay)
+                grid_delay_months = scenario.get('Grid_Timeline_Months', 0)
+                if grid_delay_months > 0:
+                    delay_years = grid_delay_months / 12.0
+                    logger.info(f"Applying Grid Delay: {grid_delay_months} months ({delay_years:.1f} years)")
+                    for y in m.Y:
+                        if (y - start_year) < delay_years:
+                            m.grid_mw[y].fix(0)
+                            m.grid_active[y].fix(0)
         
         # Solve
         logger.info(f"Solving MILP with {solver}")

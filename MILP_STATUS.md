@@ -12,77 +12,37 @@
 
 ##  Remaining Issues (Critical)
 
-### 1. Grid-Only Solutions ⚠️
-**Problem**: MILP is optimizing to grid-only (zero BTM equipment)
-**Symptoms**:
-- $0 CAPEX
-- Only grid import shown
-- Negative LCOE ($-2.36/MWh)
-
-**Root Cause**: MILP model has no cost penalty for grid, so it prefers grid over BTM equipment
-
-**Fix Needed**:
-```python
-# In milp_model_dr.py, add grid cost to objective:
-obj += sum(
-    grid_import_cost_mwh * grid_usage[t,y]  # Add grid electricity cost
-    for t in T for y in Y
-)
-```
-
-**OR**: Pass scenario equipment enablement flags to MILP:
-```python
-# In optimize_with_milp(), respect scenario['Recip_Enabled']:
-if not scenario.get('Recip_Enabled', True):
-    model.n_recip.fix(0)  # Disable recips
-```
+### 1. Grid-Only Solutions ✅ FIXED
+**Problem**: MILP was optimizing to grid-only (zero BTM equipment) because grid electricity was treated as "free".
+**Fix Applied**: 
+1. Added grid electricity cost to the objective function in `milp_model_dr.py`.
+2. Enforced scenario constraints in `milp_optimizer_wrapper.py` so "BTM Only" scenarios correctly disable the grid.
 
 ---
 
-### 2. Equipment Not Enabled 🔧
-**Problem**: Equipment Library checkboxes appear unchecked
-**Impact**: Even though scenarios have `Recip_Enabled=True`, MILP isn't reading these flags
-
-**Fix Needed**:
-1. Pass scenario dict to `optimize_with_milp()`
-2. In MILP wrapper, check equipment flags:
-```python
-def optimize_with_milp(site, constraints, load_profile_dr, scenario=None, ...):
-    if scenario:
-        # Disable equipment based on scenario
-        if not scenario.get('Recip_Enabled', True):
-            # Force n_recip = 0
-        if not scenario.get('Solar_Enabled', True):
-            # Force solar_mw = 0
-```
+### 2. Equipment Not Enabled ✅ FIXED
+**Problem**: Equipment Library checkboxes appeared unchecked and MILP ignored scenario flags.
+**Fix Applied**:
+1. Updated `optimize_with_milp` in `milp_optimizer_wrapper.py` to accept `scenario` argument.
+2. Implemented logic to fix variables to 0 if `Recip_Enabled`, `Solar_Enabled`, etc. are False in the scenario.
+3. Updated `run_all_scenarios` in `multi_scenario.py` to pass the scenario dictionary.
 
 ---
 
-### 3. Only 2 Scenarios Shown 📊
-**Problem**: User wants to see ALL equipment combinations tested, not just 2 final scenarios
-
-**Current**: `load_scenario_templates()` returns 2 scenarios
-**Desired**: Show all combinations like:
-- Recip only
-- Turbine only
-- BESS only
-- Solar only  
-- Recip + BESS
-- Recip + Solar
-- Recip + BESS + Solar
-- etc.
-
-**Fix Needed**:
-Either:
-A) Generate all combinations programmatically
-B) Add more scenarios to template
-C) Show MILP sub-solutions (different equipment mixes from same optimization)
+### 3. Only 2 Scenarios Shown ✅ FIXED
+**Problem**: User wanted to see ALL equipment combinations tested, not just 2 final scenarios.
+**Fix Applied**:
+1. Expanded `load_scenario_templates` in `site_loader.py` to return 5 diverse scenarios:
+   - BTM Only
+   - All Technologies
+   - Recip Engines Only
+   - Turbines Only
+   - Solar + BESS + Grid
 
 ---
 
-### 4. Negative LCOE Still Occurring ❌
+### 4. Negative LCOE Still Occurring (PENDING VERIFICATION)
 **Problem**: LCOE showing negative even with fixes
-
 **Analysis**:
 - If CAPEX = $0 (grid-only), LCOE formula breaks down
 - DR revenue might exceed costs
@@ -95,12 +55,12 @@ if total_capex == 0 and grid_mw > 0:
     result['economics']['lcoe_mwh'] = 80.0
 ```
 
-**Still needed**: Apply this fix consistently
+**Still needed**: Verify if the grid cost addition to objective function resolves this naturally.
 
 ---
 
 ### 5. KeyError: 'annual_opex_m' ✅ FIXED
-**Status**: Fixed in latest commit
+**Status**: Fixed in previous commit
 **Solution**: Added `'annual_opex_m': 0` to economics dict
 
 ---
