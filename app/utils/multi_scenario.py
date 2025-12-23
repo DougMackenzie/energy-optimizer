@@ -417,7 +417,6 @@ def run_all_scenarios(
                 if 'load_data' in load_profile_dr:
                     total_load = load_profile_dr['load_data'].get('total_load_mw', [])
                     if isinstance(total_load, (list, np.ndarray)) and len(total_load) > 0:
-                        import numpy as np
                         print(f"  load_data hours: {len(total_load)}")
                         print(f"  load peak: {np.max(total_load):.1f} MW")
                         print(f"  load avg: {np.mean(total_load):.1f} MW")
