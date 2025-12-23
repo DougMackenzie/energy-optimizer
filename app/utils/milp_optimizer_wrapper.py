@@ -47,7 +47,7 @@ SOLVER_AVAILABLE = None
 SOLVER_NAME = None
 
 if PYOMO_AVAILABLE:
-    for solver in ['glpk', 'cbc', 'gurobi']:
+    for solver in ['cbc', 'glpk', 'gurobi']:
         try:
             opt = SolverFactory(solver)
             if opt is not None and opt.available():
