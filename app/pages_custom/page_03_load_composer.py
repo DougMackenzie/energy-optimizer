@@ -130,7 +130,7 @@ def render():
             peak_it_mw = st.number_input(
                 "Peak IT Load (MW)", 
                 min_value=10.0, max_value=2000.0, 
-                value=st.session_state.load_profile_dr['peak_it_mw'], 
+                value=float(st.session_state.load_profile_dr['peak_it_mw']), 
                 step=10.0,
                 help="Peak IT equipment load excluding cooling"
             )
