@@ -371,12 +371,21 @@ def run_all_scenarios(
     # Load equipment once
     equipment_data = load_equipment_from_sheets()
     
+    # DEBUG: Show which mode
+    print(f"\n🔍 DEBUG: use_milp={use_milp}, load_profile_dr={'SET' if load_profile_dr else 'NONE'}\n")
+    
     results = []
     
     # MILP Mode (NEW - Recommended)
     if use_milp:
         if not load_profile_dr:
             raise ValueError("load_profile_dr required when use_milp=True. Generate via Load Composer.")
+        
+        # DEBUG: Print which mode is being used
+        print(f"\n{'='*70}")
+        print(f"run_all_scenarios called with use_milp={use_milp}")
+        print(f"load_profile_dr provided: {load_profile_dr is not None}")
+        print(f"{'='*70}\n")
         
         # Check if fast mode is enabled
         import streamlit as st
