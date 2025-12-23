@@ -34,9 +34,9 @@ def render():
                 
                 # Load problem data into session state
                 st.session_state.load_profile_dr = {
-                    'peak_it_mw': problem['load_profile']['peak_it_mw'],
-                    'pue': problem['load_profile']['pue'],
-                    'load_factor': problem['load_profile']['load_factor'],
+                    'peak_it_mw': float(problem['load_profile']['peak_it_mw']),  # Ensure float type
+                    'pue': float(problem['load_profile']['pue']),  # Ensure float type
+                    'load_factor': float(problem['load_profile']['load_factor']),  # Ensure float type
                     'workload_mix': {
                         'pre_training': int(problem['load_profile']['workload_mix']['pre_training'] * 100),
                         'fine_tuning': int(problem['load_profile']['workload_mix']['fine_tuning'] * 100),
