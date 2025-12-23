@@ -380,7 +380,7 @@ def run_all_scenarios(
         
         # Check if fast mode is enabled
         import streamlit as st
-        use_fast_milp = st.session_state.get('use_fast_milp', True)  # Default to fast
+        use_fast_milp = st.session_state.get('use_fast_milp', False)  # Default to accurate (regular model works)
         
         if use_fast_milp:
             from app.utils.milp_optimizer_wrapper_fast import optimize_with_milp
