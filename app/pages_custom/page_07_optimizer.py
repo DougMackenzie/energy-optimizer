@@ -59,22 +59,16 @@ def render():
     col_mode1, col_mode2 = st.columns([2, 3])
     
     with col_mode1:
-        opt_mode = st.selectbox(
-            "Optimization Mode",
-            ["⚡ Fast (30-90s)", "🎯 Accurate (5-10min)"],
-            help="""
-            **Fast Mode:** 504 hours, 5% MIP gap, CBC solver - Great for interactive exploration
-            **Accurate Mode:** 1008 hours, 1% MIP gap - Best for final designs
-            """
-        )
-        use_fast_mode = "Fast" in opt_mode
-        st.session_state.use_fast_milp = use_fast_mode
+    with col_mode1:
+        st.markdown("**Optimization Mode**")
+        st.success("🎯 **Accurate Mode (Recommended)**")
+        st.caption("1008 hours, 1% MIP gap - Best for final designs")
+        
+        # Force Accurate Mode (Fast mode disabled due to instability)
+        st.session_state.use_fast_milp = False
     
     with col_mode2:
-        if use_fast_mode:
-            st.info("⚡ **Fast Mode** → 30-90 second solves, 3 representative weeks, 5% MIP gap")
-        else:
-            st.info("🎯 **Accurate Mode** → 5-10 minute solves, 6 representative weeks, 1% MIP gap")
+        st.info("ℹ️ **Note:** Fast Mode has been temporarily disabled to ensure result accuracy. Solves may take 2-4 minutes per scenario.")
     
     st.markdown("---")
     

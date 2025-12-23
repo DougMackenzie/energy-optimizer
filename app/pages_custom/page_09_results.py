@@ -29,22 +29,24 @@ def render():
                 
                 with st.spinner("Loading demo data..."):
                     try:
-                        sites = load_sites()
-                        if sites:
-                            site = sites[0]  # Dallas campus
-                            constraints = load_site_constraints(site.get('Site_Name', ''))
-                            scenarios = load_scenario_templates()
+                            # Use 600MW Sample Problem for robust demo
+                            from sample_problem_600mw import get_sample_problem
+                            problem = get_sample_problem()
                             
-                            objectives = {
-                                'Primary_Objective': 'LCOE',
-                                'Deployment_Max_Months': 36,
-                                'LCOE_Weight': 0.5,
-                                'Timeline_Weight': 0.3,
-                                'Emissions_Weight': 0.2
-                            }
+                            site = problem['site']
+                            constraints = {**problem['constraints'], 'N_Minus_1_Required': False}
+                            load_profile_dr = problem['load_profile']
                             
-                            # Run all scenarios and pick the first feasible one
-                            all_results = run_all_scenarios(site, constraints, objectives, scenarios, None)
+                            # Run all scenarios with MILP
+                            all_results = run_all_scenarios(
+                                site=site, 
+                                constraints=constraints, 
+                                objectives=objectives, 
+                                scenarios=scenarios, 
+                                grid_config=None,
+                                use_milp=True,
+                                load_profile_dr=load_profile_dr
+                            )
                             
                             if all_results:
                                 # Find first feasible result

@@ -348,7 +348,7 @@ def run_all_scenarios(
     objectives: Dict,
     scenarios: List[Dict],
     grid_config: Dict = None,
-    use_milp: bool = False,
+    use_milp: bool = True,
     load_profile_dr: Dict = None
 ) -> List[Dict]:
     """
@@ -521,68 +521,11 @@ def run_all_scenarios(
         print(f"\n✓ Completed {len(results)} MILP optimizations")
     
     # Legacy scipy Mode (OLD - Deprecated)
+    # Legacy scipy Mode REMOVED
     else:
-        print(f"\n⚠️ Using legacy scipy optimizer (deprecated)")
-        print(f"  Recommended: Set use_milp=True for 40x faster, deterministic results")
-        
-        for scenario in scenarios:
-            # Use scipy optimizer for equipment sizing
-            equipment_config, is_feasible, violations = auto_size_equipment_optimized(
-                scenario=scenario,
-                site=site,
-                equipment_data=equipment_data,
-                constraints=constraints,
-                grid_config=grid_config
-            )
-            
-            # Run full optimization with the optimized config
-            result = optimize_scenario(
-                site=site,
-                constraints=constraints,
-                scenario=scenario,
-                equipment_config=equipment_config,
-                objectives=objectives
-            )
-            
-            # Override feasibility with optimizer result
-            result['feasible'] = is_feasible
-            result['violations'] = violations
-            result['milp_optimized'] = False
-            
-            # AUTO-RUN: RAM Analysis
-            if is_feasible:
-                try:
-                    from app.pages_custom.page_08_ram import calculate_ram_metrics
-                    ram_metrics = calculate_ram_metrics(equipment_config)
-                    result['ram_analysis'] = ram_metrics
-                except Exception as e:
-                    result['ram_analysis'] = {'error': str(e)}
-            
-            # AUTO-RUN: Transient Analysis
-            if is_feasible:
-                try:
-                    from app.utils.highres_transient import generate_high_res_transient, calculate_power_quality_metrics
-                    
-                    # Run transient simulation for typical step change
-                    total_mw = site.get('Total_Facility_MW', 200)
-                    transient_data = generate_high_res_transient(
-                        base_load_mw=total_mw,
-                        event_type='step_change',
-                        duration_seconds=300,
-                        event_magnitude_pct=20  # 20% step change
-                    )
-                    
-                    # Calculate power quality metrics
-                    pq_metrics = calculate_power_quality_metrics(transient_data)
-                    
-                    result['transient_analysis'] = {
-                        'pq_metrics': pq_metrics,
-                        'transient_data': transient_data  # Store for visualization
-                    }
-                except Exception as e:
-                    result['transient_analysis'] = {'error': str(e)}
-            
-            results.append(result)
+        print(f"\n⚠️ Legacy optimizer removed. Defaulting to MILP.")
+        # Recursive call with forced MILP
+        return run_all_scenarios(site, constraints, objectives, scenarios, grid_config, use_milp=True, load_profile_dr=load_profile_dr)
     
     # Rank scenarios
     ranked_results = rank_scenarios(results, objectives)
