@@ -35,7 +35,7 @@ SHAREPOINT_LIST_NAME = os.getenv("SHAREPOINT_LIST_NAME", "AntigravityProjects")
 # App Settings
 # =============================================================================
 APP_NAME = "Antigravity Energy Optimizer"
-APP_VERSION = "0.4.8"  # Stability Fixes: Forced Accurate MILP + Auto-Load Sample
+APP_VERSION = "0.4.9"  # Zero-Friction Workflow: Pre-loaded & Ready to Optimize
 APP_ICON = "⚡"
 
 # Theme colors (matching UI mockup)

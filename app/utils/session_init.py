@@ -48,6 +48,9 @@ def initialize_default_data():
         # Set Load Profile (CRITICAL for MILP)
         st.session_state.load_profile_dr = problem['load_profile']
         
+        # Also add to current_config for consistency
+        st.session_state.current_config['load_profile_dr'] = problem['load_profile']
+        
         # Force Accurate Mode
         st.session_state.use_fast_milp = False
         

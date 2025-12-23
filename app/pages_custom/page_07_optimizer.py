@@ -88,24 +88,17 @@ def render():
             st.caption("This will run: BTM Only, All Sources, Bridge to Backup")
         
         with col_batch2:
-            # Check if Load Composer is configured
-            if 'load_profile_dr' not in st.session_state:
-                st.error("⚠️ **Load Composer Required**")
-                st.markdown("""
-                To use the optimizer, you must first configure the Load Composer:
+            # Show friendly status
+            if 'load_profile_dr' in st.session_state:
+                # Pre-loaded configuration is ready
+                load_profile = st.session_state.load_profile_dr
+                peak_mw = load_profile.get('peak_it_mw', 0)
+                pue = load_profile.get('pue', 1.5)
                 
-                1. Navigate to **Load Composer** (in sidebar)
-                2. Configure all 4 tabs (Load, Workload, Cooling, DR Economics)
-                3. Click **Save Configuration**
-                4. Return here to run scenarios
+                st.success(f"✅ Ready: {peak_mw}MW IT Load @ {pue} PUE")
+                st.caption("_600MW sample pre-loaded. Customize in Load Composer if needed._")
                 
-                The legacy scipy optimizer is deprecated and no longer supported.
-                """)
-                if st.button("📊 Go to Load Composer", use_container_width=True):
-                    st.session_state.current_page = 'load_composer'
-                    st.rerun()
-            else:
-                if st.button("⚡ Run All Scenarios", type="primary", use_container_width=True):
+            if st.button("⚡ Run All Scenarios", type="primary", use_container_width=True):
                     with st.spinner("Running all scenarios with MILP... This may take 2-4 minutes"):
                         from app.utils.multi_scenario import run_all_scenarios, create_comparison_table
                         from app.utils.site_loader import load_scenario_templates

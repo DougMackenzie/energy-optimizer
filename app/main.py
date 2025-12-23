@@ -215,6 +215,13 @@ with st.sidebar:
     if st.button("⚙️ Dispatch", use_container_width=True, key="nav_dispatch"):
         st.session_state.current_page = 'dispatch'
         st.rerun()
+    
+    # Debug section
+    st.markdown("<p style='font-size: 10px; color: rgba(255,255,255,0.5); text-transform: uppercase; letter-spacing: 1px; margin-top: 16px;'>Developer</p>", unsafe_allow_html=True)
+    
+    if st.button("🐛 Debug", use_container_width=True, key="nav_debug"):
+        st.session_state.current_page = 'debug'
+        st.rerun()
 
 # =============================================================================
 # Page Router
