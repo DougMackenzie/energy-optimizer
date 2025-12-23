@@ -59,7 +59,7 @@ def render():
     col_mode1, col_mode2 = st.columns([2, 3])
     
     with col_mode1:
-    with col_mode1:
+
         st.markdown("**Optimization Mode**")
         st.success("🎯 **Accurate Mode (Recommended)**")
         st.caption("1008 hours, 1% MIP gap - Best for final designs")
