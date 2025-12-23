@@ -376,7 +376,7 @@ class bvNexusMILP_DR:
         
         m.obj = Objective(rule=objective, sense=minimize)
     
-    def solve(self, solver: str = 'glpk', time_limit: int = 120, verbose: bool = False) -> Dict:
+    def solve(self, solver: str = 'cbc', time_limit: int = 120, verbose: bool = False) -> Dict:
         """Solve with optimized settings for speed."""
         
         if not self._built:

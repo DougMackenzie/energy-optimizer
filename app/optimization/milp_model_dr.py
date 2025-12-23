@@ -29,7 +29,7 @@ Usage:
     
     optimizer = bvNexusMILP_DR()
     optimizer.build(site, constraints, load_data, workload_mix, years, ...)
-    solution = optimizer.solve(solver='glpk', time_limit=300)
+    solution = optimizer.solve(solver='cbc', time_limit=300)
     
     # Check power coverage
     for year, coverage in solution['power_coverage'].items():
@@ -980,7 +980,7 @@ class bvNexusMILP_DR:
     
     def solve(
         self,
-        solver: str = 'glpk',
+        solver: str = 'cbc',
         time_limit: int = 300,
         verbose: bool = True
     ) -> Dict:
@@ -1245,7 +1245,7 @@ if __name__ == "__main__":
     )
     
     print("\nSolving...")
-    solution = optimizer.solve(solver='glpk', time_limit=300, verbose=False)
+    solution = optimizer.solve(solver='cbc', time_limit=300, verbose=False)
     
     # Print results
     print("\n" + "="*70)
