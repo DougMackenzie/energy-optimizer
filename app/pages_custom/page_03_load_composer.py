@@ -78,7 +78,10 @@ def render():
                         'solar': True,
                         'grid': True,
                     },
-                    'constraints': problem['constraints'],  # ← THE CRITICAL FIX!
+                    'constraints': {
+                        **problem['constraints'],  # Load all constraints
+                        'N_Minus_1_Required': False,  # Disable N-1 for BTM scenarios
+                    },
                     'objectives': {
                         'Primary_Objective': 'Minimize_LCOE',
                         'LCOE_Max_MWh': 100,

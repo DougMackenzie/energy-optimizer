@@ -817,6 +817,11 @@ class bvNexusMILP_DR:
         """
         m = self.model
         
+        # Skip RAM constraint if N-1 not required
+        if not self.constraints.get('N_Minus_1_Required', True):
+            logger.info("RAM constraint SKIPPED (N-1 not required)")
+            return
+        
         recip_cap = self.EQUIPMENT['recip']['capacity_mw']
         turbine_cap = self.EQUIPMENT['turbine']['capacity_mw']
         
