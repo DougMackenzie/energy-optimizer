@@ -35,7 +35,7 @@ SHAREPOINT_LIST_NAME = os.getenv("SHAREPOINT_LIST_NAME", "AntigravityProjects")
 # App Settings
 # =============================================================================
 APP_NAME = "Antigravity Energy Optimizer"
-APP_VERSION = "0.4.2"  # CBC Solver (All Files Updated)
+APP_VERSION = "0.4.3"  # Diagnostic Logging + Bugfixes
 APP_ICON = "⚡"
 
 # Theme colors (matching UI mockup)
