@@ -416,11 +416,22 @@ def _format_solution_safe(solution: Dict, years: List[int], constraints: Dict, l
     result = _create_empty_result("Formatting")
     
     # Check if solution is valid
+    # CRITICAL: Accept solutions even with time/iteration limits
+    # Model has unserved variable so should report gaps, not fail
     termination = solution.get('termination', 'unknown')
-    is_feasible = termination in ['optimal', 'feasible']
+    acceptable_terms = ['optimal', 'feasible', 'maxTimeLimit', 'maxIterations', 'maxEvaluations']
+    is_feasible = termination in acceptable_terms
     
     result['feasible'] = is_feasible
-    result['violations'] = [] if is_feasible else [f"Solver: {termination}"]
+    
+    # Only mark as violation if truly infeasible (not just time limit)
+    if not is_feasible and termination not in ['maxTimeLimit', 'maxIterations']:
+        result['violations'] = [f"Solver: {termination}"]
+    elif termination in ['maxTimeLimit', 'maxIterations']:
+        # Time limit hit - not a violation, just incomplete optimization
+        result['violations'] = []
+    else:
+        result['violations'] = []
     
     if not is_feasible:
         return result

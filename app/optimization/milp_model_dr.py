@@ -1055,12 +1055,24 @@ class bvNexusMILP_DR:
         }
         
         # Check if solved successfully
-        if results.solver.termination_condition not in [
+        # CRITICAL FIX: Accept solutions even if time limit hit, as long as solution exists
+        # Model has unserved variable so it should always find SOME solution
+        acceptable_terminations = [
             TerminationCondition.optimal,
-            TerminationCondition.feasible
-        ]:
-            logger.warning("Solver did not find optimal/feasible solution")
-            return solution
+            TerminationCondition.feasible,
+            TerminationCondition.maxTimeLimit,      # Time limit but found solution
+            TerminationCondition.maxIterations,     # Iteration limit but found solution  
+            TerminationCondition.maxEvaluations,    # Eval limit but found solution
+        ]
+        
+        if results.solver.termination_condition not in acceptable_terminations:
+            logger.warning(f"Solver terminated with: {results.solver.termination_condition}")
+            # Still check if results contain a solution
+            if not hasattr(results, 'solution') or len(results.solution) == 0:
+                logger.error("No solution found")
+                return solution
+            else:
+                logger.warning("Attempting to extract solution despite termination condition")
         
         # Extract objective value
         try:

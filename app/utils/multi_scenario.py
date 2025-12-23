@@ -378,10 +378,23 @@ def run_all_scenarios(
         if not load_profile_dr:
             raise ValueError("load_profile_dr required when use_milp=True. Generate via Load Composer.")
         
-        from app.utils.milp_optimizer_wrapper import optimize_with_milp
+        # Check if fast mode is enabled
+        import streamlit as st
+        use_fast_milp = st.session_state.get('use_fast_milp', True)  # Default to fast
         
-        print(f"\n🚀 Running {len(scenarios)} scenarios with bvNexus MILP")
-        print(f"  Expected time: {len(scenarios) * 45} seconds (~{len(scenarios) * 45 / 60:.1f} minutes)")
+        if use_fast_milp:
+            from app.utils.milp_optimizer_wrapper_fast import optimize_with_milp
+            solver = 'cbc'  # Prefer CBC for fast mode
+            time_limit = 60  # 60 seconds for fast mode
+            mode_name = "Fast MILP (CBC)"
+        else:
+            from app.utils.milp_optimizer_wrapper import optimize_with_milp
+            solver = 'glpk'  # Use GLPK for accurate mode
+            time_limit = 300  # 5 minutes for accurate mode
+            mode_name = "Accurate MILP"
+        
+        print(f"\n🚀 Running {len(scenarios)} scenarios with {mode_name}")
+        print(f"  Expected time: {len(scenarios) * time_limit} seconds (~{len(scenarios) * time_limit / 60:.1f} minutes)")
         
         for idx, scenario in enumerate(scenarios):
             scenario_name = scenario.get('Scenario_Name', 'Unknown')
@@ -394,8 +407,8 @@ def run_all_scenarios(
                     constraints=constraints,
                     load_profile_dr=load_profile_dr,
                     years=list(range(2026, 2036)),
-                    solver='glpk',  # or 'cbc' if available
-                    time_limit=300,
+                    solver=solver,
+                    time_limit=time_limit,
                     scenario=scenario
                 )
                 
