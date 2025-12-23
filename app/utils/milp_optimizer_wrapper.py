@@ -155,7 +155,7 @@ def optimize_with_milp(
     load_profile_dr: Dict,
     years: List[int] = None,
     existing_equipment: Dict = None,
-    solver: str = 'glpk',
+    solver: str = 'cbc',  # CBC is faster than GLPK
     time_limit: int = 300,
     scenario: Dict = None,
 ) -> Dict:
@@ -564,7 +564,7 @@ def run_milp_scenarios(
     load_profile_dr: Dict,
     scenarios: List[Dict] = None,
     years: List[int] = None,
-    solver: str = 'glpk',
+    solver: str = 'cbc',  # CBC is faster than GLPK
 ) -> List[Dict]:
     """Run multiple scenarios."""
     

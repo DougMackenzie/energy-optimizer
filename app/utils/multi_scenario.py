@@ -389,7 +389,7 @@ def run_all_scenarios(
             mode_name = "Fast MILP (CBC)"
         else:
             from app.utils.milp_optimizer_wrapper import optimize_with_milp
-            solver = 'glpk'  # Use GLPK for accurate mode
+            solver = 'cbc'  # Use CBC for accurate mode (faster than GLPK)
             time_limit = 300  # 5 minutes for accurate mode
             mode_name = "Accurate MILP"
         
