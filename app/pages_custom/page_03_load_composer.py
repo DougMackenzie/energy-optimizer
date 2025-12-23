@@ -49,7 +49,44 @@ def render():
                     'thermal_constant_min': 30,
                     'enabled_dr_products': ['economic_dr'],
                 }
-                st.success("✅ Loaded 600MW sample problem!")
+                
+                # CRITICAL FIX: Also load constraints and create current_config
+                # This ensures the MILP optimizer has all required data
+                st.session_state.current_config = {
+                    'site': {
+                        'Site_Name': '600MW Sample Problem',
+                        'ISO': 'ERCOT',
+                        'IT_Capacity_MW': 600,
+                        'Total_Facility_MW': 750,  # 600 × 1.25 PUE
+                        'Design_PUE': 1.25,
+                    },
+                    'scenario': {
+                        'Scenario_Name': 'All Technologies',
+                        'Description': '600MW sample problem from diagnostic',
+                        'Recip_Enabled': True,
+                        'Turbine_Enabled': True,
+                        'BESS_Enabled': True,
+                        'Solar_Enabled': True,
+                        'Grid_Enabled': True,
+                        'Target_LCOE_MWh': 85,
+                        'Target_Deployment_Months': 24,
+                    },
+                    'equipment_enabled': {
+                        'recip': True,
+                        'turbine': True,
+                        'bess': True,
+                        'solar': True,
+                        'grid': True,
+                    },
+                    'constraints': problem['constraints'],  # ← THE CRITICAL FIX!
+                    'objectives': {
+                        'Primary_Objective': 'Minimize_LCOE',
+                        'LCOE_Max_MWh': 100,
+                        'Deployment_Max_Months': 36,
+                    }
+                }
+                
+                st.success("✅ Loaded 600MW sample problem with constraints!")
                 st.rerun()
             except Exception as e:
                 st.error(f"Failed to load sample problem: {e}")
