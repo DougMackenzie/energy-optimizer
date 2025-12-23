@@ -124,7 +124,7 @@ def constraint_form(
     with col4:
         updated['min_availability_pct'] = st.number_input(
             "Min Availability (%)",
-            value=constraints.get('min_availability_pct', 99.9),
+            value=float(constraints.get('min_availability_pct', 99.9)),
             min_value=95.0,
             max_value=99.999,
             step=0.1,
@@ -138,7 +138,7 @@ def constraint_form(
     with col1:
         updated['min_ramp_rate_mw_s'] = st.number_input(
             "Min Ramp Rate (MW/s)",
-            value=constraints.get('min_ramp_rate_mw_s', 1.0),
+            value=float(constraints.get('min_ramp_rate_mw_s', 1.0)),
             min_value=0.1,
             max_value=10.0,
             step=0.1,
