@@ -16,25 +16,57 @@ from app.utils.load_profile_generator import (
 def render():
     st.markdown("### ⚡ Load Composer with Demand Response")
     
-    st.info("""
-    **Configure facility load profile with demand response capabilities**
+    # Add button to load 600MW sample problem
+    col_header1, col_header2 = st.columns([3, 1])
+    with col_header1:
+        st.info("""
+        **Configure facility load profile with demand response capabilities**
+        
+        Define IT workload mix, cooling flexibility, and DR participation to optimize power costs.
+        """)
     
-    Define IT workload mix, cooling flexibility, and DR participation to optimize power costs.
-    """)
+    with col_header2:
+        if st.button("📥 Load 600MW Sample", type="primary", use_container_width=True, 
+                     help="Load the sample 600MW AI data center problem"):
+            try:
+                from sample_problem_600mw import get_sample_problem
+                problem = get_sample_problem()
+                
+                # Load problem data into session state
+                st.session_state.load_profile_dr = {
+                    'peak_it_mw': problem['load_profile']['peak_it_mw'],
+                    'pue': problem['load_profile']['pue'],
+                    'load_factor': problem['load_profile']['load_factor'],
+                    'workload_mix': {
+                        'pre_training': int(problem['load_profile']['workload_mix']['pre_training'] * 100),
+                        'fine_tuning': int(problem['load_profile']['workload_mix']['fine_tuning'] * 100),
+                        'batch_inference': int(problem['load_profile']['workload_mix']['batch_inference'] * 100),
+                        'realtime_inference': int(problem['load_profile']['workload_mix']['realtime_inference'] * 100),
+                        'rl_training': 0,
+                        'cloud_hpc': 0,
+                    },
+                    'cooling_flex': 0.25,
+                    'thermal_constant_min': 30,
+                    'enabled_dr_products': ['economic_dr'],
+                }
+                st.success("✅ Loaded 600MW sample problem!")
+                st.rerun()
+            except Exception as e:
+                st.error(f"Failed to load sample problem: {e}")
     
-    # Initialize session state
+    # Initialize session state (now with 600MW default)
     if 'load_profile_dr' not in st.session_state:
         st.session_state.load_profile_dr = {
-            'peak_it_mw': 160.0,
+            'peak_it_mw': 600.0,  # Updated to 600 MW default
             'pue': 1.25,
-            'load_factor': 0.75,
+            'load_factor': 0.85,
             'workload_mix': {
-                'pre_training': 40,
+                'pre_training': 45,
                 'fine_tuning': 20,
                 'batch_inference': 15,
-                'realtime_inference': 15,
-                'rl_training': 5,
-                'cloud_hpc': 5,
+                'realtime_inference': 20,
+                'rl_training': 0,
+                'cloud_hpc': 0,
             },
             'cooling_flex': 0.25,
             'thermal_constant_min': 30,
