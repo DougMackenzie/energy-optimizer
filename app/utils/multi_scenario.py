@@ -401,6 +401,33 @@ def run_all_scenarios(
             print(f"\n[{idx+1}/{len(scenarios)}] Optimizing: {scenario_name}")
             
             try:
+                # DIAGNOSTIC LOGGING
+                print(f"\n{'='*60}")
+                print(f"MILP DIAGNOSTIC - Scenario: {scenario_name}")
+                print(f"{'='*60}")
+                print(f"Years: {list(range(2026, 2036))}")
+                print(f"Solver: {solver}, Time limit: {time_limit}s")
+                print(f"\nConstraints:")
+                for key, val in constraints.items():
+                    print(f"  {key}: {val}")
+                print(f"\nLoad Profile:")
+                print(f"  peak_it_mw: {load_profile_dr.get('peak_it_mw', 'NOT SET')}")
+                print(f"  pue: {load_profile_dr.get('pue', 'NOT SET')}")
+                print(f"  load_factor: {load_profile_dr.get('load_factor', 'NOT SET')}")
+                if 'load_data' in load_profile_dr:
+                    total_load = load_profile_dr['load_data'].get('total_load_mw', [])
+                    if total_load:
+                        import numpy as np
+                        print(f"  load_data hours: {len(total_load)}")
+                        print(f"  load peak: {np.max(total_load):.1f} MW")
+                        print(f"  load avg: {np.mean(total_load):.1f} MW")
+                else:
+                    print(f"  load_data: NOT SET - will be generated")
+                print(f"\nScenario flags:")
+                for key in ['Recip_Enabled', 'Turbine_Enabled', 'Solar_Enabled', 'BESS_Enabled', 'Grid_Enabled']:
+                    print(f"  {key}: {scenario.get(key, 'NOT SET')}")
+                print(f"{'='*60}\n")
+                
                 # Run MILP optimization
                 milp_result = optimize_with_milp(
                     site=site,
