@@ -95,34 +95,36 @@ class bvNexusMILP_DR:
     # (Original $1M/MWh could cause floating-point issues)
     UNSERVED_PENALTY = 50_000  # $/MWh
     
-    # Equipment specifications
+    # Equipment specifications (CORRECTED Dec 2025 - bvNexus v3)
+    # NOx rates are WITH ADVANCED SCR (95% reduction)
+    # Allows ~300 MW thermal within 100 tpy NOx limit
     EQUIPMENT = {
         'recip': {
-            'capacity_mw': 5.0,
-            'heat_rate_btu_kwh': 7700,  # Verify: HHV or LHV basis?
-            'nox_rate_lb_mmbtu': 0.099,  # With SCR
+            'capacity_mw': 10.0,              # Jenbacher J920 / Wärtsilä 34SG size
+            'heat_rate_btu_kwh': 7200,        # HHV basis (billing standard)
+            'nox_rate_lb_mmbtu': 0.015,       # With advanced SCR (95% reduction)
             'availability': 0.97,
-            'ramp_rate_mw_min': 2.5,
-            'capex_per_kw': 1650,
+            'ramp_rate_mw_min': 3.0,
+            'capex_per_kw': 1200,             # Installed cost
         },
         'turbine': {
-            'capacity_mw': 20.0,
-            'heat_rate_btu_kwh': 8500,  # Verify: HHV or LHV basis?
-            'nox_rate_lb_mmbtu': 0.05,  # With SCR
-            'availability': 0.95,
-            'ramp_rate_mw_min': 4.0,
-            'capex_per_kw': 1300,
+            'capacity_mw': 50.0,              # GE LM6000 size
+            'heat_rate_btu_kwh': 8500,        # HHV basis (billing standard)
+            'nox_rate_lb_mmbtu': 0.010,       # With advanced SCR
+            'availability': 0.97,
+            'ramp_rate_mw_min': 10.0,
+            'capex_per_kw': 900,              # Installed cost
         },
         'bess': {
             'efficiency': 0.92,
             'min_soc_pct': 0.10,
             'capex_per_kwh': 250,
-            'ramp_rate_mw_min': 50.0,  # Very fast
+            'ramp_rate_mw_min': 50.0,         # Very fast
         },
         'solar': {
             'capacity_factor': 0.25,
-            'land_acres_per_mw': 4.25,
-            'capex_per_kw': 1000,
+            'land_acres_per_mw': 5.0,
+            'capex_per_kw': 950,
         },
     }
     

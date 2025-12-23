@@ -117,7 +117,7 @@ def load_scenario_templates(
             'Solar_Enabled': True,
             'Grid_Enabled': True,
             'Objective_Priority': 'Maximum Power',
-            'Grid_Timeline_Months': 36
+            'Grid_Timeline_Months': 60  # bvNexus v3: Realistic large-load interconnection
         },
         {
             'Scenario_ID': 3,
@@ -141,7 +141,7 @@ def load_scenario_templates(
             'Solar_Enabled': False,
             'Grid_Enabled': True,
             'Objective_Priority': 'Maximum Power',
-            'Grid_Timeline_Months': 36
+            'Grid_Timeline_Months': 60  # bvNexus v3: Realistic interconnection
         },
         {
             'Scenario_ID': 5,
@@ -153,7 +153,7 @@ def load_scenario_templates(
             'Solar_Enabled': True,
             'Grid_Enabled': True,
             'Objective_Priority': 'Maximum Power',
-            'Grid_Timeline_Months': 12
+            'Grid_Timeline_Months': 60  # bvNexus v3: Realistic interconnection
         }
     ]
     

@@ -116,19 +116,28 @@ def optimize_with_milp(
         if scenario:
             m = optimizer.model
             
-            def enabled(key, default=True):
-                v = scenario.get(key, default)
-                return str(v).lower() in ('true', 'yes', '1') if isinstance(v, str) else bool(v)
+            # bvNexus v3 fix: Use OR logic (is_disabled) instead of AND logic
+            def is_disabled(primary_key, alt_key=None):
+                """Check if equipment is EXPLICITLY disabled (OR logic)."""
+                for key in [primary_key, alt_key]:
+                    if key and key in scenario:
+                        val = scenario[key]
+                        if isinstance(val, str):
+                            if val.lower() in ('false', 'no', '0', 'disabled'):
+                                return True
+                        elif val == False:
+                            return True
+                return False
             
-            if not enabled('Recip_Enabled', True) and not enabled('Recip_Engines', True):
+            if is_disabled('Recip_Enabled', 'Recip_Engines'):
                 for y in years: m.n_recip[y].fix(0)
-            if not enabled('Turbine_Enabled', True) and not enabled('Gas_Turbines', True):
+            if is_disabled('Turbine_Enabled', 'Gas_Turbines'):
                 for y in years: m.n_turbine[y].fix(0)
-            if not enabled('Solar_Enabled', True) and not enabled('Solar_PV', True):
+            if is_disabled('Solar_Enabled', 'Solar_PV'):
                 for y in years: m.solar_mw[y].fix(0)
-            if not enabled('BESS_Enabled', True) and not enabled('BESS', True):
+            if is_disabled('BESS_Enabled', 'BESS'):
                 for y in years: m.bess_mwh[y].fix(0); m.bess_mw[y].fix(0)
-            if not enabled('Grid_Enabled', True) and not enabled('Grid_Connection', True):
+            if is_disabled('Grid_Enabled', 'Grid_Connection'):
                 for y in years: m.grid_mw[y].fix(0); m.grid_active[y].fix(0)
         
         # Solve
@@ -173,12 +182,12 @@ def _format_result(solution: Dict, years: List[int], constraints: Dict) -> Dict:
         phased['cumulative_solar_mw'][y] = e.get('solar_mw', 0)
         phased['grid_mw'][y] = e.get('grid_mw', 0)
     
-    # Calculate CAPEX
+    # Calculate CAPEX (bvNexus v3: updated equipment sizes and costs)
     capex = (
-        eq.get('n_recip', 0) * 5 * 1650000 +
-        eq.get('n_turbine', 0) * 20 * 1300000 +
+        eq.get('n_recip', 0) * 10 * 1200000 +
+        eq.get('n_turbine', 0) * 50 * 900000 +
         eq.get('bess_mwh', 0) * 250000 +
-        eq.get('solar_mw', 0) * 1000000
+        eq.get('solar_mw', 0) * 950000
     )
     if eq.get('grid_active'): capex += 5_000_000
     
@@ -192,8 +201,8 @@ def _format_result(solution: Dict, years: List[int], constraints: Dict) -> Dict:
         'violations': violations,
         
         'equipment_config': {
-            'recip_engines': [{'quantity': eq.get('n_recip', 0), 'capacity_mw': 5.0}] if eq.get('n_recip', 0) > 0 else [],
-            'gas_turbines': [{'quantity': eq.get('n_turbine', 0), 'capacity_mw': 20.0}] if eq.get('n_turbine', 0) > 0 else [],
+            'recip_engines': [{'quantity': eq.get('n_recip', 0), 'capacity_mw': 10.0}] if eq.get('n_recip', 0) > 0 else [],
+            'gas_turbines': [{'quantity': eq.get('n_turbine', 0), 'capacity_mw': 50.0}] if eq.get('n_turbine', 0) > 0 else [],
             'bess': [{'energy_mwh': eq.get('bess_mwh', 0), 'power_mw': eq.get('bess_mw', 0)}] if eq.get('bess_mwh', 0) > 0 else [],
             'solar_mw_dc': eq.get('solar_mw', 0),
             'grid_import_mw': eq.get('grid_mw', 0),
