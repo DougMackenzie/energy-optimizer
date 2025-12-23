@@ -260,14 +260,14 @@ def render():
         else:
             st.success(f"✅ Workload mix: {total_pct}%")
         
-        # Update session state
+        # Update session state (convert back to 0-1 floats)
         st.session_state.load_profile_dr['workload_mix'] = {
-            'pre_training': pre_training_pct,
-            'fine_tuning': fine_tuning_pct,
-            'batch_inference': batch_inference_pct,
-            'realtime_inference': realtime_inference_pct,
-            'rl_training': rl_training_pct,
-            'cloud_hpc': cloud_hpc_pct,
+            'pre_training': pre_training_pct / 100.0,
+            'fine_tuning': fine_tuning_pct / 100.0,
+            'batch_inference': batch_inference_pct / 100.0,
+            'realtime_inference': realtime_inference_pct / 100.0,
+            'rl_training': rl_training_pct / 100.0,
+            'cloud_hpc': cloud_hpc_pct / 100.0,
         }
         
         # Workload mix pie chart
