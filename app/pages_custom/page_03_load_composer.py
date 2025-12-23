@@ -220,34 +220,34 @@ def render():
         with col1:
             pre_training_pct = st.slider(
                 "Pre-Training (%)", 0, 100, 
-                st.session_state.load_profile_dr['workload_mix']['pre_training'],
+                int(st.session_state.load_profile_dr['workload_mix'].get('pre_training', 0) * 100),
                 help="Large model training - most interruptible but slow to stop"
             )
             fine_tuning_pct = st.slider(
                 "Fine-Tuning (%)", 0, 100,
-                st.session_state.load_profile_dr['workload_mix']['fine_tuning'],
+                int(st.session_state.load_profile_dr['workload_mix'].get('fine_tuning', 0) * 100),
                 help="Model customization - medium flexibility"
             )
             batch_inference_pct = st.slider(
                 "Batch Inference (%)", 0, 100,
-                st.session_state.load_profile_dr['workload_mix']['batch_inference'],
+                int(st.session_state.load_profile_dr['workload_mix'].get('batch_inference', 0) * 100),
                 help="Offline predictions - highly flexible"
             )
         
         with col2:
             realtime_inference_pct = st.slider(
                 "Real-Time Inference (%)", 0, 100,
-                st.session_state.load_profile_dr['workload_mix']['realtime_inference'],
+                int(st.session_state.load_profile_dr['workload_mix'].get('realtime_inference', 0) * 100),
                 help="Production API serving - lowest flexibility"
             )
             rl_training_pct = st.slider(
                 "RL Training (%)", 0, 100,
-                st.session_state.load_profile_dr['workload_mix']['rl_training'],
+                int(st.session_state.load_profile_dr['workload_mix'].get('rl_training', 0) * 100),
                 help="Reinforcement learning - medium-high flexibility"
             )
             cloud_hpc_pct = st.slider(
                 "Cloud HPC (%)", 0, 100,
-                st.session_state.load_profile_dr['workload_mix']['cloud_hpc'],
+                int(st.session_state.load_profile_dr['workload_mix'].get('cloud_hpc', 0) * 100),
                 help="Traditional HPC workloads - low-medium flexibility"
             )
         
