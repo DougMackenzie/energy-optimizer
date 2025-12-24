@@ -202,7 +202,7 @@ def render():
                         fig = create_annual_capacity_stack_chart(
                             deployment=deployment,
                             load_trajectory=load_trajectory,
-                            years=list(range(2026, 2036))  # 2026-2035 (10 years)
+                            years=list(range(2028, 2036))  # 2028-2035 (8 years, matching load trajectory)
                         )
                         
                         # Use unique key for each chart to avoid Streamlit duplicate ID error

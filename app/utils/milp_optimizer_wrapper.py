@@ -243,7 +243,7 @@ def optimize_with_milp(
     
     try:
         if years is None:
-            years = list(range(2026, 2036))
+            years = list(range(2028, 2036))  # Match load trajectory
         
         # Validate constraints
         if not constraints:
@@ -844,7 +844,7 @@ def run_milp_scenarios(
     """Run multiple scenarios."""
     
     if years is None:
-        years = list(range(2026, 2036))
+        years = list(range(2028, 2036))  # Match load trajectory
     
     if scenarios is None:
         scenarios = [
