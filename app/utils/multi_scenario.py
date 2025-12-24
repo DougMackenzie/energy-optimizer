@@ -81,7 +81,7 @@ def auto_size_equipment_optimized(
         print(f"  ✅ Best: {best['combination_name']}")
         
         # Convert deployment schedule to equipment config format
-        years = list(range(2026, 2036))  # 2026-2035 (10 years)
+        years = list(range(2028, 2036))  # 2028-2035 (8 years, matching load trajectory)
         final_year = max(years)
         
         # Calculate total CAPEX from deployment
