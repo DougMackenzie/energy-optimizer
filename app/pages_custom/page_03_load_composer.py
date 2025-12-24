@@ -171,35 +171,41 @@ def render():
         enable_growth = st.checkbox("Enable load growth over planning horizon", value=True)
         
         if enable_growth:
-            growth_rate = st.slider(
-                "Annual Load Growth (%)", 
-                min_value=0, max_value=30, value=10,
-                help="Year-over-year load growth rate"
-            ) / 100
+            # Use stepped trajectory: 0→150→300→450→600 MW facility
+            st.info("Stepped deployment: 0 MW (2025-2027) → 150 MW (2028) → 300 MW (2029) → 450 MW (2030) → 600 MW (2031+)")
             
-            years = list(range(2026, 2036))
-            trajectory = {y: min(1.0 + growth_rate * i, 2.0) for i, y in enumerate(years)}
+            # Define correct trajectory (facility MW)
+            load_trajectory_mw = {
+                2025: 0, 2026: 0, 2027: 0,  # Pre-construction
+                2028: 150, 2029: 300, 2030: 450,  # Ramp-up
+                2031: 600, 2032: 600, 2033: 600, 2034: 600, 2035: 600,  # Steady
+            }
+            
+            years = list(load_trajectory_mw.keys())
+            loads_mw = list(load_trajectory_mw.values())
             
             # Show trajectory chart
             fig_growth = go.Figure()
             fig_growth.add_trace(go.Scatter(
                 x=years,
-                y=[peak_facility_mw * trajectory[y] for y in years],
+                y=loads_mw,
                 mode='lines+markers',
-                name='Peak Load',
-                line=dict(color='#1f77b4', width=3)
+                name='Peak Facility Load',
+                line=dict(color='#1f77b4', width=3),
+                marker=dict(size=8)
             ))
             fig_growth.update_layout(
                 title="Load Growth Trajectory",
                 xaxis_title="Year",
                 yaxis_title="Peak Facility Load (MW)",
-                height=300
+                height=300,
+                yaxis=dict(range=[0, 650])
             )
             st.plotly_chart(fig_growth, use_container_width=True)
             
-            st.session_state.load_profile_dr['load_trajectory'] = trajectory
+            st.session_state.load_profile_dr['load_trajectory'] = load_trajectory_mw
         else:
-            st.session_state.load_profile_dr['load_trajectory'] = {y: 1.0 for y in range(2026, 2036)}
+            st.session_state.load_profile_dr['load_trajectory'] = {y: peak_facility_mw for y in range(2025, 2036)}
     
     # =========================================================================
     # TAB 2: WORKLOAD MIX
