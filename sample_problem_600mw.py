@@ -10,8 +10,8 @@ and demonstration. All values are preset to common industry parameters.
 
 Scenario Summary:
 -----------------
-• 600 MW IT Load (750 MW facility at PUE 1.25)
-• Phased deployment: 150 MW/year starting 2028
+• 429 MW IT Load (600 MW facility at PUE 1.4)
+• Phased deployment: 150 MW/year facility load starting 2028
 • Grid interconnection available Q1 2031
 • 300 acres available land
 • Sufficient gas supply for 300+ MW BTM generation
@@ -72,7 +72,7 @@ SITE_CONFIG = {
     "distance_to_tap_miles": 2.5,
     
     # Facility Design
-    "pue": 1.25,
+    "pue": 1.4,
     "cooling_type": "Evaporative + DX backup",
     "tier_level": "Tier III+",
     "n_plus_1_required": True,
@@ -137,23 +137,25 @@ def generate_load_trajectory() -> Dict[int, float]:
     """
     Generate phased load trajectory.
     
-    Load Growth:
-    - 2028: 150 MW IT → 187.5 MW facility
-    - 2029: 300 MW IT → 375 MW facility
-    - 2030: 450 MW IT → 562.5 MW facility
-    - 2031+: 600 MW IT → 750 MW facility (grid arrives)
+    Load Growth (Facility Load):
+    - 2028: 150 MW facility
+    - 2029: 300 MW facility
+    - 2030: 450 MW facility
+    - 2031+: 600 MW facility (grid arrives)
     """
-    pue = SITE_CONFIG['pue']
-    
+    # Load trajectory in MW facility (utility-side)
     return {
-        2028: 150 * pue,   # 187.5 MW
-        2029: 300 * pue,   # 375.0 MW
-        2030: 450 * pue,   # 562.5 MW
-        2031: 600 * pue,   # 750.0 MW
-        2032: 600 * pue,   # 750.0 MW (steady state)
-        2033: 600 * pue,   # 750.0 MW
-        2034: 600 * pue,   # 750.0 MW
-        2035: 600 * pue,   # 750.0 MW
+        2025: 0,    # Pre-construction
+        2026: 0,    # Pre-construction
+        2027: 0,    # Pre-construction
+        2028: 150,  # 150 MW facility
+        2029: 300,  # 300 MW facility
+        2030: 450,  # 450 MW facility
+        2031: 600,  # 600 MW facility (steady state, grid arrives)
+        2032: 600,  # 600 MW facility
+        2033: 600,  # 600 MW facility
+        2034: 600,  # 600 MW facility
+        2035: 600,  # 600 MW facility
     }
 
 
@@ -224,9 +226,9 @@ def generate_workload_mix() -> Dict[str, float]:
 
 LOAD_PROFILE_CONFIG = {
     # IT Load Parameters
-    "peak_it_mw": 600,
-    "pue": 1.25,
-    "peak_facility_mw": 750,  # 600 × 1.25
+    "peak_it_mw": 429,
+    "pue": 1.4,
+    "peak_facility_mw": 600,  # 429 × 1.4 ≈ 600
     
     # Load Growth
     "load_trajectory": generate_load_trajectory(),
