@@ -27,6 +27,49 @@ except ImportError as e:
     bvNexusMILP_DR = None
 
 
+# ==============================================================================
+# EQUIPMENT PARAMETERS (bvNexus v3 Corrected)
+# ==============================================================================
+EQUIPMENT_PARAMS = {
+    'recip': {
+        'capacity_mw': 10.0,
+        'heat_rate': 7200,
+        'capex': 1200,
+        'vom': 8.0,
+        'fom': 15.0,
+        'lead_time': 18,
+    },
+    'turbine': {
+        'capacity_mw': 50.0,
+        'heat_rate': 8500,
+        'capex': 900,
+        'vom': 6.0,
+        'fom': 12.0,
+        'lead_time': 24,
+    },
+    'bess': {
+        'capex_kwh': 250,
+        'fom': 10.0,
+        'lead_time': 12,
+    },
+    'solar': {
+        'capex': 950,
+        'fom': 10.0,
+        'cf': 0.25,
+        'lead_time': 12,
+    },
+}
+
+DEFAULT_LOAD_TRAJECTORY = {
+    2025: 0, 2026: 0, 2027: 0,
+    2028: 150, 2029: 300, 2030: 450,
+    2031: 600, 2032: 600, 2033: 600, 2034: 600, 2035: 600,
+}
+
+GAS_PRICE = 3.50
+GRID_PRICE = 75
+GRID_LEAD_TIME = 60
+
 def _empty_result(error: str) -> Dict:
     """Return properly structured empty result."""
     return {
@@ -155,7 +198,7 @@ def optimize_with_milp(
 
 
 def _format_result(solution: Dict, years: List[int], constraints: Dict) -> Dict:
-    """Format solution into UI-compatible structure."""
+    """Format solution with complete economics calculation (fast version)."""
     
     term = solution.get('termination', 'unknown')
     acceptable_terms = ['optimal', 'feasible', 'maxTimeLimit', 'maxIterations', 'maxEvaluations']
@@ -169,6 +212,88 @@ def _format_result(solution: Dict, years: List[int], constraints: Dict) -> Dict:
     gas = solution.get('gas_usage', {}).get(final_year, {})
     dr = solution.get('dr', {}).get(final_year, {})
     
+    # Extract equipment
+    n_recip = int(eq.get('n_recip', 0))
+    n_turbine = int(eq.get('n_turbine', 0))
+    bess_mwh = float(eq.get('bess_mwh', 0))
+    solar_mw = float(eq.get('solar_mw', 0))
+    grid_mw = float(eq.get('grid_mw', 0))
+    grid_active = bool(eq.get('grid_active', False) or grid_mw > 0)
+    
+    # Calculate capacities
+    RECIP_MW = EQUIPMENT_PARAMS['recip']['capacity_mw']
+    TURBINE_MW = EQUIPMENT_PARAMS['turbine']['capacity_mw']
+    
+    recip_mw = n_recip * RECIP_MW
+    turbine_mw = n_turbine * TURBINE_MW
+    bess_mw = bess_mwh / 4
+    
+    total_capacity_mw = recip_mw + turbine_mw + solar_mw + bess_mw + grid_mw
+    
+    # Calculate annual generation
+    CF_THERMAL = 0.70
+    CF_SOLAR = 0.25
+    CF_GRID = 0.85
+    HOURS = 8760
+    
+    recip_gen = recip_mw * CF_THERMAL * HOURS
+    turbine_gen = turbine_mw * CF_THERMAL * HOURS
+    solar_gen = solar_mw * CF_SOLAR * HOURS
+    grid_gen = grid_mw * CF_GRID * HOURS if grid_active else 0
+    
+    annual_gen_mwh = recip_gen + turbine_gen + solar_gen + grid_gen
+    annual_gen_gwh = annual_gen_mwh / 1000
+    
+    # Calculate CAPEX
+    capex = (
+        recip_mw * 1000 * EQUIPMENT_PARAMS['recip']['capex'] +
+        turbine_mw * 1000 * EQUIPMENT_PARAMS['turbine']['capex'] +
+        bess_mwh * 1000 * EQUIPMENT_PARAMS['bess']['capex_kwh'] +
+        solar_mw * 1000 * EQUIPMENT_PARAMS['solar']['capex']
+    )
+    if grid_active:
+        capex += 5_000_000
+    
+    total_capex_m = capex / 1e6
+    
+    # Calculate fuel cost
+    recip_fuel = recip_gen * 1000 * EQUIPMENT_PARAMS['recip']['heat_rate'] / 1e6
+    turbine_fuel = turbine_gen * 1000 * EQUIPMENT_PARAMS['turbine']['heat_rate'] / 1e6
+    
+    fuel_cost = (recip_fuel + turbine_fuel) * GAS_PRICE
+    grid_cost = grid_gen * GRID_PRICE
+    
+    annual_fuel_cost_m = (fuel_cost + grid_cost) / 1e6
+    
+    # Calculate O&M
+    fixed_om = (
+        recip_mw * 1000 * EQUIPMENT_PARAMS['recip']['fom'] +
+        turbine_mw * 1000 * EQUIPMENT_PARAMS['turbine']['fom'] +
+        bess_mw * 1000 * EQUIPMENT_PARAMS['bess']['fom'] +
+        solar_mw * 1000 * EQUIPMENT_PARAMS['solar']['fom']
+    ) / 1e6
+    
+    variable_om = (
+        recip_gen * EQUIPMENT_PARAMS['recip']['vom'] +
+        turbine_gen * EQUIPMENT_PARAMS['turbine']['vom']
+    ) / 1e6
+    
+    annual_opex_m = fixed_om + variable_om
+    
+    # Calculate LCOE
+    r = 0.08
+    n_life = 20
+    crf = r * (1 + r)**n_life / ((1 + r)**n_life - 1)
+    
+    annualized_capex = total_capex_m * crf
+    annual_costs = annualized_capex + annual_opex_m + annual_fuel_cost_m
+    
+    lcoe_mwh = (annual_costs * 1000 / annual_gen_gwh) if annual_gen_gwh > 0 else 0
+    
+    # Capacity factor
+    max_gen = total_capacity_mw * HOURS
+    capacity_factor_pct = (annual_gen_mwh / max_gen * 100) if max_gen > 0 else 0
+    
     # Build phased deployment
     phased = {
         'cumulative_recip_mw': {}, 'cumulative_turbine_mw': {},
@@ -176,20 +301,11 @@ def _format_result(solution: Dict, years: List[int], constraints: Dict) -> Dict:
     }
     for y in years:
         e = solution.get('equipment', {}).get(y, {})
-        phased['cumulative_recip_mw'][y] = e.get('recip_mw', 0)
-        phased['cumulative_turbine_mw'][y] = e.get('turbine_mw', 0)
-        phased['cumulative_bess_mwh'][y] = e.get('bess_mwh', 0)
-        phased['cumulative_solar_mw'][y] = e.get('solar_mw', 0)
-        phased['grid_mw'][y] = e.get('grid_mw', 0)
-    
-    # Calculate CAPEX (bvNexus v3: updated equipment sizes and costs)
-    capex = (
-        eq.get('n_recip', 0) * 10 * 1200000 +
-        eq.get('n_turbine', 0) * 50 * 900000 +
-        eq.get('bess_mwh', 0) * 250000 +
-        eq.get('solar_mw', 0) * 950000
-    )
-    if eq.get('grid_active'): capex += 5_000_000
+        phased['cumulative_recip_mw'][y] = int(e.get('n_recip', 0)) * RECIP_MW
+        phased['cumulative_turbine_mw'][y] = int(e.get('n_turbine', 0)) * TURBINE_MW
+        phased['cumulative_bess_mwh'][y] = float(e.get('bess_mwh', 0))
+        phased['cumulative_solar_mw'][y] = float(e.get('solar_mw', 0))
+        phased['grid_mw'][y] = float(e.get('grid_mw', 0))
     
     violations = []
     if cov.get('power_gap_mw', 0) > 1:
@@ -201,30 +317,32 @@ def _format_result(solution: Dict, years: List[int], constraints: Dict) -> Dict:
         'violations': violations,
         
         'equipment_config': {
-            'recip_engines': [{'quantity': eq.get('n_recip', 0), 'capacity_mw': 10.0}] if eq.get('n_recip', 0) > 0 else [],
-            'gas_turbines': [{'quantity': eq.get('n_turbine', 0), 'capacity_mw': 50.0}] if eq.get('n_turbine', 0) > 0 else [],
-            'bess': [{'energy_mwh': eq.get('bess_mwh', 0), 'power_mw': eq.get('bess_mw', 0)}] if eq.get('bess_mwh', 0) > 0 else [],
-            'solar_mw_dc': eq.get('solar_mw', 0),
-            'grid_import_mw': eq.get('grid_mw', 0),
-            'n_recip': eq.get('n_recip', 0),
-            'n_turbine': eq.get('n_turbine', 0),
-            'recip_mw': eq.get('recip_mw', 0),
-            'turbine_mw': eq.get('turbine_mw', 0),
-            'bess_mwh': eq.get('bess_mwh', 0),
-            'bess_mw': eq.get('bess_mw', 0),
-            'solar_mw': eq.get('solar_mw', 0),
-            'grid_mw': eq.get('grid_mw', 0),
-            'grid_active': eq.get('grid_active', False),
-            'total_capacity_mw': eq.get('total_capacity_mw', 0),
+            'recip_engines': [{'quantity': n_recip, 'capacity_mw': RECIP_MW}] if n_recip > 0 else [],
+            'gas_turbines': [{'quantity': n_turbine, 'capacity_mw': TURBINE_MW}] if n_turbine > 0 else [],
+            'bess': [{'energy_mwh': bess_mwh, 'power_mw': bess_mw}] if bess_mwh > 0 else [],
+            'solar_mw_dc': solar_mw,
+            'grid_import_mw': grid_mw,
+            'n_recip': n_recip,
+            'n_turbine': n_turbine,
+            'recip_mw': recip_mw,
+            'turbine_mw': turbine_mw,
+            'bess_mwh': bess_mwh,
+            'bess_mw': bess_mw,
+            'solar_mw': solar_mw,
+            'grid_mw': grid_mw,
+            'grid_active': grid_active,
+            'total_capacity_mw': total_capacity_mw,
             '_milp_solution': solution,
             '_phased_deployment': phased,
         },
         
         'economics': {
-            'lcoe_mwh': max(0, solution.get('objective_lcoe', 0)),
-            'total_capex_m': capex / 1e6,
-            'annual_generation_gwh': 0,
-            'annual_opex_m': capex * 0.03 / 1e6,
+            'lcoe_mwh': lcoe_mwh,
+            'total_capex_m': total_capex_m,
+            'annual_opex_m': annual_opex_m,
+            'annual_fuel_cost_m': annual_fuel_cost_m,
+            'annual_generation_gwh': annual_gen_gwh,
+            'capacity_factor_pct': capacity_factor_pct,
         },
         
         'power_coverage': {
@@ -253,7 +371,7 @@ def _format_result(solution: Dict, years: List[int], constraints: Dict) -> Dict:
             'timeline_months': 24,
             'timeline_years': 2.0,
             'critical_path': 'MILP Optimized',
-            'deployment_speed': 'Optimized',
+            'deployment_speed': 'Fast',
         },
         
         'dr_metrics': {
@@ -264,6 +382,7 @@ def _format_result(solution: Dict, years: List[int], constraints: Dict) -> Dict:
             'nox_tpy': em.get('nox_tpy', 0),
             'gas_mcf_day': gas.get('avg_daily_mcf', 0),
             'coverage_pct': cov.get('coverage_pct', 100),
+            'total_capacity_mw': total_capacity_mw,
         },
         
         'score': 100 if cov.get('is_fully_served', True) else max(0, cov.get('coverage_pct', 0)),

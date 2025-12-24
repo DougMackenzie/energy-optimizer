@@ -174,14 +174,21 @@ def render():
     
     with col_econ2:
         st.markdown("##### Operating Costs (Annual)")
-        st.metric("O&M", f"${economics['annual_opex_m']:.2f}M/yr")
-        st.metric("Fuel/Energy", f"${economics['annual_fuel_cost_m']:.2f}M/yr")
         
-        total_annual = economics['annual_opex_m'] + economics['annual_fuel_cost_m']
+        # Use .get() with defaults to prevent KeyError
+        annual_opex = economics.get('annual_opex_m', 0)
+        annual_fuel = economics.get('annual_fuel_cost_m', 0)
+        annual_gen = economics.get('annual_generation_gwh', 0)
+        capacity_factor = economics.get('capacity_factor_pct', 0)
+        
+        st.metric("O&M", f"${annual_opex:.2f}M/yr")
+        st.metric("Fuel/Energy", f"${annual_fuel:.2f}M/yr")
+        
+        total_annual = annual_opex + annual_fuel
         st.metric("Total Annual", f"${total_annual:.2f}M/yr")
         
         # Capacity factor
-        st.caption(f"Capacity Factor: {economics['capacity_factor_pct']:.1f}%")
+        st.caption(f"Capacity Factor: {capacity_factor:.1f}%")
     
     # Timeline & Critical Path
     st.markdown("---")
