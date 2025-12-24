@@ -328,9 +328,16 @@ class bvNexusMILP_DR:
         def d_required_init(m, y):
             trajectory = self.site.get('load_trajectory', {})
             if trajectory and y in trajectory:
-                base_year = min(self.years)
-                if base_year in trajectory:
-                    scale = trajectory[y] / trajectory[base_year]
+                # Use trajectory MW value directly
+                year_load_mw = trajectory[y]
+                # If 0 MW for this year, return 0
+                if year_load_mw == 0:
+                    return 0.0
+                # Otherwise, scale annual energy by year's MW target
+                # Find a non-zero year to use as reference
+                reference_mw = max(trajectory.values()) if trajectory else 600.0
+                if reference_mw > 0:
+                    scale = year_load_mw / reference_mw
                 else:
                     scale = 1.0
             else:
