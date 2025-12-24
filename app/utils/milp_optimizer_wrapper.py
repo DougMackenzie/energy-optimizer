@@ -463,7 +463,8 @@ def optimize_with_milp(
         grid_lead = scenario.get('Grid_Timeline_Months', GRID_LEAD_TIME) if scenario else GRID_LEAD_TIME
         
         for y in years:
-            months_from_start = (y - start_year) * 12
+            # Calculate months from 2025 (current year), not from planning start
+            months_from_start = (y - 2025) * 12
             
             # BESS: 12 months
             if months_from_start < EQUIPMENT_PARAMS['bess']['lead_time']:
