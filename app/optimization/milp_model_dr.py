@@ -301,11 +301,16 @@ class bvNexusMILP_DR:
             # Scale load by year based on trajectory if provided
             trajectory = self.site.get('load_trajectory', {})
             if trajectory and y in trajectory:
-                base_year = min(self.years)
-                if base_year in trajectory:
-                    scale = trajectory[y] / trajectory[base_year]
-                else:
-                    scale = 1.0
+                # Use trajectory MW value directly (not as a scale factor)
+                # trajectory values are in MW facility load
+                year_load_mw = trajectory[y]
+                # If 0 MW for this year, return 0
+                if year_load_mw == 0:
+                    return 0.0
+                # Otherwise, scale the base load pattern to match this year's MW
+                # Assume load_array represents the pattern at peak facility load
+                peak_facility_load = max(load_array) if len(load_array) > 0 else 600.0
+                scale = year_load_mw / peak_facility_load if peak_facility_load > 0 else 1.0
             else:
                 scale = 1.0
             return float(load_array[t-1]) * scale
