@@ -508,7 +508,6 @@ def optimize_with_milp(
     except Exception as e:
         error_msg = f"Scenario constraints failed: {e}"
         logger.error(f"STEP 5 FAILED: {error_msg}")
-        import traceback
         logger.error(traceback.format_exc())
         return _create_empty_result(error_msg)
     
