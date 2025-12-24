@@ -347,10 +347,12 @@ def optimize_with_milp(
             load_profile_dr['load_trajectory'] = default_trajectory
             logger.info("  Applied default load trajectory: 0→150→300→450→600 MW")
         
-        # Pass trajectory to site parameter
+        # Pass trajectory to site parameter AND load_data
         if site is None:
             site = {}
         site['load_trajectory'] = load_profile_dr.get('load_trajectory', {})
+        load_data['load_trajectory'] = load_profile_dr.get('load_trajectory', DEFAULT_LOAD_TRAJECTORY)
+
         
         logger.info("  Building model...")
         
