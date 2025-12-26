@@ -65,6 +65,28 @@ def render():
     with col_conf2:
         st.markdown("#### Content Selection")
         
+        # AI Analysis Toggle
+        use_ai_analysis = st.checkbox(
+            "🤖 Enable AI-Generated Analysis (Gemini 1.5 Flash)",
+            value=True,
+            help="Use Gemini API to generate executive summary, financial analysis, and recommendations"
+        )
+        
+        # Show data availability
+        with st.expander("📊 Data Availability", expanded=False):
+            from app.utils.portfolio_data import load_all_site_results
+            try:
+                site_results = load_all_site_results()
+                st.success(f"✅ {len(site_results)} sites with optimization results available")
+                for sr in site_results[:5]:  # Show first 5
+                    st.caption(f"• {sr.get('site_name')}: {sr.get('stage')} stage - LCOE ${sr.get('lcoe', 0):.1f}/MWh")
+                if len(site_results) > 5:
+                    st.caption(f"... and {len(site_results) - 5} more")
+            except:
+                st.warning("⚠️ Unable to fetch optimization results from Google Sheets")
+        
+        st.markdown("")
+        
         # Content checkboxes in expandable sections
         with st.expander("📌 Executive Summary", expanded=True):
             include_exec_overview = st.checkbox("Project Overview", value=True)
@@ -72,16 +94,16 @@ def render():
             include_exec_highlights = st.checkbox("Investment Highlights", value=True)
         
         with st.expander("🔧 Technical Analysis"):
-            include_load_profile = st.checkbox("Load Profile (8760)", value=True)
+            include_load_profile = st.checkbox("Load Profile (8760 Sample Week)", value=True)
             include_equipment = st.checkbox("Equipment Specifications", value=True)
             include_optimization = st.checkbox("Optimization Results by Stage", value=True)
             include_dispatch = st.checkbox("Dispatch Simulation", value=False)
         
         with st.expander("💰 Financial Analysis"):
-            include_cash_flow = st.checkbox("Cash Flow Projections", value=True)
+            include_cash_flow = st.checkbox("Cash Flow Projections & CapEx Breakdown", value=True)
             include_npv_irr = st.checkbox("NPV & IRR Analysis", value=True)
             include_sensitivity = st.checkbox("Sensitivity Analysis", value=False)
-            include_lcoe_breakdown = st.checkbox("LCOE Breakdown", value=True)
+            include_lcoe_breakdown = st.checkbox("LCOE Breakdown & Comparison", value=True)
         
         with st.expander("📍 Site Information"):
             include_location_map = st.checkbox("Location Map (GeoJSON)", value=True)
@@ -90,7 +112,7 @@ def render():
             include_permits = st.checkbox("Permits & Approvals", value=False)
         
         with st.expander("📊 Comparison"):
-            include_stage_progression = st.checkbox("Stage Progression (Screening → Detailed)", value=True)
+            include_stage_progression = st.checkbox("15-Year Energy Stack", value=True)
             include_lcoe_trend = st.checkbox("LCOE Trend Chart", value=True)
             include_equipment_evolution = st.checkbox("Equipment Evolution", value=True)
         
@@ -218,16 +240,40 @@ def render():
             
             # Generate report based on format
             if "Word" in export_format:
-                with st.spinner("Generating Word document... This may take 30-60 seconds"):
+                # Show estimated time
+                est_time = len(selected_sites) * 15  # ~15 seconds per site
+                st.info(f"⏱️ Estimated generation time: ~{est_time} seconds")
+                
+                with st.spinner(f"Generating enhanced Word document with real data from Google Sheets... This may take {est_time}-{est_time+30} seconds"):
                     from datetime import datetime
-                    from app.utils.report_builder import generate_word_report
                     
-                    # Generate document
-                    doc_bytes = generate_word_report(
-                        selected_sites,
-                        content_dict,
-                        st.session_state.sites_list
-                    )
+                    # Try to use enhanced builder first
+                    try:
+                        from app.utils.enhanced_report_builder import generate_enhanced_word_report
+                        
+                        # Generate document with AI and real data
+                        doc_bytes = generate_enhanced_word_report(
+                            selected_sites,
+                            content_dict,
+                            st.session_state.sites_list,
+                            use_ai=use_ai_analysis
+                        )
+                        
+                        st.success("✅ Enhanced report generated with real Google Sheets data!")
+                        if use_ai_analysis:
+                            st.info("🤖 AI-generated insights included (Gemini 1.5 Flash)")
+                        
+                    except Exception as e:
+                        st.warning(f"Enhanced builder unavailable ({str(e)}), using fallback...")
+                        
+                        # Fallback to basic builder
+                        from app.utils.report_builder import generate_word_report
+                        doc_bytes = generate_word_report(
+                            selected_sites,
+                            content_dict,
+                            st.session_state.sites_list
+                        )
+                        st.info("ℹ️ Basic report generated (enhanced features unavailable)")
                     
                     # Create download button
                     st.download_button(
@@ -237,8 +283,6 @@ def render():
                         mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
                         type="primary"
                     )
-                    
-                    st.success("✅ Word report generated successfully!")
             
             elif "PDF" in export_format:
                 st.info("📄 PDF export coming soon - use Word export and convert to PDF")
