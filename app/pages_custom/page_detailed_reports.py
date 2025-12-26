@@ -65,9 +65,18 @@ def render():
     with col_conf2:
         st.markdown("#### Content Selection")
         
+        # Detect which Gemini model is available
+        gemini_model_name = "Gemini API"
+        try:
+            from app.utils.gemini_client import GeminiReportClient
+            client = GeminiReportClient()
+            gemini_model_name = client.model_name
+        except:
+            gemini_model_name = "Gemini Flash"
+        
         # AI Analysis Toggle
         use_ai_analysis = st.checkbox(
-            "🤖 Enable AI-Generated Analysis (Gemini 1.5 Flash)",
+            f"🤖 Enable AI-Generated Analysis ({gemini_model_name})",
             value=True,
             help="Use Gemini API to generate executive summary, financial analysis, and recommendations"
         )
@@ -261,7 +270,13 @@ def render():
                         
                         st.success("✅ Enhanced report generated with real Google Sheets data!")
                         if use_ai_analysis:
-                            st.info("🤖 AI-generated insights included (Gemini 1.5 Flash)")
+                            # Show which model was actually used
+                            try:
+                                from app.utils.gemini_client import GeminiReportClient
+                                client = GeminiReportClient()
+                                st.info(f"🤖 AI-generated insights included ({client.model_name})")
+                            except:
+                                st.info("🤖 AI-generated insights included (Gemini Flash)")
                         
                     except Exception as e:
                         st.warning(f"Enhanced builder unavailable ({str(e)}), using fallback...")
