@@ -33,3 +33,7 @@ scipy>=1.11.0
 
 # AI / Generative
 google-generativeai>=0.3.0
+
+# Enhanced Report Generation
+folium>=0.14.0
+pillow>=10.0.0
