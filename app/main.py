@@ -174,46 +174,70 @@ with st.sidebar:
         st.session_state.current_page = 'dashboard'
         st.rerun()
     
-    if st.button("📍 Sites", use_container_width=True, key="nav_sites"):
-        st.session_state.current_page = 'sites'
+    if st.button("📚 Tutorial & Overview", use_container_width=True, key="nav_tutorial"):
+        st.session_state.current_page = 'tutorial'
         st.rerun()
     
-    st.markdown("<p style='font-size: 10px; color: rgba(255,255,255,0.5); text-transform: uppercase; letter-spacing: 1px; margin-top: 16px;'>Load Analysis</p>", unsafe_allow_html=True)
+    if st.button("⚙️ Global Parameters", use_container_width=True, key="nav_global_params"):
+        st.session_state.current_page = 'global_params'
+        st.rerun()
     
-    if st.button("📈 Load Composer", use_container_width=True, key="nav_load"):
+    if st.button("📈 Load", use_container_width=True, key="nav_load_unified"):
         st.session_state.current_page = 'load_composer'
         st.rerun()
-        
-    if st.button("📊 Variability", use_container_width=True, key="nav_var"):
-        st.session_state.current_page = 'variability'
-        st.rerun()
-        
-    if st.button("⚡ Transient Screen", use_container_width=True, key="nav_trans"):
-        st.session_state.current_page = 'transient'
+    
+    
+    # =============================================================================
+    # Optimizer Section
+    # =============================================================================
+    st.markdown("<p style='font-size: 10px; color: rgba(255,255,255,0.5); text-transform: uppercase; letter-spacing: 1px; margin-top: 16px;'>Optimizer</p>", unsafe_allow_html=True)
+    
+    if st.button("📊 Executive Summary", use_container_width=True, key="nav_exec_summary"):
+        st.session_state.current_page = 'exec_summary'
         st.rerun()
     
-    st.markdown("<p style='font-size: 10px; color: rgba(255,255,255,0.5); text-transform: uppercase; letter-spacing: 1px; margin-top: 16px;'>Optimization</p>", unsafe_allow_html=True)
+    if st.button("⚙️ Configuration", use_container_width=True, key="nav_configuration"):
+        st.session_state.current_page = 'configuration'
+        st.rerun()
     
-    if st.button("🔧 Equipment Library", use_container_width=True, key="nav_equip"):
-        st.session_state.current_page = 'equipment'
+    if st.button("📈 Dispatch", use_container_width=True, key="nav_dispatch_opt"):
+        st.session_state.current_page = 'dispatch_opt'
         st.rerun()
-        
-    if st.button("🎯 Optimizer", use_container_width=True, key="nav_opt"):
-        st.session_state.current_page = 'optimizer'
+    
+    if st.button("💰 Financial Overview", use_container_width=True, key="nav_financial"):
+        st.session_state.current_page = 'financial'
         st.rerun()
-        
-    if st.button("🛡️ RAM Analysis", use_container_width=True, key="nav_ram"):
-        st.session_state.current_page = 'ram'
+    
+    if st.button("🔄 Comparison", use_container_width=True, key="nav_comparison"):
+        st.session_state.current_page = 'comparison'
         st.rerun()
+    
+    # ARCHIVED:     st.markdown("<p style='font-size: 10px; color: rgba(255,255,255,0.5); text-transform: uppercase; letter-spacing: 1px; margin-top: 16px;'>Optimization</p>", unsafe_allow_html=True)
+    # ARCHIVED:     
+    # ARCHIVED:     if st.button("🔧 Equipment Library", use_container_width=True, key="nav_equip"):
+    # ARCHIVED:         st.session_state.current_page = 'equipment'
+    # ARCHIVED:         st.rerun()
+    # ARCHIVED:         
+    # ARCHIVED:     # ARCHIVED:     if st.button("🎯 Multi-Scenario Optimizer", use_container_width=True, key="nav_opt"):
+    # ARCHIVED:     # ARCHIVED:         st.session_state.current_page = 'optimizer'
+    # ARCHIVED:     # ARCHIVED:         st.rerun()
+    # ARCHIVED:         
+    # ARCHIVED:     if st.button("🛡️ RAM Analysis", use_container_width=True, key="nav_ram"):
+    # ARCHIVED:         st.session_state.current_page = 'ram'
+    # ARCHIVED:         st.rerun()
     
     st.markdown("<p style='font-size: 10px; color: rgba(255,255,255,0.5); text-transform: uppercase; letter-spacing: 1px; margin-top: 16px;'>Results</p>", unsafe_allow_html=True)
     
-    if st.button("📊 Results", use_container_width=True, key="nav_results"):
-        st.session_state.current_page = 'results'
+    if st.button("💰 Investor Portal", use_container_width=True, key="nav_investor_portal"):
+        st.session_state.current_page = 'investor_portal'
         st.rerun()
         
-    if st.button("⚙️ Dispatch", use_container_width=True, key="nav_dispatch"):
-        st.session_state.current_page = 'dispatch'
+    if st.button("🏢 Portfolio Overview", use_container_width=True, key="nav_portfolio_overview"):
+        st.session_state.current_page = 'portfolio_overview'
+        st.rerun()
+    
+    if st.button("📄 Detailed Reports", use_container_width=True, key="nav_detailed_reports"):
+        st.session_state.current_page = 'detailed_reports'
         st.rerun()
     
     # Debug section
@@ -232,6 +256,14 @@ def load_page(page_name: str):
     if page_name == 'dashboard':
         from pages_custom import page_01_dashboard
         page_01_dashboard.render()
+    
+    elif page_name == 'tutorial':
+        from pages_custom import page_tutorial
+        page_tutorial.render()
+    
+    elif page_name == 'global_params':
+        from pages_custom import page_global_params
+        page_global_params.render()
         
     elif page_name == 'sites':
         from pages_custom import page_02_sites
@@ -261,13 +293,75 @@ def load_page(page_name: str):
         from pages_custom import page_08_ram
         page_08_ram.render()
         
-    elif page_name == 'results':
-        from pages_custom import page_09_results
-        page_09_results.render()
+    
+    # =============================================================================
+    # Results Portal Pages
+    # =============================================================================
+    elif page_name == 'investor_portal':
+        from pages_custom import page_investor_portal
+        page_investor_portal.render()
+    
+    elif page_name == 'portfolio_overview':
+        from pages_custom import page_portfolio_overview
+        page_portfolio_overview.render()
+    
+    elif page_name == 'detailed_reports':
+        from pages_custom import page_detailed_reports
+        page_detailed_reports.render()
         
-    elif page_name == 'dispatch':
-        from pages_custom import page_10_dispatch
-        page_10_dispatch.render()
+    # =============================================================================
+    # Problem Statement Pages (bvNexus)
+    # =============================================================================
+    elif page_name == 'problem_selection':
+        from pages_custom import page_problem_selection
+        page_problem_selection.render()
+    
+    elif page_name == 'problem_1':
+        from pages_custom import page_problem_1_greenfield
+        page_problem_1_greenfield.render()
+    
+    elif page_name == 'problem_2':
+        from pages_custom import page_problem_2_brownfield
+        page_problem_2_brownfield.render()
+    
+    elif page_name == 'problem_3':
+        from pages_custom import page_problem_3_land_dev
+        page_problem_3_land_dev.render()
+    
+    elif page_name == 'problem_4':
+        from pages_custom import page_problem_4_grid_services
+        page_problem_4_grid_services.render()
+    
+    elif page_name == 'problem_5':
+        from pages_custom import page_problem_5_bridge
+        page_problem_5_bridge.render()
+    
+    # =============================================================================
+    # New Optimizer Pages
+    # =============================================================================
+    elif page_name == 'exec_summary':
+        from pages_custom import page_exec_summary
+        page_exec_summary.render()
+    
+    elif page_name == 'configuration':
+        from pages_custom import page_configuration
+        page_configuration.render()
+    
+    elif page_name == 'dispatch_opt':
+        from pages_custom import page_dispatch_opt
+        page_dispatch_opt.render()
+    
+    elif page_name == 'financial':
+        from pages_custom import page_financial
+        page_financial.render()
+    
+    elif page_name == 'comparison':
+        from pages_custom import page_comparison
+        page_comparison.render()
+    
+    elif page_name == 'proforma':
+        from pages_custom import page_proforma
+        page_proforma.render()
         
     elif page_name == 'debug':
         from pages_custom import page_99_debug

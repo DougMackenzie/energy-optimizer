@@ -482,6 +482,7 @@ def save_site_stage_result(site_name: str, stage: str, result_data: Dict) -> boo
 
 
 
+@st.cache_data(ttl=300)  # Cache for 5 minutes
 def load_site_stage_result(site_name: str, stage: str) -> Optional[Dict]:
     """Load optimization result for a specific site and stage"""
     

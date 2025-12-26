@@ -1,0 +1,218 @@
+"""
+Portfolio Overview Page
+Developer/buyer presentation with national map and site comparison
+"""
+
+import streamlit as st
+import folium
+from streamlit_folium import st_folium
+import json
+from datetime import datetime, timedelta
+
+def render():
+    """Render the Portfolio Overview page"""
+    
+    st.markdown("## 🏢 Portfolio Overview")
+    st.caption("National portfolio map, site comparison, and power availability timeline")
+    st.markdown("---")
+    
+    # Load sites
+    if 'sites_list' not in st.session_state or len(st.session_state.sites_list) == 0:
+        st.warning("⚠️ No sites configured yet. Please configure sites in the Dashboard first.")
+        st.info("💡 Go to **📊 Dashboard** to set up your sites.")
+        return
+    
+    # Summary of portfolio
+    total_sites = len(st.session_state.sites_list)
+    total_capacity = sum(s.get('it_capacity_mw', 0) for s in st.session_state.sites_list)
+    
+    col_info1, col_info2 = st.columns(2)
+    with col_info1:
+        st.metric("Total Sites", total_sites)
+    with col_info2:
+        st.metric("Total IT Capacity", f"{total_capacity:,.0f} MW")
+    
+    # =============================================================================
+    # National Portfolio Map
+    # =============================================================================
+    st.markdown("### 🗺️ National Portfolio Map")
+    
+    # Filters
+    col_f1, col_f2, col_f3 = st.columns(3)
+    
+    with col_f1:
+        stage_filter = st.multiselect(
+            "Filter by Stage",
+            ["Screening", "Concept", "Preliminary", "Detailed"],
+            default=["Screening", "Concept", "Preliminary", "Detailed"]
+        )
+    
+    with col_f2:
+        min_capacity = st.number_input("Min Capacity (MW)", min_value=0, value=0)
+    
+    with col_f3:
+        max_lcoe = st.number_input("Max LCOE ($/MWh)", min_value=0, value=1000)
+    
+    st.markdown("")
+    
+    # Create national map
+    from app.utils.portfolio_maps import create_national_portfolio_map
+    
+    portfolio_map = create_national_portfolio_map(
+        st.session_state.sites_list,
+        stage_filter,
+        min_capacity,
+        max_lcoe
+    )
+    
+    st_folium(portfolio_map, width=1200, height=600)
+    
+    st.markdown("---")
+    
+    # =============================================================================
+    # Site Comparison Matrix
+    # =============================================================================
+    st.markdown("### 📊 Site Comparison Matrix")
+    
+    # Load optimization results for all sites
+    from app.utils.site_backend import load_site_stage_result
+    from app.utils.portfolio_maps import calculate_power_on_date, determine_critical_path
+    from app.utils.financial_calculations import calculate_site_financials
+    
+    comparison_data = []
+    
+    for site in st.session_state.sites_list:
+        site_name = site.get('name', 'Unknown')
+        
+        # Determine current stage
+        stages_complete = []
+        latest_result = None
+        
+        for stage in ['detailed', 'preliminary', 'concept', 'screening']:
+            result = load_site_stage_result(site_name, stage)
+            if result and str(result.get('complete', '')).upper() == 'TRUE':
+                stages_complete.append(stage)
+                if not latest_result:
+                    latest_result = result
+        
+        # Determine stage number
+        if 'detailed' in stages_complete:
+            stage_num = 4
+            stage_name = "④ Detailed"
+        elif 'preliminary' in stages_complete:
+            stage_num = 3
+            stage_name = "③ Preliminary"
+        elif 'concept' in stages_complete:
+            stage_num = 2
+            stage_name = "② Concept"
+        elif 'screening' in stages_complete:
+            stage_num = 1
+            stage_name = "① Screening"
+        else:
+            stage_num = 0
+            stage_name = "Not Started"
+        
+        # Calculate power-on date
+        power_on_date = calculate_power_on_date(stage_num)
+        
+        # Determine critical path
+        critical_path = determine_critical_path(stage_num, site)
+        
+        # Get LCOE and NPV
+        lcoe = latest_result.get('lcoe', 0) if latest_result else 0
+        
+        # Calculate financials if we have results
+        npv = 0
+        capex = 0
+        if latest_result:
+            financials = calculate_site_financials(site, latest_result)
+            npv = financials.get('npv_m', 0)
+            capex = financials.get('capex_m', 0)
+        
+        comparison_data.append({
+            'Site': site_name,
+            'Location': site.get('location', ''),
+            'Stage': stage_name,
+            'IT Capacity (MW)': site.get('it_capacity_mw', 0),
+            'Land (acres)': site.get('land_acres', 0),
+            'LCOE ($/MWh)': lcoe,
+            'NPV ($M)': npv,
+            'CapEx ($M)': capex,
+            'Power-On Date': power_on_date,
+            'Critical Path': critical_path
+        })
+    
+    # Display as dataframe
+    import pandas as pd
+    df = pd.DataFrame(comparison_data)
+    
+    # Format display
+    if not df.empty:
+        # Format numeric columns
+        df_display = df.copy()
+        df_display['IT Capacity (MW)'] = df_display['IT Capacity (MW)'].apply(lambda x: f"{x:.0f}")
+        df_display['Land (acres)'] = df_display['Land (acres)'].apply(lambda x: f"{x:.0f}")
+        df_display['LCOE ($/MWh)'] = df_display['LCOE ($/MWh)'].apply(lambda x: f"${x:.1f}" if x > 0 else "—")
+        df_display['NPV ($M)'] = df_display['NPV ($M)'].apply(lambda x: f"${x:.1f}M" if x > 0 else "—")
+        df_display['CapEx ($M)'] = df_display['CapEx ($M)'].apply(lambda x: f"${x:.1f}M" if x > 0 else "—")
+        
+        # Display with alternating row colors
+        st.dataframe(
+            df_display,
+            use_container_width=True,
+            hide_index=True,
+            column_config={
+                "Site": st.column_config.TextColumn("Site", width="medium"),
+                "Location": st.column_config.TextColumn("Location", width="medium"),
+                "Stage": st.column_config.TextColumn("Stage", width="small"),
+                "IT Capacity (MW)": st.column_config.TextColumn("Capacity", width="small"),
+                "LCOE ($/MWh)": st.column_config.TextColumn("LCOE", width="small"),
+                "NPV ($M)": st.column_config.TextColumn("NPV", width="small"),
+                "CapEx ($M)": st.column_config.TextColumn("CapEx", width="small"),
+            }
+        )
+    
+    st.markdown("---")
+    
+    # =============================================================================
+    # Power Availability Timeline
+    # =============================================================================
+    st.markdown("### ⏱️ Power Availability Timeline")
+    st.caption("Annual portfolio capacity growth from 2026-2035")
+    
+    from app.utils.timeline_charts import create_annual_capacity_timeline
+    
+    fig_timeline = create_annual_capacity_timeline(st.session_state.sites_list, comparison_data)
+    st.plotly_chart(fig_timeline, use_container_width=True)
+    
+    st.markdown("---")
+    
+    # =============================================================================
+    # Portfolio Highlights
+    # =============================================================================
+    st.markdown("### 🌟 Portfolio Highlights")
+    
+    col_h1, col_h2, col_h3, col_h4 = st.columns(4)
+    
+    total_mw = sum(s.get('it_capacity_mw', 0) for s in st.session_state.sites_list)
+    sites_ready = sum(1 for d in comparison_data if '④' in d['Stage'] or '③' in d['Stage'])
+    
+    with col_h1:
+        st.metric("Total Capacity", f"{total_mw:,.0f} MW")
+    
+    with col_h2:
+        st.metric("Sites Ready", f"{sites_ready}/{len(st.session_state.sites_list)}")
+    
+    with col_h3:
+        # Calculate average LCOE from numeric values
+        lcoe_values = [d['LCOE ($/MWh)'] for d in comparison_data if isinstance(d['LCOE ($/MWh)'], (int, float)) and d['LCOE ($/MWh)'] > 0]
+        if lcoe_values:
+            avg_lcoe = sum(lcoe_values) / len(lcoe_values)
+            st.metric("Avg LCOE", f"${avg_lcoe:.1f}/MWh")
+        else:
+            st.metric("Avg LCOE", "—")
+    
+    with col_h4:
+        states = len(set(s.get('location', '').split(',')[-1].strip() 
+                        for s in st.session_state.sites_list))
+        st.metric("States", f"{states}")
