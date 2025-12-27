@@ -505,9 +505,13 @@ def save_site_stage_result(site_name: str, stage: str, result_data: Dict) -> boo
         ]
         
         if existing_row:
-            worksheet.update(f'A{existing_row}:I{existing_row}', [row_data])
+            # Update all columns (A through M for 13 columns)
+            col_letter = chr(65 + len(row_data) - 1)  # Convert to column letter
+            worksheet.update(f'A{existing_row}:{col_letter}{existing_row}', [row_data])
+            print(f"✓ Updated {site_name} {stage} result at row {existing_row}")
         else:
             worksheet.append_row(row_data)
+            print(f"✓ Created new {site_name} {stage} result")
         
         return True
     except Exception as e:
