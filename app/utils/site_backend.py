@@ -550,11 +550,20 @@ def load_site_stage_result(site_name: str, stage: str) -> Optional[Dict]:
                 
                 if 'dispatch_summary_json' in result and result['dispatch_summary_json']:
                     try:
-                        result['constraints'] = json.loads(result['dispatch_summary_json'])
+                        result['dispatch_summary'] = json.loads(result['dispatch_summary_json'])
                     except:
-                        result['constraints'] = {}
+                        result['dispatch_summary'] = {}
                 else:
-                    result['constraints'] = {}
+                    result['dispatch_summary'] = {}
+                
+                # Normalize 'complete' field - Google Sheets returns 'TRUE'/'FALSE' as strings
+                complete_val = result.get('complete', False)
+                if isinstance(complete_val, str):
+                    result['complete'] = complete_val.upper() in ['TRUE', 'YES', '1']
+                elif isinstance(complete_val, (int, float)):
+                    result['complete'] = bool(complete_val)
+                else:
+                    result['complete'] = bool(complete_val)
                 
                 return result
         
