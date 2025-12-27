@@ -41,7 +41,7 @@ def get_google_sheets_client():
 # =============================================================================
 
 def load_all_sites(use_cache: bool = True) -> List[Dict]:
-    """Load all sites from Google Sheets"""
+    """Load all sites from Google Sheets with deduplication by site name"""
     
     # Check cache first
     if use_cache and 'sites_list' in st.session_state:
@@ -68,11 +68,24 @@ def load_all_sites(use_cache: bool = True) -> List[Dict]:
         
         sites = worksheet.get_all_records()
         
+        # DEDUPLICATE by site_name (keep first occurrence)
+        seen_names = set()
+        deduped_sites = []
+        for site in sites:
+            site_name = site.get('site_name') or site.get('name', 'Unknown')
+            if site_name not in seen_names:
+                seen_names.add(site_name)
+                # Ensure 'name' field exists for consistency
+                site['name'] = site_name
+                deduped_sites.append(site)
+            else:
+                print(f"⚠️  Skipping duplicate site: {site_name} (capacity: {site.get('it_capacity_mw')})")
+        
         # Cache in session state
         if use_cache:
-            st.session_state.sites_list = sites
+            st.session_state.sites_list = deduped_sites
         
-        return sites
+        return deduped_sites
     except Exception as e:
         print(f"Error loading sites: {e}")
         return []
