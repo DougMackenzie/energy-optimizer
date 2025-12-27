@@ -51,7 +51,14 @@ def run_heuristic_optimization(site_data: Dict, problem_num: int, load_profile: 
         if problem_num == 1:
             optimizer = GreenFieldHeuristic(site, load_trajectory, constraints)
         elif problem_num == 2:
-            optimizer = BrownfieldHeuristic(site, load_trajectory, constraints, lcoe_threshold=80.0)
+            # Brownfield: Assume existing facility at current LCOE
+            existing_equipment = {
+                'recip_mw': site_data.get('it_capacity_mw', 500) * 0.5 * site_data.get('pue', 1.25),  # Assume 50% recip
+                'existing_lcoe': 60  # Assume existing LCOE is $60/MWh (allows expansion to $80)
+            }
+            optimizer = BrownfieldHeuristic(site, load_trajectory, constraints, 
+                                          existing_equipment=existing_equipment,
+                                          lcoe_threshold=80.0)
         elif problem_num == 3:
             optimizer = LandDevHeuristic(site, load_trajectory, constraints)
         elif problem_num == 4:
