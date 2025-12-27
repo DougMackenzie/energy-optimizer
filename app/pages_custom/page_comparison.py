@@ -310,4 +310,7 @@ def render():
     
     with col_exp3:
         if st.button("🔄 Refresh Data", use_container_width=True):
+            # Clear cache to force fresh data load
+            st.cache_data.clear()
+            st.success("Cache cleared - refreshing...")
             st.rerun()
