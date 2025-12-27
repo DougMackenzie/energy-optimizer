@@ -66,7 +66,10 @@ def render_problem_progress_tab():
         st.caption("Track project development through EPC stages for all sites")
     with col_header2:
         if st.button("🔄 Refresh", use_container_width=True, key="refresh_workflow"):
+            # Clear both cache and session state to force reload with deduplication
             st.cache_data.clear()
+            if 'sites_list' in st.session_state:
+                del st.session_state['sites_list']
             st.rerun()
     
     # Initialize sites list if needed
