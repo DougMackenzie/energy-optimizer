@@ -74,6 +74,24 @@ def render_problem_progress_tab():
         st.session_state.sites_list = []
     
     if len(st.session_state.sites_list) == 0:
+        # Load from Google Sheets
+        from app.utils.site_backend import load_all_sites
+        loaded_sites = load_all_sites(use_cache=False)
+        
+        # Deduplicate by site name (keep first occurrence)
+        seen_names = set()
+        deduped_sites = []
+        for site in loaded_sites:
+            site_name = site.get('site_name') or site.get('name', 'Unknown')
+            if site_name not in seen_names:
+                seen_names.add(site_name)
+                # Normalize field name to 'name'
+                site['name'] = site_name
+                deduped_sites.append(site)
+        
+        st.session_state.sites_list = deduped_sites
+    
+    if len(st.session_state.sites_list) == 0:
         st.info("No sites configured yet. Go to 'Sites & Infrastructure' tab to add sites.")
         return
     
