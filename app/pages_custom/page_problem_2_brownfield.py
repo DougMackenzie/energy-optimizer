@@ -83,8 +83,8 @@ def render():
                             'gas_supply_mcf_day': gas_limit,
                             'land_area_acres': land_limit,
                         },
-                        lcoe_ceiling=lcoe_ceiling,
-                        existing_load_mw=existing_load * pue,
+                        lcoe_threshold=lcoe_ceiling,  # Fixed: was lcoe_ceiling
+                        existing_equipment={'existing_lcoe': current_lcoe},  # Fixed: proper dict format
                     )
                     
                     result = optimizer.optimize()
