@@ -132,7 +132,10 @@ def get_portfolio_summary(site_results: List[Dict] = None) -> Dict:
         'total_npv_m': total_npv_m,
         'total_capex_m': total_capex_m,
         'portfolio_irr': portfolio_irr,
-        'avg_load_coverage': sum(s.get('load_coverage_pct', 0) for s in site_results) / num_sites if num_sites > 0 else 0
+        'avg_load_coverage': sum(
+            float(s.get('load_coverage_pct', 0)) if s.get('load_coverage_pct') not in [None, ''] else 0 
+            for s in site_results
+        ) / num_sites if num_sites > 0 else 0
     }
 
 

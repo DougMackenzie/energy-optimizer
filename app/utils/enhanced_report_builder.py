@@ -62,25 +62,37 @@ def generate_enhanced_word_report(site_selection: List[str], content_options: Di
     doc.core_properties.author = "Antigravity Energy Optimizer"
     doc.core_properties.created = datetime.now()
     
+    print(f"\n=== ENHANCED REPORT GENERATION DEBUG ===")
+    print(f"Site selection: {site_selection}")
+    print(f"Enhanced features available: {ENHANCED_FEATURES_AVAILABLE}")
+    print(f"Use AI: {use_ai}")
+    
     # Initialize AI client if enabled
     ai_client = None
     if use_ai and ENHANCED_FEATURES_AVAILABLE:
         try:
             ai_client = GeminiReportClient()
-        except:
-            print("AI client unavailable - using fallback content")
+            print(f"✓ AI client initialized: {ai_client.model_name}")
+        except Exception as e:
+            print(f"✗ AI client unavailable: {e}")
     
     # Fetch site data from Google Sheets
     site_results = load_all_site_results() if ENHANCED_FEATURES_AVAILABLE else []
+    print(f"Loaded {len(site_results)} sites from Google Sheets")
     
     # Filter by selection
     if "📊 Entire Portfolio" not in site_selection:
         site_results = [s for s in site_results if s.get('site_name') in site_selection]
     
+    print(f"After filtering: {len(site_results)} sites")
+    for sr in site_results:
+        print(f"  - {sr.get('site_name')}: LCOE ${sr.get('lcoe', 0):.1f}/MWh, Stage: {sr.get('stage')}")
+    
     # =============================================================================
     # Title Page
     # =============================================================================
     if content_options.get('include_exec_overview', True):
+        print("Adding title page...")
         add_enhanced_title_page(doc, site_selection, site_results)
         doc.add_page_break()
     
@@ -88,6 +100,7 @@ def generate_enhanced_word_report(site_selection: List[str], content_options: Di
     # Executive Summary with AI
     # =============================================================================
     if content_options.get('include_exec_metrics', True):
+        print("Adding executive summary...")
         add_enhanced_executive_summary(doc, site_results, ai_client)
         doc.add_page_break()
     
@@ -95,6 +108,7 @@ def generate_enhanced_word_report(site_selection: List[str], content_options: Di
     # Financial Analysis with Charts
     # =============================================================================
     if content_options.get('include_cash_flow', True) or content_options.get('include_npv_irr', True):
+        print("Adding financial analysis...")
         add_enhanced_financial_analysis(doc, site_results, content_options, ai_client)
         doc.add_page_break()
     
@@ -102,6 +116,7 @@ def generate_enhanced_word_report(site_selection: List[str], content_options: Di
     # Technical Analysis with Equipment Details
     # =============================================================================
     if content_options.get('include_equipment', True) or content_options.get('include_optimization', True):
+        print("Adding technical analysis...")
         add_enhanced_technical_analysis(doc, site_results, content_options, ai_client)
         doc.add_page_break()
     
@@ -109,6 +124,7 @@ def generate_enhanced_word_report(site_selection: List[str], content_options: Di
     # Load Profile & Dispatch (8760 Sample Week)
     # =============================================================================
     if content_options.get('include_load_profile', True):
+        print("Adding 8760 dispatch section...")
         add_8760_dispatch_section(doc, site_results)
         doc.add_page_break()
     
@@ -116,6 +132,7 @@ def generate_enhanced_word_report(site_selection: List[str], content_options: Di
     # 15-Year Energy Stack
     # =============================================================================
     if content_options.get('include_stage_progression', True):
+        print("Adding 15-year energy stack...")
         add_15year_energy_stack(doc, site_results)
         doc.add_page_break()
     
@@ -123,7 +140,10 @@ def generate_enhanced_word_report(site_selection: List[str], content_options: Di
     # Site Maps (if GeoJSON available)
     # =============================================================================
     if content_options.get('include_location_map', True):
+        print("Adding site maps...")
         add_site_maps_section(doc, site_results)
+    
+    print("=== REPORT GENERATION COMPLETE ===\n")
     
     # Save to BytesIO
     buffer = io.BytesIO()
@@ -193,12 +213,16 @@ def add_enhanced_executive_summary(doc: Document, site_results: List[Dict], ai_c
     # AI-generated summary (if available)
     if ai_client and portfolio:
         try:
+            print(f"  Generating AI summary with {ai_client.model_name}...")
             ai_summary = ai_client.generate_executive_summary(portfolio)
+            print(f"  ✓ AI summary generated ({len(ai_summary)} characters)")
             doc.add_paragraph(ai_summary)
-        except:
+        except Exception as e:
+            print(f"  ✗ AI generation failed: {e}")
             # Fallback to template-based summary
             add_template_summary(doc, portfolio, site_results)
     else:
+        print(f"  Using template summary (AI client: {ai_client is not None}, portfolio: {len(portfolio) > 0 if portfolio else False})")
         add_template_summary(doc, portfolio, site_results)
     
     doc.add_paragraph()
@@ -254,10 +278,18 @@ def add_enhanced_financial_analysis(doc: Document, site_results: List[Dict],
         doc.add_paragraph("LCOE Comparison Across Sites:", style='Heading 2')
         
         # Generate chart
-        chart_path = create_lcoe_comparison_chart(site_results)
-        if chart_path and os.path.exists(chart_path):
-            doc.add_picture(chart_path, width=Inches(6.5))
-            doc.add_paragraph()  # Spacing
+        print(f"  Generating LCOE comparison chart...")
+        try:
+            chart_path = create_lcoe_comparison_chart(site_results)
+            print(f"  Chart saved to: {chart_path}")
+            if chart_path and os.path.exists(chart_path):
+                doc.add_picture(chart_path, width=Inches(6.5))
+                print(f"  ✓ LCOE chart embedded")
+                doc.add_paragraph()  # Spacing
+            else:
+                print(f"  ✗ Chart path doesn't exist: {chart_path}")
+        except Exception as e:
+            print(f"  ✗ Failed to generate LCOE chart: {e}")
     
     # CapEx Breakdown (for each site or aggregate)
     if content_options.get('include_cash_flow', True):
