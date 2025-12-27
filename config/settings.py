@@ -286,6 +286,11 @@ EQUIPMENT_DEFAULTS = {
         'lead_time_months': 18,
         'land_acres_per_mw': 0.5,
         'ramp_rate_mw_min': 3.0,
+        # NEW fields for heuristic calculations
+        'min_load_pct': 0.30,           # 30% minimum stable load
+        'start_time_min': 5,            # 5-minute hot start
+        'nox_lb_mmbtu': 0.065,          # NOx per fuel input (alternative calc)
+        'gas_mcf_per_mwh': 7.42,        # Gas consumption rate
     },
     'turbine': {
         'capacity_mw': 50.0,
@@ -299,6 +304,11 @@ EQUIPMENT_DEFAULTS = {
         'lead_time_months': 24,
         'land_acres_per_mw': 0.3,
         'ramp_rate_mw_min': 8.0,
+        # NEW fields
+        'min_load_pct': 0.50,           # 50% minimum stable load
+        'start_time_min': 15,           # 15-minute hot start
+        'nox_lb_mmbtu': 0.029,          # NOx per fuel input
+        'gas_mcf_per_mwh': 8.20,        # Gas consumption rate
     },
     'bess': {
         'power_mw': 50.0,
@@ -310,6 +320,12 @@ EQUIPMENT_DEFAULTS = {
         'lead_time_months': 12,
         'land_acres_per_mwh': 0.01,
         'ramp_rate_mw_min': 50.0,  # Very fast
+        # NEW fields
+        'max_soc': 0.95,                # Maximum state of charge
+        'min_soc': 0.10,                # Minimum state of charge
+        'calendar_life_years': 15,
+        'cycle_life': 4000,             # Full equivalent cycles
+        'c_rate_max': 0.5,              # Max C-rate (0.5 = 2-hour discharge)
     },
     'solar': {
         'capex_per_w_dc': 0.95,
@@ -317,10 +333,30 @@ EQUIPMENT_DEFAULTS = {
         'availability': 0.995,
         'lead_time_months': 12,
         'land_acres_per_mw': 5.0,
+        # NEW fields
+        'vom_per_mwh': 0.0,             # Minimal O&M
+        'fom_per_kw_yr': 12.0,          # $12/kW-yr fixed O&M
+        'degradation_pct_yr': 0.005,    # 0.5% annual degradation
+        'dc_ac_ratio': 1.3,             # DC/AC ratio (inverter sizing)
     },
     'grid': {
         'availability': 0.9997,
         'lead_time_months': 60,  # 5 years typical
+        # NEW fields
+        'default_price_mwh': 65.0,      # Default wholesale price
+        'demand_charge_kw_mo': 15.0,    # $/kW-month demand charge
+        'interconnection_cost_mw': 100000,  # $/MW interconnection
+    },
+    'rental': {
+        # NEW: Rental generator parameters for Problem 5 (Bridge Power)
+        'capex_per_kw': 0,              # No CAPEX (rental)
+        'rental_cost_kw_month': 50,     # $50/kW-month rental
+        'fuel_included': False,         # Fuel separate
+        'heat_rate_btu_kwh': 9500,      # Less efficient than owned
+        'nox_lb_mwh': 0.80,             # Higher emissions (older units)
+        'availability': 0.92,           # Lower availability
+        'lead_time_months': 2,          # Fast deployment
+        'mobilization_cost': 50000,     # Per-unit mobilization
     },
 }
 
@@ -334,6 +370,13 @@ ECONOMIC_DEFAULTS = {
     'fuel_escalation_rate': 0.025,   # 2.5% annual
     'itc_rate': 0.30,                # 30% ITC for solar/BESS
     'crf_20yr_8pct': 0.1019,         # Capital recovery factor
+    # NEW fields for improved calculations
+    'inflation_rate': 0.025,            # General inflation
+    'electricity_escalation': 0.02,     # Grid price escalation
+    'residual_value_pct': 0.10,         # 10% residual at end of life
+    'debt_fraction': 0.70,              # 70% debt financing
+    'debt_interest_rate': 0.06,         # 6% interest on debt
+    'equity_return': 0.12,              # 12% required equity return
 }
 
 # =============================================================================
@@ -347,6 +390,12 @@ CONSTRAINT_DEFAULTS = {
     'grid_import_mw': 0,             # Until grid available
     'n_minus_1_required': True,
     'min_availability_pct': 99.5,
+    # NEW fields for constraint tracking
+    'title_v_threshold_tpy': 100,       # Title V permit threshold
+    'psd_threshold_tpy': 250,           # PSD major source threshold
+    'max_thermal_footprint_acres': 50,  # Max land for thermal plant
+    'min_firm_capacity_mw': 0,          # Minimum firm capacity
+    'max_unserved_energy_pct': 0.1,     # 0.1% max unserved energy
 }
 
 # =============================================================================
@@ -358,24 +407,35 @@ WORKLOAD_FLEXIBILITY = {
         'response_time_min': 60,
         'checkpoint_overhead_pct': 0.05,
         'description': 'Batch-oriented, checkpoint-capable, hours to days',
+        'typical_load_share': 0.40,     # NEW: Typical share of load
     },
     'fine_tuning': {
         'flexibility_pct': 0.50,     # 40-60%
         'response_time_min': 30,
         'checkpoint_overhead_pct': 0.03,
         'description': 'Shorter jobs, more interruptible',
+        'typical_load_share': 0.15,
     },
     'batch_inference': {
         'flexibility_pct': 0.90,     # 80-100%
         'response_time_min': 15,
         'checkpoint_overhead_pct': 0.01,
         'description': 'Deferrable, queue-based',
+        'typical_load_share': 0.20,
     },
     'real_time_inference': {
         'flexibility_pct': 0.05,     # 0-10%
         'response_time_min': 0,
         'checkpoint_overhead_pct': 0.0,
         'description': 'Latency-critical, minimal flexibility',
+        'typical_load_share': 0.15,
+    },
+    'cloud_hpc': {
+        'flexibility_pct': 0.70,
+        'response_time_min': 15,
+        'checkpoint_overhead_pct': 0.02,
+        'description': 'General cloud compute, schedulable',
+        'typical_load_share': 0.10,
     },
 }
 
@@ -383,36 +443,100 @@ WORKLOAD_FLEXIBILITY = {
 # bvNexus Integration: Demand Response Services
 # =============================================================================
 DR_SERVICES = {
-    'econ_dr': {
-        'name': 'Economic DR',
-        'response_time_min': 60,
-        'min_duration_hours': 4,
-        'price_per_mw_hr': 50,
-        'compatible_workloads': ['pre_training', 'fine_tuning', 'batch_inference'],
-    },
     'ers_10': {
-        'name': 'ERS-10',
+        'name': 'ERS-10 (10-minute response)',
         'response_time_min': 10,
+        'payment_mw_hr': 15.0,          # $/MW-hr availability
+        'activation_mwh': 100.0,        # $/MWh when called
+        'expected_hours_yr': 100,       # Expected dispatch hours
+        'min_capacity_mw': 1.0,
         'min_duration_hours': 1,
-        'price_per_mw_hr': 75,
         'compatible_workloads': ['batch_inference'],
     },
     'ers_30': {
-        'name': 'ERS-30',
+        'name': 'ERS-30 (30-minute response)',
         'response_time_min': 30,
+        'payment_mw_hr': 8.0,
+        'activation_mwh': 75.0,
+        'expected_hours_yr': 150,
+        'min_capacity_mw': 1.0,
         'min_duration_hours': 2,
-        'price_per_mw_hr': 60,
         'compatible_workloads': ['fine_tuning', 'batch_inference'],
+    },
+    'economic_dr': {
+        'name': 'Economic DR (Day-ahead)',
+        'response_time_min': 1440,      # Day-ahead
+        'payment_mw_hr': 0.0,           # No availability payment
+        'activation_mwh': 150.0,        # $/MWh when called
+        'expected_hours_yr': 50,
+        'min_capacity_mw': 5.0,
+        'min_duration_hours': 4,
+        'compatible_workloads': ['pre_training', 'fine_tuning', 'batch_inference'],
     },
     'capacity': {
         'name': 'Capacity Market',
-        'response_time_min': 120,
+        'response_time_min': 60,
+        'payment_kw_yr': 50.0,          # $/kW-year
+        'activation_mwh': 0.0,          # No energy payment
+        'expected_hours_yr': 0,
+        'min_capacity_mw': 10.0,
         'min_duration_hours': 4,
-        'price_per_mw_month': 5000,
         'compatible_workloads': ['pre_training', 'fine_tuning', 'batch_inference'],
     },
 }
 
+# =============================================================================
 # Value of Lost Load (VOLL) and Battery Degradation
-VOLL_PENALTY = 50000  # $/MWh
-K_DEG = 0.03  # $/kWh cycled
+# =============================================================================
+VOLL_PENALTY = 50000  # $/MWh - penalty for unserved energy (DO NOT blend into LCOE)
+K_DEG = 0.03  # $/kWh throughput for battery degradation
+
+# =============================================================================
+# LCOE Sanity Checks
+# =============================================================================
+LCOE_SANITY_CHECKS = {
+    'warning_threshold': 200,      # $/MWh - flag for review
+    'error_threshold': 500,        # $/MWh - likely calculation error
+    'min_realistic': 50,           # $/MWh - below this is suspicious
+    'max_realistic': 300,          # $/MWh - BTM with rentals can be high
+}
+
+# =============================================================================
+# Heuristic Configuration
+# =============================================================================
+HEURISTIC_CONFIG = {
+    # Sizing parameters
+    'n1_reserve_margin': 0.15,          # 15% reserve for N-1 redundancy
+    'baseload_recip_fraction': 0.70,    # 70% of thermal from recips
+    'peaker_turbine_fraction': 0.30,    # 30% from turbines (peaking)
+    'bess_transient_coverage': 0.10,    # 10% of peak for AI transient coverage
+    'bess_default_duration_hrs': 4,     # 4-hour BESS default
+    
+    # Dispatch parameters
+    'recip_capacity_factor': 0.85,      # High CF for baseload recips
+    'turbine_capacity_factor': 0.30,    # Low CF for peaking turbines
+    'solar_capacity_factor': 0.25,      # Regional average
+    'bess_daily_cycles': 1.0,           # 1 cycle/day for arbitrage
+    
+    # Land density factors (MW/acre or MWh/acre)
+    'recip_land_acres_per_mw': 0.5,
+    'turbine_land_acres_per_mw': 0.3,
+    'solar_land_acres_per_mw': 5.0,     # Fixed-tilt utility scale
+    'bess_land_acres_per_mwh': 0.01,
+    
+    # Merit order (lower = dispatched first)
+    'merit_order': {
+        'solar': 1,      # Must-take, zero marginal cost
+        'bess_discharge': 2,  # Previously charged energy
+        'grid_import': 3,     # If available and cheap
+        'recip': 4,           # Baseload thermal
+        'turbine': 5,         # Peaking thermal
+    },
+    
+    # NOx calculation parameters
+    'nox_lb_to_ton': 2000,              # lb/ton conversion
+    'hours_per_year': 8760,
+    
+    # Gas conversion
+    'gas_hhv_mmbtu_per_mcf': 1.037,     # Higher heating value
+}
