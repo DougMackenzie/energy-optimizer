@@ -99,43 +99,64 @@ def save_site(site_data: Dict) -> bool:
         spreadsheet = client.open_by_key(SHEET_ID)
         worksheet = spreadsheet.worksheet("Sites")
         
-        site_name = site_data['name']
+        site_name = site_data.get('name') or site_data.get('site_name')  # Support both field names
         
         # Check if site already exists
         sites = worksheet.get_all_records()
         existing_row = None
         for idx, site in enumerate(sites):
-            if site.get('site_name') == site_name:
+            # Check both 'name' and 'site_name' fields for compatibility
+            existing_name = site.get('name') or site.get('site_name')
+            if existing_name == site_name:
                 existing_row = idx + 2  # +2 for header row and 0-indexing
+                print(f"✓ Found existing site '{site_name}' at row {existing_row} - will UPDATE")
                 break
         
-        # Prepare row data
+        # Get headers to ensure correct column mapping
+        headers = worksheet.row_values(1)
+        
+        # Prepare row data matching Google Sheets headers
+        # Headers: ['name', 'location', 'iso', 'voltage_kv', 'it_capacity_mw', 'pue', 'facility_mw', 
+        #           'land_acres', 'nox_limit_tpy', 'gas_supply_mcf', 'problem_num', 'problem_name', 
+        #           'geojson', 'coordinates', 'timezone', 'climate_zone', 'avg_temp_f', 
+        #           'geojson_prefix', 'created_date', 'updated_date', 'notes']
+        
+        coords = site_data.get('coordinates', [])
+        coords_str = f"{coords[0]}, {coords[1]}" if isinstance(coords, list) and len(coords) >= 2 else ""
+        
         row_data = [
-            site_data.get('name'),
-            site_data.get('location'),
-            site_data.get('iso'),
-            site_data.get('it_capacity_mw'),
-            site_data.get('pue'),
-            site_data.get('facility_mw'),
-            site_data.get('land_acres'),
-            site_data.get('nox_limit_tpy'),
-            site_data.get('gas_supply_mcf'),
-            site_data.get('voltage_kv'),
-            site_data.get('coordinates', [0, 0])[0],  # lat
-            site_data.get('coordinates', [0, 0])[1],  # lon
-            site_data.get('geojson_prefix', ''),
-            site_data.get('problem_num'),
-            site_data.get('problem_name'),
-            site_data.get('created_date', datetime.now().isoformat()),
-            datetime.now().isoformat()  # updated_date
+            site_data.get('name'),                          # name
+            site_data.get('location', ''),                  # location
+            site_data.get('iso', ''),                       # iso
+            site_data.get('voltage_kv', ''),                # voltage_kv
+            site_data.get('it_capacity_mw', ''),            # it_capacity_mw
+            site_data.get('pue', ''),                       # pue
+            site_data.get('facility_mw', ''),               # facility_mw
+            site_data.get('land_acres', ''),                # land_acres
+            site_data.get('nox_limit_tpy', ''),             # nox_limit_tpy
+            site_data.get('gas_supply_mcf', ''),            # gas_supply_mcf
+            site_data.get('problem_num', ''),               # problem_num
+            site_data.get('problem_name', ''),              # problem_name
+            site_data.get('geojson', ''),                   # geojson
+            coords_str,                                     # coordinates
+            site_data.get('timezone', ''),                  # timezone
+            site_data.get('climate_zone', ''),              # climate_zone
+            site_data.get('avg_temp_f', ''),                # avg_temp_f
+            site_data.get('geojson_prefix', ''),            # geojson_prefix
+            site_data.get('created_date', datetime.now().isoformat()),  # created_date
+            datetime.now().isoformat(),                     # updated_date
+            site_data.get('notes', '')                      # notes
         ]
         
         if existing_row:
-            # Update existing row
-            worksheet.update(f'A{existing_row}:Q{existing_row}', [row_data])
+            # Update existing row (all columns)
+            col_range = chr(65 + len(row_data) - 1)  # Convert to letter (A, B, C, ...)
+            worksheet.update(f'A{existing_row}:{col_range}{existing_row}', [row_data])
+            print(f"✓ Updated site '{site_name}' successfully")
         else:
             # Append new row
             worksheet.append_row(row_data)
+            print(f"✓ Created new site '{site_name}' successfully")
         
         # Clear cache
         if 'sites_list' in st.session_state:
