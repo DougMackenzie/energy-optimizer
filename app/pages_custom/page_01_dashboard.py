@@ -59,8 +59,15 @@ def render():
 def render_problem_progress_tab():
     """Render the Site Workflow Trackers tab"""
     
-    st.markdown("### 📊 Site Optimization Workflow Trackers")
-    st.caption("Track project development through EPC stages for all sites")
+    # Add header with refresh button
+    col_header1, col_header2 = st.columns([5, 1])
+    with col_header1:
+        st.markdown("### 📊 Site Optimization Workflow Trackers")
+        st.caption("Track project development through EPC stages for all sites")
+    with col_header2:
+        if st.button("🔄 Refresh", use_container_width=True, key="refresh_workflow"):
+            st.cache_data.clear()
+            st.rerun()
     
     # Initialize sites list if needed
     if 'sites_list' not in st.session_state:
