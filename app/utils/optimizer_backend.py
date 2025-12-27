@@ -51,7 +51,7 @@ def run_heuristic_optimization(site_data: Dict, problem_num: int, load_profile: 
         if problem_num == 1:
             optimizer = GreenFieldHeuristic(site, load_trajectory, constraints)
         elif problem_num == 2:
-            optimizer = BrownfieldHeuristic(site, load_trajectory, constraints, lcoe_ceiling=80.0)
+            optimizer = BrownfieldHeuristic(site, load_trajectory, constraints, lcoe_threshold=80.0)
         elif problem_num == 3:
             optimizer = LandDevHeuristic(site, load_trajectory, constraints)
         elif problem_num == 4:
