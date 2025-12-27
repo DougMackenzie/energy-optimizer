@@ -210,3 +210,9 @@ __marimo__/
 credentials.json
 service-account*.json
 *-credentials.json
+
+# Backup files
+*.backup
+
+# Fix packages (applied changes are committed, originals archived)
+bvnexus_stage1_fixes/
