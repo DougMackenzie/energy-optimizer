@@ -1,0 +1,69 @@
+{
+    "type": "FeatureCollection",
+    "features": [
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "500 kV Transmission Line",
+                "voltage_kv": 500,
+                "capacity_mw": 800,
+                "owner": "APS",
+                "status": "Existing"
+            },
+            "geometry": {
+                "type": "LineString",
+                "coordinates": [
+                    [
+                        -112.095,
+                        33.460
+                    ],
+                    [
+                        -112.085,
+                        33.455
+                    ],
+                    [
+                        -112.075,
+                        33.448
+                    ],
+                    [
+                        -112.065,
+                        33.442
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "Palo Verde Substation",
+                "voltage_kv": 500,
+                "capacity_mw": 1500,
+                "type": "Major Substation"
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    -112.075,
+                    33.448
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "Proposed Site Interconnection",
+                "voltage_kv": 500,
+                "capacity_mw": 750,
+                "type": "POI",
+                "status": "Planned"
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    -112.074,
+                    33.448
+                ]
+            }
+        }
+    ]
+}

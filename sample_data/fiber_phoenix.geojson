@@ -1,0 +1,56 @@
+{
+    "type": "FeatureCollection",
+    "features": [
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "CenturyLink Fiber Route",
+                "provider": "CenturyLink/Lumen",
+                "capacity_gbps": 800,
+                "redundancy": "Ring Topology",
+                "status": "Existing"
+            },
+            "geometry": {
+                "type": "LineString",
+                "coordinates": [
+                    [
+                        -112.110,
+                        33.465
+                    ],
+                    [
+                        -112.095,
+                        33.455
+                    ],
+                    [
+                        -112.080,
+                        33.448
+                    ],
+                    [
+                        -112.070,
+                        33.445
+                    ],
+                    [
+                        -112.060,
+                        33.440
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "Phoenix NAP",
+                "type": "Network Access Point",
+                "providers": 5,
+                "distance_miles": 2.1
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    -112.080,
+                    33.448
+                ]
+            }
+        }
+    ]
+}

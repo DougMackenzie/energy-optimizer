@@ -1,0 +1,69 @@
+{
+    "type": "FeatureCollection",
+    "features": [
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "345 kV ERCOT Transmission",
+                "voltage_kv": 345,
+                "capacity_mw": 700,
+                "owner": "Oncor",
+                "status": "Existing"
+            },
+            "geometry": {
+                "type": "LineString",
+                "coordinates": [
+                    [
+                        -96.820,
+                        32.790
+                    ],
+                    [
+                        -96.810,
+                        32.785
+                    ],
+                    [
+                        -96.800,
+                        32.778
+                    ],
+                    [
+                        -96.785,
+                        32.770
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "Dallas North Substation",
+                "voltage_kv": 345,
+                "capacity_mw": 1000,
+                "type": "Switching Station"
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    -96.800,
+                    32.778
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "Site POI",
+                "voltage_kv": 345,
+                "capacity_mw": 650,
+                "type": "Point of Interconnection",
+                "status": "Proposed"
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    -96.797,
+                    32.776
+                ]
+            }
+        }
+    ]
+}

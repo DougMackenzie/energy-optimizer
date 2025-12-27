@@ -14,14 +14,18 @@ from app.utils.site_backend import (
 import json
 
 
-def load_all_site_results() -> List[Dict]:
+def load_all_site_results(bypass_cache: bool = False) -> List[Dict]:
     """
     Load all sites with their latest optimization results
+    
+    Args:
+        bypass_cache: If True, forces fresh load from Google Sheets
     
     Returns:
         List of site dictionaries with results attached
     """
-    sites = load_all_sites()
+    # Force using fresh data by calling with use_cache=False
+    sites = load_all_sites(use_cache=not bypass_cache)
     site_results = []
     
     for site in sites:
@@ -30,6 +34,7 @@ def load_all_site_results() -> List[Dict]:
             continue
         
         # Find latest complete stage
+        # NOTE: load_site_stage_result is cached but we cleared it in the UI
         latest_result = None
         for stage in ['detailed', 'preliminary', 'concept', 'screening']:
             result = load_site_stage_result(site_name, stage)

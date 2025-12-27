@@ -1,0 +1,56 @@
+{
+    "type": "FeatureCollection",
+    "features": [
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "Zayo Fiber Backbone",
+                "provider": "Zayo Group",
+                "capacity_gbps": 1000,
+                "redundancy": "Dual Path",
+                "status": "Existing"
+            },
+            "geometry": {
+                "type": "LineString",
+                "coordinates": [
+                    [
+                        -96.840,
+                        32.795
+                    ],
+                    [
+                        -96.820,
+                        32.785
+                    ],
+                    [
+                        -96.800,
+                        32.778
+                    ],
+                    [
+                        -96.785,
+                        32.775
+                    ],
+                    [
+                        -96.770,
+                        32.770
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "Infomart Dallas",
+                "type": "Carrier Hotel",
+                "providers": 8,
+                "distance_miles": 3.2
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    -96.800,
+                    32.778
+                ]
+            }
+        }
+    ]
+}

@@ -1,0 +1,19 @@
+"""
+bvNexus Configuration Package
+"""
+
+from .settings import (
+    APP_NAME,
+    APP_VERSION,
+    APP_ICON,
+    COLORS,
+    PROBLEM_STATEMENTS,
+    OPTIMIZATION_TIERS,
+    ECONOMIC_DEFAULTS,
+    EQUIPMENT_DEFAULTS,
+    CONSTRAINT_DEFAULTS,
+    WORKLOAD_FLEXIBILITY,
+    DR_SERVICES,
+    VOLL_PENALTY,
+    K_DEG,
+)

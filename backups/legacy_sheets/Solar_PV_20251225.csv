@@ -1,0 +1,5 @@
+ID,System_Type,Region,DC_AC_Ratio,Capacity_Factor_Pct,Degradation_Pct_yr,Performance_Ratio,CAPEX_per_W_DC,FOM_per_kW_AC_yr,Land_Use_acres_per_MW,Lead_Time_Months,Availability_Pct,Note
+utility_tracker_sw,Single-Axis Tracker,Southwest US,1.34,33.5,0.5,84.0,0.93,22.0,4.25,12,98.0,"Best CF in US, ITC eligible"
+utility_tracker_se,Single-Axis Tracker,Southeast US,1.34,30.5,0.5,84.0,0.97,23.0,4.25,12,98.0,"Good CF, ITC eligible"
+utility_tracker_mw,Single-Axis Tracker,Midwest US,1.34,25.7,0.5,84.0,1.02,23.0,4.25,12,98.0,"Lower CF, ITC eligible"
+utility_fixed_tilt,Fixed Tilt,National Average,1.35,25.0,0.7,82.5,0.88,20.0,3.0,10,98.0,"Lower cost, less land, lower CF"

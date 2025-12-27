@@ -1,0 +1,36 @@
+# bvNexus Requirements
+# Co-located Power, Energy and Load Optimization
+
+# Core framework
+streamlit>=1.28.0
+
+# Data processing
+pandas>=2.0.0
+numpy>=1.24.0
+
+# Visualization
+plotly>=5.18.0
+
+# Optimization (Phase 1 - Heuristic)
+scipy>=1.11.0
+
+# Optimization (Phase 2 - MILP) - Install when ready
+# pyomo>=6.6.0
+# highspy>=1.5.0
+
+# Time series analysis (for representative period selection)
+# tsam>=2.3.0
+
+# Utilities
+python-dateutil>=2.8.0
+
+# Export capabilities
+openpyxl>=3.1.0  # Excel export
+
+# Google Sheets integration (optional)
+# gspread>=5.12.0
+# oauth2client>=4.1.3
+
+# Testing (development)
+# pytest>=7.4.0
+# pytest-cov>=4.1.0

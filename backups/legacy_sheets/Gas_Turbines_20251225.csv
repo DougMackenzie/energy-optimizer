@@ -1,0 +1,4 @@
+ID,Manufacturer,Model,Type,Capacity_MW,Efficiency_Pct,Heat_Rate_BTU_kWh,Ramp_Rate_MW_min,Start_Time_Cold_Min,NOx_lb_MMBtu,CO_lb_MMBtu,Lead_Time_Months_Min,Lead_Time_Months_Max,CAPEX_per_kW,VOM_per_MWh,FOM_per_kW_yr,MTBF_hrs,MTTR_hrs,Availability_Pct,Note
+ge_lm6000,GE Vernova,LM6000PF+,Aeroderivative,53.2,42.4,8050,26.6,10,0.099,0.015,18,30,1300,6.5,18.0,2000,48,93.0,"DLE, High ramping capability"
+siemens_sgt800,Siemens Energy,SGT-800,Industrial,57.1,39.9,8550,28.5,15,0.099,0.015,24,36,1200,6.0,16.5,2200,48,93.5,"DLE, Industrial duty cycle"
+mhi_mih100,Mitsubishi Power,MIH-100,Aeroderivative,10.8,32.0,10660,5.4,8,0.099,0.015,18,24,1400,7.0,17.0,2000,40,92.5,Smaller aero unit

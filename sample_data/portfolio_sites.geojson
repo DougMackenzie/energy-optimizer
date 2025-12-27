@@ -1,0 +1,165 @@
+{
+    "type": "FeatureCollection",
+    "features": [
+        {
+            "type": "Feature",
+            "properties": {
+                "site_name": "Phoenix DC-1",
+                "location": "Phoenix, AZ",
+                "capacity_mw": 600,
+                "stage": "Operation",
+                "stage_color": "#10b981",
+                "completion_pct": 100,
+                "commercial_date": "2023-Q2",
+                "problem_type": "P1: Greenfield"
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    -112.074,
+                    33.448
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "site_name": "Dallas DC-2",
+                "location": "Dallas, TX",
+                "capacity_mw": 450,
+                "stage": "Construction",
+                "stage_color": "#f59e0b",
+                "completion_pct": 65,
+                "commercial_date": "2025-Q3",
+                "problem_type": "P2: Brownfield"
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    -96.797,
+                    32.776
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "site_name": "Atlanta DC-3",
+                "location": "Atlanta, GA",
+                "capacity_mw": 750,
+                "stage": "Detailed Design",
+                "stage_color": "#3b82f6",
+                "completion_pct": 40,
+                "commercial_date": "2026-Q1",
+                "problem_type": "P1: Greenfield"
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    -84.388,
+                    33.749
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "site_name": "Chicago DC-4",
+                "location": "Chicago, IL",
+                "capacity_mw": 300,
+                "stage": "Interconnection Filing",
+                "stage_color": "#a855f7",
+                "completion_pct": 25,
+                "commercial_date": "2027-Q2",
+                "problem_type": "P3: Land Dev"
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    -87.630,
+                    41.878
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "site_name": "Portland DC-5",
+                "location": "Portland, OR",
+                "capacity_mw": 500,
+                "stage": "Screening Analysis",
+                "stage_color": "#6b7280",
+                "completion_pct": 10,
+                "commercial_date": "2028-Q4",
+                "problem_type": "P5: Bridge Power"
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    -122.676,
+                    45.523
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "site_name": "Northern Virginia DC-6",
+                "location": "Ashburn, VA",
+                "capacity_mw": 900,
+                "stage": "Operation",
+                "stage_color": "#10b981",
+                "completion_pct": 100,
+                "commercial_date": "2022-Q4",
+                "problem_type": "P1: Greenfield"
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    -77.487,
+                    39.043
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "site_name": "Columbus DC-7",
+                "location": "Columbus, OH",
+                "capacity_mw": 400,
+                "stage": "Construction",
+                "stage_color": "#f59e0b",
+                "completion_pct": 80,
+                "commercial_date": "2025-Q1",
+                "problem_type": "P4: Grid Services"
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    -82.998,
+                    39.961
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "site_name": "Reno DC-8",
+                "location": "Reno, NV",
+                "capacity_mw": 350,
+                "stage": "Detailed Design",
+                "stage_color": "#3b82f6",
+                "completion_pct": 50,
+                "commercial_date": "2026-Q3",
+                "problem_type": "P1: Greenfield"
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    -119.814,
+                    39.530
+                ]
+            }
+        }
+    ]
+}

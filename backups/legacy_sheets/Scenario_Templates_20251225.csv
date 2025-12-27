@@ -1,0 +1,6 @@
+Scenario_ID,Scenario_Name,Description,Recip_Engines,Gas_Turbines,BESS,Solar_PV,Grid_Connection,Deployment_Strategy,Target_LCOE_MWh,Target_Deployment_Months,Notes
+SCN-ALL-SOURCES,All Sources Available,Full technology stack - all options enabled,True,True,True,True,True,Hybrid BTM + Grid,85,24,Optimizes across all available technologies
+SCN-BTM-ONLY,BTM Only (Microgrid),"Behind-the-meter generation only, no grid",True,True,True,True,False,Island Mode Microgrid,95,18,"Fastest deployment, no grid dependency"
+SCN-BESS-GT,BESS + Gas Turbine,Fast-ramping turbine with battery smoothing,False,True,True,False,True,BTM Primary + Grid Backup,88,20,Optimized for fast ramp response
+SCN-GRID-SOLAR,Grid + Solar (Renewable),Grid primary with solar offset,False,False,True,True,True,Grid Primary + Renewable,72,36,"Lowest LCOE, grid dependent"
+SCN-IFOM-BRIDGE,IFOM Bridging Strategy,Co-located IFOM while awaiting grid,True,True,True,True,True,IFOM Bridge to Grid,92,18,"Early energization, transitions to grid later"

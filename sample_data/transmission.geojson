@@ -1,0 +1,70 @@
+{
+    "type": "FeatureCollection",
+    "features": [
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "345 kV Transmission Line",
+                "voltage_kv": 345,
+                "capacity_mw": 600,
+                "owner": "Grid Operator",
+                "status": "Existing",
+                "distance_miles": 2.5
+            },
+            "geometry": {
+                "type": "LineString",
+                "coordinates": [
+                    [
+                        -95.9750,
+                        36.1600
+                    ],
+                    [
+                        -95.9700,
+                        36.1560
+                    ],
+                    [
+                        -95.9650,
+                        36.1520
+                    ],
+                    [
+                        -95.9600,
+                        36.1500
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "Substation",
+                "voltage_kv": 345,
+                "capacity_mw": 1200,
+                "type": "Switching Station"
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    -95.9650,
+                    36.1520
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "Proposed POI",
+                "voltage_kv": 345,
+                "capacity_mw": 600,
+                "type": "Point of Interconnection",
+                "status": "Planned"
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    -95.9607,
+                    36.1512
+                ]
+            }
+        }
+    ]
+}

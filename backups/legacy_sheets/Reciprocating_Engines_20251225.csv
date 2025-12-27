@@ -1,0 +1,5 @@
+ID,Manufacturer,Model,Capacity_MW,Efficiency_Pct,Heat_Rate_BTU_kWh,Ramp_Rate_MW_min,Start_Time_Cold_Min,NOx_lb_MMBtu,CO_lb_MMBtu,Lead_Time_Months_Min,Lead_Time_Months_Max,CAPEX_per_kW,VOM_per_MWh,FOM_per_kW_yr,MTBF_hrs,MTTR_hrs,Availability_Pct,Note
+wartsila_34sg,Wärtsilä,34SG,9.8,44.3,7700,4.9,10,0.099,0.015,18,24,1650,8.5,21.5,2500,24,92.0,DLE (Dry Low Emissions)
+wartsila_50sg,Wärtsilä,50SG,18.0,46.5,7340,9.0,10,0.099,0.015,18,24,1650,8.5,21.5,2500,24,92.0,"DLE, Most common for datacenter BTM"
+jenbacher_j920,INNIO Jenbacher,J920 FleXtra,10.4,45.7,7470,5.2,10,0.099,0.015,18,24,1650,8.5,21.5,2500,24,92.0,"DLE, Flexible operation"
+cat_g3520c,Caterpillar,G3520C,2.0,41.0,8320,1.0,5,0.15,0.3,12,18,1800,9.0,24.0,2200,20,91.0,"Smaller unit, faster start"

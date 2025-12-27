@@ -482,9 +482,13 @@ def save_site_stage_result(site_name: str, stage: str, result_data: Dict) -> boo
 
 
 
-@st.cache_data(ttl=300)  # Cache for 5 minutes
+@st.cache_data(ttl=60)  # Reduced to 1 minute to allow fresher data
 def load_site_stage_result(site_name: str, stage: str) -> Optional[Dict]:
-    """Load optimization result for a specific site and stage"""
+    """Load optimization result for a specific site and stage
+    
+    Note: This function is cached to prevent Google Sheets API rate limiting.
+    Cache is cleared when generating reports to ensure fresh data.
+    """
     
     try:
         client = get_google_sheets_client()

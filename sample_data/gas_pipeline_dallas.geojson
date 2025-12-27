@@ -1,0 +1,52 @@
+{
+    "type": "FeatureCollection",
+    "features": [
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "Atmos Energy Transmission",
+                "diameter_inches": 24,
+                "pressure_psig": 1000,
+                "capacity_mcf_day": 200000,
+                "status": "Existing"
+            },
+            "geometry": {
+                "type": "LineString",
+                "coordinates": [
+                    [
+                        -96.830,
+                        32.770
+                    ],
+                    [
+                        -96.815,
+                        32.775
+                    ],
+                    [
+                        -96.800,
+                        32.778
+                    ],
+                    [
+                        -96.785,
+                        32.780
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "Gas Interconnect Point",
+                "type": "Delivery Station",
+                "distance_miles": 1.2,
+                "available_capacity_mcf_day": 125000
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    -96.800,
+                    32.778
+                ]
+            }
+        }
+    ]
+}

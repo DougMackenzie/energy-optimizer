@@ -1,0 +1,5 @@
+ISO,Typical_Timeline_yrs,Typical_Cost_per_kW,Queue_Size_GW,Study_Process,Capacity_Market,Avg_LMP_per_MWh,Availability_Pct,Note
+SPP,4.0,110,84,DISIS cluster,No,32.5,99.97,Lowest LMP in US
+ERCOT,2.5,50,260,Connect-and-Manage,No,37.5,99.95,Fastest interconnection in US
+PJM,8.0,162,350,First-ready cluster,Yes,47.5,99.97,"Longest timeline, capacity market revenue"
+MISO,4.5,130,200,DPP cluster,Yes,42.5,99.97,Capacity market revenue available

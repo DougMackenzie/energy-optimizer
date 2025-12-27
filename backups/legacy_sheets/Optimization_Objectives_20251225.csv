@@ -1,0 +1,3 @@
+Site_ID,Primary_Objective,LCOE_Max_MWh,PPA_Target_MWh,CAPEX_Max_M,Deployment_Max_Months,Reliability_Min_Pct,Emissions_Constraint,Grid_Dependency_Max_Pct,Weight_LCOE,Weight_Deployment_Speed,Weight_Reliability
+SITE-TX-001,Fastest Deployment,95,88,450,24,99.95,Minor Source,30,0.3,0.5,0.2
+SITE-VA-001,Lowest LCOE,85,78,500,36,99.99,Minor Source,50,0.6,0.2,0.2

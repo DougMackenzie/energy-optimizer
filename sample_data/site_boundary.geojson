@@ -1,0 +1,42 @@
+{
+    "type": "FeatureCollection",
+    "features": [
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "Sample Datacenter Site",
+                "area_acres": 500,
+                "zoning": "Industrial",
+                "available_acres": 300,
+                "site_id": "SAMPLE-DC-001"
+            },
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [
+                    [
+                        [
+                            -95.9635,
+                            36.1540
+                        ],
+                        [
+                            -95.9580,
+                            36.1540
+                        ],
+                        [
+                            -95.9580,
+                            36.1485
+                        ],
+                        [
+                            -95.9635,
+                            36.1485
+                        ],
+                        [
+                            -95.9635,
+                            36.1540
+                        ]
+                    ]
+                ]
+            }
+        }
+    ]
+}

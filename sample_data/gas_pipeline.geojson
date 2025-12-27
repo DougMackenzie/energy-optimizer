@@ -1,0 +1,52 @@
+{
+    "type": "FeatureCollection",
+    "features": [
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "Permian Highway Pipeline",
+                "diameter_inches": 16,
+                "pressure_psig": 800,
+                "capacity_mcf_day": 100000,
+                "status": "Existing"
+            },
+            "geometry": {
+                "type": "LineString",
+                "coordinates": [
+                    [
+                        -95.9800,
+                        36.1450
+                    ],
+                    [
+                        -95.9750,
+                        36.1470
+                    ],
+                    [
+                        -95.9680,
+                        36.1500
+                    ],
+                    [
+                        -95.9620,
+                        36.1515
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "Gas Tap Point",
+                "type": "Connection Point",
+                "distance_miles": 2.5,
+                "available_capacity_mcf_day": 75000
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    -95.9680,
+                    36.1500
+                ]
+            }
+        }
+    ]
+}

@@ -11,11 +11,47 @@ from app.utils.load_profile_generator import (
     generate_load_profile_with_flexibility,
     calculate_dr_economics
 )
+from app.utils.site_context_helper import display_site_context
 
 
 def render():
     st.markdown("### ⚡ Load Composer with Demand Response")
     
+    # =========================================================================
+    # SITE SELECTOR
+    # =========================================================================
+    st.markdown("#### 📍 Select Site")
+    
+    if 'sites_list' in st.session_state and st.session_state.sites_list:
+        site_names = [s.get('name', 'Unknown') for s in st.session_state.sites_list]
+        
+        # Get current site or default to first
+        current_site_name = st.session_state.get('current_site', site_names[0])
+        current_index = site_names.index(current_site_name) if current_site_name in site_names else 0
+        
+        selected_site = st.selectbox(
+            "Select Site for Load Configuration",
+            options=site_names,
+            index=current_index,
+            key="load_composer_site_selector",
+            help="Select the site to configure load profile for"
+        )
+        
+        # Update current site if changed
+        if selected_site != st.session_state.get('current_site'):
+            st.session_state.current_site = selected_site
+            st.rerun()
+        
+        # Display site context
+        from app.utils.site_context_helper import display_site_context
+        display_site_context(selected_site)
+        
+    else:
+        st.warning("⚠️ No sites configured. Navigate to Dashboard → Sites & Infrastructure to select a site and start optimization.")
+        st.info("💡 **Tip:** The Load Composer requires a site to be selected first. Each site can have its own unique load profile.")
+        return
+    
+    st.markdown("---")
     # Add button to load 600MW sample problem
     col_header1, col_header2 = st.columns([3, 1])
     with col_header1:
@@ -114,8 +150,8 @@ def render():
         }
     
     # Create tabs
-    tab1, tab2, tab3, tab4 = st.tabs([
-        "📊 Basic Load", "🔄 Workload Mix", "❄️ Cooling Flexibility", "💰 DR Economics"
+    tab1, tab2, tab3, tab4, tab5 = st.tabs([
+        "📊 Basic Load", "🔄 Workload Mix", "❄️ Cooling Flexibility", "💰 DR Economics", "📈 Load Variability"
     ])
     
     # =========================================================================
@@ -224,36 +260,45 @@ def render():
         col1, col2 = st.columns(2)
         
         with col1:
+            # Helper function to normalize percentage values
+            def normalize_pct(value):
+                """Convert to percentage if it's a decimal value, otherwise return as-is"""
+                if isinstance(value, (int, float)):
+                    # If value is > 1, it's already a percentage (e.g., 45)
+                    # If value is <= 1, it's a decimal (e.g., 0.45) -> convert to percentage
+                    return int(value) if value > 1 else int(value * 100)
+                return 0
+            
             pre_training_pct = st.slider(
                 "Pre-Training (%)", 0, 100, 
-                int(st.session_state.load_profile_dr['workload_mix'].get('pre_training', 0) * 100),
+                normalize_pct(st.session_state.load_profile_dr['workload_mix'].get('pre_training', 0)),
                 help="Large model training - most interruptible but slow to stop"
             )
             fine_tuning_pct = st.slider(
                 "Fine-Tuning (%)", 0, 100,
-                int(st.session_state.load_profile_dr['workload_mix'].get('fine_tuning', 0) * 100),
+                normalize_pct(st.session_state.load_profile_dr['workload_mix'].get('fine_tuning', 0)),
                 help="Model customization - medium flexibility"
             )
             batch_inference_pct = st.slider(
                 "Batch Inference (%)", 0, 100,
-                int(st.session_state.load_profile_dr['workload_mix'].get('batch_inference', 0) * 100),
+                normalize_pct(st.session_state.load_profile_dr['workload_mix'].get('batch_inference', 0)),
                 help="Offline predictions - highly flexible"
             )
         
         with col2:
             realtime_inference_pct = st.slider(
                 "Real-Time Inference (%)", 0, 100,
-                int(st.session_state.load_profile_dr['workload_mix'].get('realtime_inference', 0) * 100),
+                normalize_pct(st.session_state.load_profile_dr['workload_mix'].get('realtime_inference', 0)),
                 help="Production API serving - lowest flexibility"
             )
             rl_training_pct = st.slider(
                 "RL Training (%)", 0, 100,
-                int(st.session_state.load_profile_dr['workload_mix'].get('rl_training', 0) * 100),
+                normalize_pct(st.session_state.load_profile_dr['workload_mix'].get('rl_training', 0)),
                 help="Reinforcement learning - medium-high flexibility"
             )
             cloud_hpc_pct = st.slider(
                 "Cloud HPC (%)", 0, 100,
-                int(st.session_state.load_profile_dr['workload_mix'].get('cloud_hpc', 0) * 100),
+                normalize_pct(st.session_state.load_profile_dr['workload_mix'].get('cloud_hpc', 0)),
                 help="Traditional HPC workloads - low-medium flexibility"
             )
         
@@ -477,6 +522,72 @@ def render():
                 }
                 st.json(summary)
 
+    
+    
+    # =========================================================================
+    # SAVE LOAD PROFILE
+    # =========================================================================
+    st.markdown("---")
+    st.markdown("### 💾 Save Load Profile")
+    
+    col_save_btn1, col_save_btn2, col_save_btn3 = st.columns([2, 2, 1])
+    
+    with col_save_btn1:
+        if st.button("💾 Save Load Profile to Google Sheets", type="primary", use_container_width=True):
+            if not st.session_state.get('current_site'):
+                st.error("❌ No site selected. Navigate to Dashboard to select a site.")
+            else:
+                try:
+                    from app.utils.site_backend import save_site_load_profile
+                    from datetime import datetime
+                    
+                    # Prepare load data for saving
+                    load_data_to_save = {
+                        'load_profile': st.session_state.load_profile_dr.copy(),
+                        'workload_mix': st.session_state.load_profile_dr.get('workload_mix', {}),
+                        'dr_params': {
+                            'cooling_flex': st.session_state.load_profile_dr.get('cooling_flex', 0),
+                            'thermal_constant_min': st.session_state.load_profile_dr.get('thermal_constant_min', 30),
+                            'enabled_dr_products': st.session_state.load_profile_dr.get('enabled_dr_products', [])
+                        }
+                    }
+                    
+                    # Save to Google Sheets
+                    success = save_site_load_profile(st.session_state.current_site, load_data_to_save)
+                    
+                    if success:
+                        st.success(f"✅ Load profile saved to Google Sheets for site: {st.session_state.current_site}")
+                        st.info("This load profile will now be used in all optimizations for this site.")
+                    else:
+                        st.error("❌ Failed to save load profile to Google Sheets")
+                        
+                except Exception as e:
+                    st.error(f"❌ Error saving load profile: {e}")
+    
+    with col_save_btn2:
+        if st.session_state.get('current_site'):
+            st.caption(f"📍 Current Site: **{st.session_state.current_site}**")
+            st.caption(f"Peak Facility Load: **{peak_facility_mw:.1f} MW**")
+        else:
+            st.caption("No site selected")
+    
+    with col_save_btn3:
+        if st.button("🔄 Refresh"):
+            st.rerun()
+    
+
+    # =========================================================================
+    # TAB 5: LOAD VARIABILITY ANALYSIS
+    # =========================================================================
+    with tab5:
+        st.markdown("#### Load Variability Analysis")
+        st.caption("Analyze hourly, daily, and seasonal load patterns")
+        
+        # Import variability page content
+        from pages_custom import page_04_variability
+        
+        # Run variability analysis inline
+        page_04_variability.render_variability_content()
 
 if __name__ == "__main__":
     render()

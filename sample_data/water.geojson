@@ -1,0 +1,81 @@
+{
+    "type": "FeatureCollection",
+    "features": [
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "Arkansas River",
+                "type": "Major River",
+                "flow_cfs": 15000,
+                "water_rights": "Available"
+            },
+            "geometry": {
+                "type": "LineString",
+                "coordinates": [
+                    [
+                        -95.9900,
+                        36.1650
+                    ],
+                    [
+                        -95.9850,
+                        36.1600
+                    ],
+                    [
+                        -95.9750,
+                        36.1550
+                    ],
+                    [
+                        -95.9650,
+                        36.1520
+                    ],
+                    [
+                        -95.9550,
+                        36.1500
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "Municipal Water Main",
+                "diameter_inches": 24,
+                "pressure_psi": 80,
+                "capacity_gpm": 5000,
+                "status": "Existing"
+            },
+            "geometry": {
+                "type": "LineString",
+                "coordinates": [
+                    [
+                        -95.9700,
+                        36.1580
+                    ],
+                    [
+                        -95.9650,
+                        36.1540
+                    ],
+                    [
+                        -95.9600,
+                        36.1510
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "Water Treatment Plant",
+                "capacity_mgd": 50,
+                "distance_miles": 3.2
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    -95.9700,
+                    36.1580
+                ]
+            }
+        }
+    ]
+}

@@ -85,14 +85,15 @@ def render():
         with st.expander("📊 Data Availability", expanded=False):
             from app.utils.portfolio_data import load_all_site_results
             try:
-                site_results = load_all_site_results()
+                # Force fresh data load by bypassing cache
+                site_results = load_all_site_results(bypass_cache=True)
                 st.success(f"✅ {len(site_results)} sites with optimization results available")
                 for sr in site_results[:5]:  # Show first 5
                     st.caption(f"• {sr.get('site_name')}: {sr.get('stage')} stage - LCOE ${sr.get('lcoe', 0):.1f}/MWh")
                 if len(site_results) > 5:
                     st.caption(f"... and {len(site_results) - 5} more")
-            except:
-                st.warning("⚠️ Unable to fetch optimization results from Google Sheets")
+            except Exception as e:
+                st.warning(f"⚠️ Unable to fetch optimization results: {e}")
         
         st.markdown("")
         
@@ -222,6 +223,12 @@ def render():
     
     with col_gen2:
         if st.button("📥 Generate & Download Report", use_container_width=True, type="primary"):
+            # Clear all Streamlit caches
+            st.cache_data.clear()
+            st.cache_resource.clear()
+            
+            print("\n🔄 CLEARED ALL STREAMLIT CACHES")
+            
             # Prepare content options dict
             content_dict = {
                 'include_exec_overview': include_exec_overview,
@@ -247,6 +254,19 @@ def render():
                 'include_sources': include_sources
             }
             
+            # FORCE ENABLE core sections for testing
+            content_dict['include_exec_overview'] = True
+            content_dict['include_exec_metrics'] = True  
+            content_dict['include_cash_flow'] = True  # Enables financial analysis with charts
+            content_dict['include_npv_irr'] = True
+            content_dict['include_equipment'] = True  # Enables technical analysis
+            content_dict['include_lcoe_trend'] = True  # Enables LCOE comparison chart
+            
+            print(f"\n📋 Content sections enabled:")
+            for key, val in content_dict.items():
+                if val:
+                    print(f"  ✓ {key}")
+            
             # Generate report based on format
             if "Word" in export_format:
                 # Show estimated time
@@ -258,7 +278,15 @@ def render():
                     
                     # Try to use enhanced builder first
                     try:
+                        print("\n" + "="*60)
+                        print("ATTEMPTING ENHANCED REPORT GENERATION")
+                        print("="*60)
+                        
                         from app.utils.enhanced_report_builder import generate_enhanced_word_report
+                        
+                        print(f"Selected sites: {selected_sites}")
+                        print(f"AI enabled: {use_ai_analysis}")
+                        print(f"Content options: {list(content_dict.keys())}")
                         
                         # Generate document with AI and real data
                         doc_bytes = generate_enhanced_word_report(
@@ -267,6 +295,9 @@ def render():
                             st.session_state.sites_list,
                             use_ai=use_ai_analysis
                         )
+                        
+                        print(f"✓ Report generated: {len(doc_bytes)} bytes")
+                        print("="*60 + "\n")
                         
                         st.success("✅ Enhanced report generated with real Google Sheets data!")
                         if use_ai_analysis:
@@ -279,7 +310,19 @@ def render():
                                 st.info("🤖 AI-generated insights included (Gemini Flash)")
                         
                     except Exception as e:
-                        st.warning(f"Enhanced builder unavailable ({str(e)}), using fallback...")
+                        import traceback
+                        error_details = traceback.format_exc()
+                        
+                        print("\n" + "="*60)
+                        print("ENHANCED BUILDER FAILED - FULL ERROR:")
+                        print("="*60)
+                        print(error_details)
+                        print("="*60 + "\n")
+                        
+                        st.error(f"⚠️ Enhanced builder failed: {str(e)}")
+                        st.code(error_details, language="python")
+                        
+                        st.warning("Falling back to basic report builder...")
                         
                         # Fallback to basic builder
                         from app.utils.report_builder import generate_word_report

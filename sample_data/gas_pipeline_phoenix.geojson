@@ -1,0 +1,52 @@
+{
+    "type": "FeatureCollection",
+    "features": [
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "Southwest Gas Main Line",
+                "diameter_inches": 20,
+                "pressure_psig": 900,
+                "capacity_mcf_day": 150000,
+                "status": "Existing"
+            },
+            "geometry": {
+                "type": "LineString",
+                "coordinates": [
+                    [
+                        -112.100,
+                        33.440
+                    ],
+                    [
+                        -112.090,
+                        33.445
+                    ],
+                    [
+                        -112.078,
+                        33.450
+                    ],
+                    [
+                        -112.065,
+                        33.453
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "Gas Delivery Point",
+                "type": "Tap Station",
+                "distance_miles": 1.8,
+                "available_capacity_mcf_day": 100000
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    -112.078,
+                    33.450
+                ]
+            }
+        }
+    ]
+}

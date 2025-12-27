@@ -76,8 +76,8 @@ def generate_enhanced_word_report(site_selection: List[str], content_options: Di
         except Exception as e:
             print(f"✗ AI client unavailable: {e}")
     
-    # Fetch site data from Google Sheets
-    site_results = load_all_site_results() if ENHANCED_FEATURES_AVAILABLE else []
+    # Fetch site data from Google Sheets (bypass cache to ensure fresh data)
+    site_results = load_all_site_results(bypass_cache=True) if ENHANCED_FEATURES_AVAILABLE else []
     print(f"Loaded {len(site_results)} sites from Google Sheets")
     
     # Filter by selection

@@ -1,0 +1,42 @@
+{
+    "type": "FeatureCollection",
+    "features": [
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "Dallas Datacenter Site",
+                "area_acres": 600,
+                "zoning": "Industrial",
+                "available_acres": 400,
+                "site_id": "DFW-DC-001"
+            },
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [
+                    [
+                        [
+                            -96.805,
+                            32.780
+                        ],
+                        [
+                            -96.789,
+                            32.780
+                        ],
+                        [
+                            -96.789,
+                            32.772
+                        ],
+                        [
+                            -96.805,
+                            32.772
+                        ],
+                        [
+                            -96.805,
+                            32.780
+                        ]
+                    ]
+                ]
+            }
+        }
+    ]
+}

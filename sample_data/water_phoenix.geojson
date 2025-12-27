@@ -1,0 +1,81 @@
+{
+    "type": "FeatureCollection",
+    "features": [
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "Central Arizona Project Canal",
+                "type": "Major Canal",
+                "flow_cfs": 25000,
+                "water_rights": "Available for Industrial"
+            },
+            "geometry": {
+                "type": "LineString",
+                "coordinates": [
+                    [
+                        -112.120,
+                        33.470
+                    ],
+                    [
+                        -112.100,
+                        33.460
+                    ],
+                    [
+                        -112.080,
+                        33.450
+                    ],
+                    [
+                        -112.060,
+                        33.445
+                    ],
+                    [
+                        -112.040,
+                        33.440
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "Phoenix Water Services Main",
+                "diameter_inches": 36,
+                "pressure_psi": 100,
+                "capacity_gpm": 8000,
+                "status": "Existing"
+            },
+            "geometry": {
+                "type": "LineString",
+                "coordinates": [
+                    [
+                        -112.090,
+                        33.460
+                    ],
+                    [
+                        -112.075,
+                        33.450
+                    ],
+                    [
+                        -112.065,
+                        33.445
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "Deer Valley WTP",
+                "capacity_mgd": 80,
+                "distance_miles": 4.5
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    -112.090,
+                    33.460
+                ]
+            }
+        }
+    ]
+}

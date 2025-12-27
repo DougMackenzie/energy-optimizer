@@ -1,0 +1,42 @@
+{
+    "type": "FeatureCollection",
+    "features": [
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "Phoenix Datacenter Site",
+                "area_acres": 450,
+                "zoning": "Technology Park",
+                "available_acres": 280,
+                "site_id": "PHX-DC-001"
+            },
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [
+                    [
+                        [
+                            -112.080,
+                            33.452
+                        ],
+                        [
+                            -112.068,
+                            33.452
+                        ],
+                        [
+                            -112.068,
+                            33.444
+                        ],
+                        [
+                            -112.080,
+                            33.444
+                        ],
+                        [
+                            -112.080,
+                            33.452
+                        ]
+                    ]
+                ]
+            }
+        }
+    ]
+}

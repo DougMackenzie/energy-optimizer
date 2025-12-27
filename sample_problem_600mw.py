@@ -215,12 +215,13 @@ def generate_workload_mix() -> Dict[str, float]:
     Generate typical AI workload mix percentages.
     
     Based on hyperscale AI training facility profile.
+    Returns percentages (0-100), not decimals.
     """
     return {
-        "pre_training": 0.45,       # Large model training - most flexible
-        "fine_tuning": 0.20,        # Model customization - moderately flexible
-        "batch_inference": 0.15,    # Offline predictions - very flexible
-        "realtime_inference": 0.20, # Live API serving - inflexible
+        "pre_training": 45,          # Large model training - most flexible
+        "fine_tuning": 20,           # Model customization - moderately flexible
+        "batch_inference": 15,       # Offline predictions - very flexible
+        "realtime_inference": 20,    # Live API serving - inflexible
     }
 
 

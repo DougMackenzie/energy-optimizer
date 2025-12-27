@@ -1,0 +1,5 @@
+ID,Manufacturer,Model,Chemistry,Energy_MWh,Power_MW,Duration_hrs,Efficiency_Pct,Cycle_Life,Degradation_Pct_yr,Lead_Time_Months,CAPEX_per_kWh,CAPEX_per_kW,Availability_Pct,UL9540A,Note
+tesla_megapack_2xl,Tesla,Megapack 2XL,LFP,3.9,1.9,2.05,91.0,15000,2.0,18,236,944,97.5,Yes,"Most common for large datacenter BTM, integrated inverter"
+catl_enerone,CATL,EnerOne,LFP,0.372,0.186,2.0,86.0,12000,2.0,4,117,470,97.0,Yes,"Modular rack, global market leader"
+byd_mc_cube,BYD,MC Cube-T,LFP,6.4,3.2,2.0,86.0,10000,2.0,4,117,470,97.0,Yes,Container solution
+fluence_gridstack_pro,Fluence,Gridstack Pro 5000,LFP,5.3,2.65,2.0,87.0,12000,2.0,9,170,680,97.5,Yes,Proven utility-scale platform

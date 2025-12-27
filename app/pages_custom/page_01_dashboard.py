@@ -35,7 +35,7 @@ def render():
         st.session_state.phase_2_complete = {}
     
     # Create tabs for different dashboard views
-    tab1, tab2, tab3 = st.tabs(["🎯 Problem Progress", "🗺️ Sites & Infrastructure", "🌎 Portfolio Map"])
+    tab1, tab2, tab3 = st.tabs(["📊 Site Workflows", "🗺️ Sites & Infrastructure", "🌎 Portfolio Map"])
     
     # ====================================================================================
     # TAB 1: PROBLEM STATEMENT PROGRESS
@@ -57,90 +57,180 @@ def render():
 
 
 def render_problem_progress_tab():
-    """Render the Problem Statement Progress tab"""
+    """Render the Site Workflow Trackers tab"""
     
-    st.markdown("### 🎯 Problem Statement Progress")
-    st.caption("Track optimization progress across all 5 problem types")
+    st.markdown("### 📊 Site Optimization Workflow Trackers")
+    st.caption("Track project development through EPC stages for all sites")
     
-    # Calculate overall progress
-    total_problems = 5
-    phase_1_count = sum(1 for v in st.session_state.phase_1_complete.values() if v)
-    phase_2_count = sum(1 for v in st.session_state.phase_2_complete.values() if v)
+    # Initialize sites list if needed
+    if 'sites_list' not in st.session_state:
+        st.session_state.sites_list = []
     
-    # Get best LCOE if any results exist
-    best_lcoe = None
-    if 'optimization_results' in st.session_state:
-        results = st.session_state.optimization_results
-        lcoe_values = []
-        for prob_num, result_data in results.items():
-            if isinstance(result_data, dict) and 'lcoe' in result_data:
-                lcoe_values.append(result_data['lcoe'])
-        if lcoe_values:
-            best_lcoe = min(lcoe_values)
+    if len(st.session_state.sites_list) == 0:
+        st.info("No sites configured yet. Go to 'Sites & Infrastructure' tab to add sites.")
+        return
     
-    # Progress metrics row
-    col1, col2, col3, col4 = st.columns(4)
+    # Initialize site-specific tracker data structure
+    if 'site_optimization_stages' not in st.session_state:
+        st.session_state.site_optimization_stages = {}
     
-    with col1:
-        st.metric(
-            "Phase 1 Complete", 
-            f"{phase_1_count}/{total_problems}",
-            delta=f"{phase_1_count/total_problems*100:.0f}% screened" if phase_1_count > 0 else None
-        )
+    # Load stage completion from Google Sheets for all sites
+    from app.utils.site_backend import load_site_stage_result
     
-    with col2:
-        st.metric(
-            "Phase 2 Complete", 
-            f"{phase_2_count}/{total_problems}",
-            delta=f"{phase_2_count/total_problems*100:.0f}% optimized" if phase_2_count > 0 else None
-        )
+    # Display stage headers at the top
+    st.markdown("#### EPC Development Stages")
     
-    with col3:
-        if best_lcoe is not None:
-            st.metric("Best LCOE Found", f"${best_lcoe:.1f}/MWh")
-        else:
-            st.metric("Best LCOE Found", "—", delta="Run optimizations")
+    # Create header row with stage descriptions
+    col_spacer, col_s1, col_s2, col_s3, col_s4, col_prog = st.columns([3, 1.2, 1.2, 1.2, 1.2, 0.8])
     
-    with col4:
-        optimization_tier = "MILP (Phase 2)" if phase_2_count > 0 else "Heuristic (Phase 1)" if phase_1_count > 0 else "Not Started"
-        st.metric("Current Tier", optimization_tier)
+    with col_s1:
+        st.markdown("**① Screening**")
+        st.caption("Heuristic")
+    with col_s2:
+        st.markdown("**② Concept**")
+        st.caption("MILP Opt 1")
+    with col_s3:
+        st.markdown("**③ Preliminary**")
+        st.caption("MILP Opt 2")
+    with col_s4:
+        st.markdown("**④ Detailed**")
+        st.caption("MILP Opt 3")
+    with col_prog:
+        st.markdown("**Progress**")
+        st.caption(" ")
     
-    st.markdown("")
+    st.markdown("---")
     
-    # Problem cards in a clean grid
-    st.markdown("#### Problem Status Overview")
-    
-    # Row 1: Problems 1-3
-    cols_row1 = st.columns(3)
-    for i, prob_num in enumerate([1, 2, 3]):
-        render_problem_card(cols_row1[i], prob_num)
-    
-    st.markdown("")
-    
-    # Row 2: Problems 4-5 + Quick Actions
-    cols_row2 = st.columns(3)
-    for i, prob_num in enumerate([4, 5]):
-        render_problem_card(cols_row2[i], prob_num)
-    
-    # Quick actions in third column
-    with cols_row2[2]:
+    # Loop through all sites and display as matrix rows
+    for site_idx, site in enumerate(st.session_state.sites_list):
+        site_key = site.get('name', 'Unknown')
+        
+        # Initialize tracker for this site if not exists
+        if site_key not in st.session_state.site_optimization_stages:
+            st.session_state.site_optimization_stages[site_key] = {
+                'problem_num': None,
+                'problem_name': 'Not Assigned',
+                'stages': {
+                    'screening': {'complete': False, 'lcoe': None, 'date': None},
+                    'concept': {'complete': False, 'lcoe': None, 'date': None},
+                    'preliminary': {'complete': False, 'lcoe': None, 'date': None},
+                    'detailed': {'complete': False, 'lcoe': None, 'date': None},
+                }
+            }
+        
+        site_tracker = st.session_state.site_optimization_stages[site_key]
+        
+        # Load problem type from Google Sheets (site object)
+        if site.get('problem_num') and not site_tracker.get('problem_num'):
+            site_tracker['problem_num'] = int(site.get('problem_num'))
+            site_tracker['problem_name'] = site.get('problem_name', 'Not Assigned')
+        
+        # Load stage completion from Google Sheets
+        for stage_key in ['screening', 'concept', 'preliminary', 'detailed']:
+            result = load_site_stage_result(site_key, stage_key)
+            if result and result.get('complete'):
+                site_tracker['stages'][stage_key]['complete'] = True
+                site_tracker['stages'][stage_key]['lcoe'] = result.get('lcoe')
+                site_tracker['stages'][stage_key]['date'] = result.get('completion_date')
+        
+        # Calculate overall progress
+        stages = site_tracker['stages']
+        total_stages = 4
+        completed_stages = sum(1 for s in stages.values() if s['complete'])
+        progress_pct = (completed_stages / total_stages) * 100
+        
+        # Render site row in matrix format
         with st.container(border=True):
-            st.markdown("##### ⚡ Quick Actions")
-            st.markdown("")
+            # Column layout: Site Info | Stage 1 | Stage 2 | Stage 3 | Stage 4 | Progress
+            col_info, col_s1, col_s2, col_s3, col_s4, col_pbar = st.columns([3, 1.2, 1.2, 1.2, 1.2, 0.8])
             
-            if st.button("🎯 Problem Selection", use_container_width=True, type="secondary", key="dash_nav_prob_sel"):
-                st.session_state.current_page = 'problem_selection'
-                st.rerun()
+            # Left column: Site info, problem type, optimizer button
+            with col_info:
+                st.markdown(f"**📍 {site.get('name', 'Unknown')}**")
+                st.caption(f"{site.get('location', '')} • {site.get('it_capacity_mw', 0)} MW IT")
+                
+                # Problem type assignment (more compact)
+                problem_options = ["Not Assigned", "P1: Greenfield", "P2: Brownfield", "P3: Land Dev", "P4: Grid Services", "P5: Bridge Power"]
+                
+                current_prob = site_tracker.get('problem_num')
+                current_idx = current_prob if current_prob else 0
+                
+                col_prob, col_btn = st.columns([1.5, 1])
+                
+                with col_prob:
+                    selected_problem = st.selectbox(
+                        "Problem",
+                        problem_options,
+                        index=current_idx if current_idx < len(problem_options) else 0,
+                        key=f"site_prob_matrix_{site_idx}",
+                        label_visibility="collapsed"
+                    )
+                    
+                    # Update tracker if changed
+                    if selected_problem != "Not Assigned":
+                        prob_num = int(selected_problem.split(":")[0].replace("P", ""))
+                        site_tracker['problem_num'] = prob_num
+                        site_tracker['problem_name'] = selected_problem.split(": ")[1]
+                        
+                        # Save to Google Sheets
+                        from app.utils.site_backend import update_site
+                        update_site(site.get('name'), {
+                            'problem_num': prob_num,
+                            'problem_name': site_tracker['problem_name']
+                        })
+                
+                with col_btn:
+                    # Quick optimize button (compact)
+                    if site_tracker.get('problem_num'):
+                        if st.button("🚀", use_container_width=True, type="primary", key=f"opt_matrix_{site_idx}", help="Open Optimizer"):
+                            st.session_state.current_site = site.get('name', 'Unknown')
+                            st.session_state.current_stage = 'screening'
+                            
+                            from app.utils.site_backend import save_site
+                            save_site(site)
+                            
+                            st.session_state.current_page = f"problem_{site_tracker['problem_num']}"
+                            st.session_state.selected_problem = site_tracker['problem_num']
+                            st.rerun()
             
-            if st.button("📈 Load Composer", use_container_width=True, key="dash_nav_load"):
-                st.session_state.current_page = 'load_composer'
-                st.rerun()
+            # Stage columns: Show compact status + LCOE
+            def render_stage_cell(col, stage_key, stage_label):
+                with col:
+                    stage_data = stages[stage_key]
+                    is_complete = stage_data['complete']
+                    
+                    if is_complete:
+                        # Green checkmark + LCOE
+                        st.markdown(f"""
+                        <div style="background: #10b981; color: white; padding: 8px; 
+                                    border-radius: 6px; text-align: center; min-height: 60px;">
+                            <div style="font-size: 20px; margin-bottom: 4px;">✓</div>
+                            <div style="font-size: 11px;">${stage_data['lcoe']:.1f}/MWh</div>
+                        </div>
+                        """, unsafe_allow_html=True)
+                    else:
+                        # Gray number (not started)
+                        st.markdown(f"""
+                        <div style="background: #6b7280; color: white; padding: 8px; 
+                                    border-radius: 6px; text-align: center; min-height: 60px;">
+                            <div style="font-size: 20px; margin-bottom: 4px;">{stage_label}</div>
+                            <div style="font-size: 11px;">—</div>
+                        </div>
+                        """, unsafe_allow_html=True)
             
-            if st.button("⚙️ Equipment Library", use_container_width=True, key="dash_nav_equip"):
-                st.session_state.current_page = 'equipment'
-                st.rerun()
+            render_stage_cell(col_s1, 'screening', '1')
+            render_stage_cell(col_s2, 'concept', '2')
+            render_stage_cell(col_s3, 'preliminary', '3')
+            render_stage_cell(col_s4, 'detailed', '4')
             
-            st.caption("Navigate to key configuration pages")
+            # Progress column: Vertical progress bar + metric
+            with col_pbar:
+                st.metric("", f"{completed_stages}/4", label_visibility="collapsed")
+                st.progress(progress_pct / 100)
+        
+        # Small spacing between sites
+        st.markdown("")
+
 
 
 def render_site_tracker_tab():

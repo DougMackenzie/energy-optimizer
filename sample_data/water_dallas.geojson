@@ -1,0 +1,81 @@
+{
+    "type": "FeatureCollection",
+    "features": [
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "Trinity River",
+                "type": "Major River",
+                "flow_cfs": 8000,
+                "water_rights": "Limited Availability"
+            },
+            "geometry": {
+                "type": "LineString",
+                "coordinates": [
+                    [
+                        -96.850,
+                        32.800
+                    ],
+                    [
+                        -96.820,
+                        32.790
+                    ],
+                    [
+                        -96.795,
+                        32.780
+                    ],
+                    [
+                        -96.770,
+                        32.775
+                    ],
+                    [
+                        -96.750,
+                        32.770
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "Dallas Water Utilities Main",
+                "diameter_inches": 30,
+                "pressure_psi": 90,
+                "capacity_gpm": 6000,
+                "status": "Existing"
+            },
+            "geometry": {
+                "type": "LineString",
+                "coordinates": [
+                    [
+                        -96.815,
+                        32.790
+                    ],
+                    [
+                        -96.800,
+                        32.780
+                    ],
+                    [
+                        -96.785,
+                        32.775
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "Elm Fork WTP",
+                "capacity_mgd": 120,
+                "distance_miles": 5.8
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    -96.815,
+                    32.790
+                ]
+            }
+        }
+    ]
+}
