@@ -1,0 +1,16 @@
+Scenario_ID,Name,Type,Load_MW,Load_PF,Tripped_Equipment,Description
+BASE_100,Base Case - 100% Load,Normal,200.0,0.95,,All equipment online - peak load
+BASE_75,Base Case - 75% Load,Normal,150.0,0.95,,All equipment online - 75% load
+BASE_50,Base Case - 50% Load,Normal,100.0,0.95,,All equipment online - 50% load
+BASE_25,Base Case - 25% Load,Normal,50.0,0.95,,All equipment online - 25% load
+N1_RECIP_01,N-1: Recip 1 Trip,N-1 Contingency,200.0,0.95,GEN_RECIP_01,Single contingency - Recip 1 offline
+N1_RECIP_02,N-1: Recip 2 Trip,N-1 Contingency,200.0,0.95,GEN_RECIP_02,Single contingency - Recip 2 offline
+N1_RECIP_03,N-1: Recip 3 Trip,N-1 Contingency,200.0,0.95,GEN_RECIP_03,Single contingency - Recip 3 offline
+N1_RECIP_04,N-1: Recip 4 Trip,N-1 Contingency,200.0,0.95,GEN_RECIP_04,Single contingency - Recip 4 offline
+N1_RECIP_05,N-1: Recip 5 Trip,N-1 Contingency,200.0,0.95,GEN_RECIP_05,Single contingency - Recip 5 offline
+N1_RECIP_06,N-1: Recip 6 Trip,N-1 Contingency,200.0,0.95,GEN_RECIP_06,Single contingency - Recip 6 offline
+N1_RECIP_07,N-1: Recip 7 Trip,N-1 Contingency,200.0,0.95,GEN_RECIP_07,Single contingency - Recip 7 offline
+N1_RECIP_08,N-1: Recip 8 Trip,N-1 Contingency,200.0,0.95,GEN_RECIP_08,Single contingency - Recip 8 offline
+N1_GT_01,N-1: GT 1 Trip,N-1 Contingency,200.0,0.95,GEN_GT_01,Single contingency - GT 1 offline
+N1_GT_02,N-1: GT 2 Trip,N-1 Contingency,200.0,0.95,GEN_GT_02,Single contingency - GT 2 offline
+N2_GT_BOTH,N-2: Both GTs Trip,N-2 Contingency,200.0,0.95,"GEN_GT_01,GEN_GT_02",Double contingency - Both GTs offline

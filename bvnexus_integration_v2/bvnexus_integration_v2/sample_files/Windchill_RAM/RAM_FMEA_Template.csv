@@ -1,0 +1,15 @@
+Component_ID,Component_Name,Failure_Mode,Failure_Cause,Local_Effect,System_Effect,Severity,Occurrence,Detection,RPN,Mitigation,Recommended_Action
+GEN_RECIP_01,Recip Engine 1,Fails to Start,Control system failure,Unit unavailable,Reduced capacity - N-1 still met,Medium,Low,SCADA alarm,12,Redundant controls,Implement dual redundant PLC
+GEN_RECIP_01,Recip Engine 1,Fails During Operation,Mechanical wear,Forced outage,Reduced capacity - N-1 still met,High,Medium,Vibration monitoring,36,Predictive maintenance,Install online vibration analysis
+GEN_RECIP_01,Recip Engine 1,Degraded Output,Fuel quality issues,Reduced power output,Partial capacity loss,Low,Medium,Performance monitoring,18,Fuel filtering,Add fuel polishing system
+GEN_GT_01,Gas Turbine 1,Fails to Start,Ignition failure,Unit unavailable,Significant capacity loss,High,Low,Start sequence monitoring,24,Dual igniters,Annual igniter inspection
+GEN_GT_01,Gas Turbine 1,Compressor Surge,Foreign object damage,Unit trip,Significant capacity loss,Critical,Low,Inlet monitoring,32,Inlet filtration,Enhanced FOD protection
+GEN_GT_01,Gas Turbine 1,Hot Section Failure,Thermal fatigue,Extended outage,Significant capacity loss,Critical,Medium,Exhaust temp monitoring,48,Life tracking,Implement parts life management
+BESS_01,Battery Storage,Cell Thermal Runaway,Internal short circuit,Module isolation,Reduced storage capacity,Critical,Low,BMS thermal monitoring,24,Cell-level fusing,Enhanced thermal management
+BESS_01,Battery Storage,Inverter Failure,Power electronics fault,System offline,Loss of fast response,High,Low,Inverter diagnostics,18,Modular design,N+1 inverter configuration
+XFMR_MAIN,Main Transformer,Winding Failure,Insulation breakdown,Unit offline,Complete system outage,Critical,Low,DGA monitoring,28,Oil analysis,Install online DGA
+XFMR_MAIN,Main Transformer,Cooling Failure,Fan/pump failure,Derated operation,Reduced capacity,High,Medium,Temperature monitoring,36,Redundant cooling,Dual cooling trains
+SWGR_MAIN,Main Switchgear,Breaker Failure to Open,Mechanism jam,Loss of protection,Safety hazard,Critical,Low,Breaker timing tests,24,Redundant protection,Add backup breaker
+SWGR_MAIN,Main Switchgear,Bus Fault,Insulation failure,Section isolation,Partial system outage,Critical,Low,Partial discharge monitoring,28,Insulation testing,Online PD monitoring
+CTRL_SYS,Control System,Complete Failure,Hardware fault,Loss of control,System shutdown,Critical,Low,Watchdog monitoring,24,Redundant controllers,Implement TMR architecture
+CTRL_SYS,Control System,Communication Loss,Network failure,Degraded operation,Manual operation required,High,Medium,Network monitoring,36,Redundant networks,Dual network paths

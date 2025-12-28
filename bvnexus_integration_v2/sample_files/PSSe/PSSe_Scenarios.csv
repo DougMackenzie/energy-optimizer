@@ -1,0 +1,11 @@
+Scenario_ID,Name,Type,Load_MW,Generator_Status,Description
+BASE_100,Base Case 100%,Normal,200.0,ALL_ONLINE,All generators online at peak load
+BASE_75,Base Case 75%,Normal,150.0,ALL_ONLINE,All generators online at 75% load
+BASE_50,Base Case 50%,Normal,100.0,ALL_ONLINE,All generators online at 50% load
+N1_R1,N-1 Recip 1,Contingency,200.0,RECIP_01_OFF,Recip 1 tripped
+N1_R2,N-1 Recip 2,Contingency,200.0,RECIP_02_OFF,Recip 2 tripped
+N1_GT1,N-1 GT 1,Contingency,200.0,GT_01_OFF,Gas Turbine 1 tripped
+N1_GT2,N-1 GT 2,Contingency,200.0,GT_02_OFF,Gas Turbine 2 tripped
+N2_BOTH_GT,N-2 Both GTs,Contingency,200.0,GT_01_OFF GT_02_OFF,Both gas turbines tripped
+RAMP_UP,Load Ramp Up,Dynamic,50-200,ALL_ONLINE,Load ramp from 50 to 200 MW over 1 hour
+BESS_DISCHARGE,BESS Event,Dynamic,200.0,ALL_ONLINE,BESS discharge during GT start

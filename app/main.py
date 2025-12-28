@@ -240,6 +240,17 @@ with st.sidebar:
         st.session_state.current_page = 'detailed_reports'
         st.rerun()
     
+    # Validation section
+    st.markdown("<p style='font-size: 10px; color: rgba(255,255,255,0.5); text-transform: uppercase; letter-spacing: 1px; margin-top: 16px;'>Validation</p>", unsafe_allow_html=True)
+    
+    if st.button("🔗 Integration Export", use_container_width=True, key="nav_integration_export"):
+        st.session_state.current_page = 'integration_export'
+        st.rerun()
+    
+    if st.button("📥 Integration Import", use_container_width=True, key="nav_integration_import"):
+        st.session_state.current_page = 'integration_import'
+        st.rerun()
+    
     # Debug section
     st.markdown("<p style='font-size: 10px; color: rgba(255,255,255,0.5); text-transform: uppercase; letter-spacing: 1px; margin-top: 16px;'>Developer</p>", unsafe_allow_html=True)
     
@@ -362,6 +373,17 @@ def load_page(page_name: str):
     elif page_name == 'proforma':
         from pages_custom import page_proforma
         page_proforma.render()
+    
+    # =============================================================================
+    # Integration Pages (Validation)
+    # =============================================================================
+    elif page_name == 'integration_export':
+        from pages_custom import page_integration_export
+        page_integration_export.render_integration_export_page()
+    
+    elif page_name == 'integration_import':
+        from pages_custom import page_integration_import
+        page_integration_import.render_integration_import_page()
         
     elif page_name == 'debug':
         from pages_custom import page_99_debug

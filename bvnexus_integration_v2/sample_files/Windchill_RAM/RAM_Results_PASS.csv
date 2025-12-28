@@ -1,0 +1,7 @@
+Block_ID,Block_Name,Availability,Availability_Pct,MTBF_Hours,MTTR_Hours,Annual_Downtime_Hours,Failures_Per_Year,Unavailability
+THERMAL_GEN,Thermal Generation Block,0.99987,99.987,76923,10,1.14,0.114,0.00013
+STORAGE,Energy Storage Block,0.99982,99.982,43800,8,1.58,0.200,0.00018
+ELECTRICAL,Electrical Distribution Block,0.99965,99.965,25000,88,3.07,0.350,0.00035
+PROTECTION,Protection System Block,0.99999,99.999,175200,4,0.09,0.050,0.00001
+CONTROLS,Control System Block,0.99991,99.991,43800,4,0.79,0.200,0.00009
+SYSTEM,Complete Power System,0.99952,99.952,18292,88,4.20,0.480,0.00048

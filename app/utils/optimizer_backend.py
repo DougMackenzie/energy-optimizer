@@ -8,6 +8,121 @@ from datetime import datetime
 import traceback
 
 
+def _build_equipment_details(equipment_config: Dict) -> Dict:
+    """
+    Build detailed equipment metadata from MW totals.
+    
+    Uses unit sizes from config/settings.py and electrical/reliability specs
+    from config/equipment_electrical_specs.py to provide complete equipment metadata
+    for integration export (ETAP, PSS/e, Windchill RAM).
+    
+    Args:
+        equipment_config: Dict with MW totals (recip_mw, turbine_mw, etc.)
+    
+    Returns:
+        Dict with equipment_details for each type including:
+        - count: Number of units
+        - unit_mw: MW per unit
+        - electrical_specs: Impedances, time constants, inertia
+        - reliability_specs: MTBF, MTTR, failure modes
+    
+    ⚠️ ASSUMPTIONS:
+    - Unit sizes from EQUIPMENT_DEFAULTS (18.3 MW recip, 50 MW turbine)
+    - Electrical parameters from IEEE standards (not actual datasheets)
+    - Reliability from IEEE 493 generic values (not site-specific)
+    """
+    try:
+        from config.equipment_electrical_specs import get_equipment_details, UNIT_SIZES
+    except ImportError:
+        # Fallback if spec library not available
+        return _build_equipment_details_fallback(equipment_config)
+    
+    details = {}
+    
+    # Reciprocating engines
+    recip_mw = equipment_config.get('recip_mw', 0)
+    if recip_mw > 0:
+        details['recip'] = get_equipment_details('recip', recip_mw)
+    
+    # Gas turbines
+    turbine_mw = equipment_config.get('turbine_mw', 0)
+    if turbine_mw > 0:
+        details['turbine'] = get_equipment_details('turbine', turbine_mw)
+    
+    # BESS
+    bess_mwh = equipment_config.get('bess_mwh', 0)
+    if bess_mwh > 0:
+        # BESS stored as MWh, convert to MW assuming 4hr duration
+        # ASSUMPTION: 4-hour duration unless specified otherwise
+        bess_mw = bess_mwh / 4.0
+        details['bess'] = get_equipment_details('bess', bess_mw)
+        details['bess']['energy_mwh'] = bess_mwh
+        details['bess']['duration_hours'] = 4.0  # ASSUMPTION
+    
+    # Solar
+    solar_mw = equipment_config.get('solar_mw', 0)
+    if solar_mw > 0:
+        # Solar doesn't need detailed electrical specs (not synchronous)
+        details['solar'] = {
+            'total_mw': solar_mw,
+            'technology': 'photovoltaic',
+            'note': 'No synchronous machine parameters - inverter-based resource'
+        }
+    
+    # Grid connection
+    grid_mw = equipment_config.get('grid_mw', 0)
+    if grid_mw > 0:
+        details['grid'] = {
+            'total_mw': grid_mw,
+            'note': 'Modeled as infinite bus in ETAP/PSS/e'
+        }
+    
+    return details
+
+
+def _build_equipment_details_fallback(equipment_config: Dict) -> Dict:
+    """
+    Fallback equipment details if electrical specs library not available.
+    Uses only settings.py EQUIPMENT_DEFAULTS.
+    """
+    from config.settings import EQUIPMENT_DEFAULTS
+    
+    details = {}
+    
+    # Simple count calculation using standard unit sizes
+    recip_mw = equipment_config.get('recip_mw', 0)
+    if recip_mw > 0:
+        unit_size = EQUIPMENT_DEFAULTS['recip']['capacity_mw']
+        details['recip'] = {
+            'count': round(recip_mw / unit_size),
+            'unit_mw': unit_size,
+            'total_mw': recip_mw,
+            'note': 'Electrical specs not loaded - using minimal metadata'
+        }
+    
+    turbine_mw = equipment_config.get('turbine_mw', 0)
+    if turbine_mw > 0:
+        unit_size = EQUIPMENT_DEFAULTS['turbine']['capacity_mw']
+        details['turbine'] = {
+            'count': round(turbine_mw / unit_size),
+            'unit_mw': unit_size,
+            'total_mw': turbine_mw
+        }
+    
+    bess_mwh = equipment_config.get('bess_mwh', 0)
+    if bess_mwh > 0:
+        power_mw = EQUIPMENT_DEFAULTS['bess']['power_mw']
+        duration_hr = EQUIPMENT_DEFAULTS['bess']['duration_hours']
+        details['bess'] = {
+            'count': round(bess_mwh / (power_mw * duration_hr)),
+            'unit_mw': power_mw,
+            'unit_mwh': power_mw * duration_hr,
+            'total_mwh': bess_mwh
+        }
+    
+    return details
+
+
 def run_heuristic_optimization(site_data: Dict, problem_num: int, load_profile: Dict = None) -> Optional[Dict]:
     """
     Run heuristic optimization for a site
@@ -101,6 +216,12 @@ def run_heuristic_optimization(site_data: Dict, problem_num: int, load_profile: 
             
             # Equipment (MW/MWh)
             'equipment': getattr(result, 'equipment_config', {}) if not isinstance(result, dict) else result.get('equipment_config', {}),
+            
+            # ===NEW: Equipment Details with counts, electrical specs, reliability ===
+            # Provides complete metadata for integration export (ETAP, PSS/e, Windchill RAM)
+            'equipment_details': _build_equipment_details(
+                getattr(result, 'equipment_config', {}) if not isinstance(result, dict) else result.get('equipment_config', {})
+            ),
             
             # Capital costs ($ - use totals from heuristic)
             'capex': {

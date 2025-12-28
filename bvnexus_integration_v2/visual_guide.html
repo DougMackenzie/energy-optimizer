@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>bvNexus Integration - Visual Guide</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f5; padding: 20px; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        h1 { color: #1a1a1a; margin-bottom: 10px; }
+        h2 { color: #333; margin: 30px 0 15px; border-bottom: 2px solid #4CAF50; padding-bottom: 5px; }
+        h3 { color: #555; margin: 20px 0 10px; }
+        .subtitle { color: #666; margin-bottom: 30px; }
+        
+        .page-mockup { 
+            background: white; 
+            border-radius: 8px; 
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1); 
+            margin: 20px 0; 
+            overflow: hidden;
+        }
+        .page-header { 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white; 
+            padding: 15px 20px; 
+        }
+        .page-content { padding: 20px; }
+        
+        .tabs { display: flex; gap: 5px; background: #f0f0f0; padding: 10px; border-radius: 5px; margin-bottom: 20px; }
+        .tab { padding: 10px 20px; background: white; border-radius: 5px; cursor: pointer; border: 1px solid #ddd; }
+        .tab.active { background: #4CAF50; color: white; border-color: #4CAF50; }
+        
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+        .card { background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 8px; padding: 15px; }
+        .card-title { font-weight: 600; margin-bottom: 10px; color: #333; }
+        
+        .metric { text-align: center; padding: 15px; background: white; border-radius: 5px; border: 1px solid #ddd; }
+        .metric-value { font-size: 28px; font-weight: bold; color: #333; }
+        .metric-label { font-size: 12px; color: #666; margin-top: 5px; }
+        .metric-delta { font-size: 12px; margin-top: 3px; }
+        .metric-delta.positive { color: #4CAF50; }
+        .metric-delta.negative { color: #f44336; }
+        
+        .status-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid #eee; }
+        .status-icon { font-size: 20px; }
+        .status-pass { color: #4CAF50; }
+        .status-fail { color: #f44336; }
+        .status-warn { color: #FFC107; }
+        .status-pending { color: #9e9e9e; }
+        
+        .table { width: 100%; border-collapse: collapse; margin: 15px 0; font-size: 14px; }
+        .table th, .table td { padding: 10px; text-align: left; border-bottom: 1px solid #ddd; }
+        .table th { background: #f5f5f5; font-weight: 600; }
+        .table tr:hover { background: #fafafa; }
+        
+        .diagram { background: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 20px; margin: 15px 0; }
+        .diagram svg { width: 100%; max-width: 800px; height: auto; }
+        
+        .file-preview { background: #1e1e1e; color: #d4d4d4; padding: 15px; border-radius: 5px; font-family: 'Consolas', monospace; font-size: 12px; overflow-x: auto; }
+        .file-preview .comment { color: #6a9955; }
+        .file-preview .string { color: #ce9178; }
+        .file-preview .number { color: #b5cea8; }
+        
+        .button { display: inline-block; padding: 10px 20px; background: #4CAF50; color: white; border-radius: 5px; text-decoration: none; margin: 5px; }
+        .button:hover { background: #45a049; }
+        .button.secondary { background: #2196F3; }
+        .button.secondary:hover { background: #1e88e5; }
+        
+        .alert { padding: 15px; border-radius: 5px; margin: 10px 0; }
+        .alert.success { background: #e8f5e9; border-left: 4px solid #4CAF50; }
+        .alert.error { background: #ffebee; border-left: 4px solid #f44336; }
+        .alert.warning { background: #fff3e0; border-left: 4px solid #FFC107; }
+        .alert.info { background: #e3f2fd; border-left: 4px solid #2196F3; }
+        
+        .constraint-update { background: white; border: 2px solid #2196F3; border-radius: 8px; padding: 15px; margin: 10px 0; }
+        .constraint-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .constraint-name { font-weight: bold; font-size: 16px; }
+        .constraint-priority { background: #f44336; color: white; padding: 3px 10px; border-radius: 3px; font-size: 12px; }
+        .constraint-priority.high { background: #FF9800; }
+        
+        .section-divider { border-top: 2px dashed #ddd; margin: 40px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔗 bvNexus Integration Hub</h1>
+        <p class="subtitle">Visual Guide to Export and Import Pages</p>
+
+        <!-- EXPORT PAGE -->
+        <h2>📤 Export Hub Page</h2>
+        <p>Generate input files for external validation tools with visual previews.</p>
+        
+        <div class="page-mockup">
+            <div class="page-header">
+                <h3>🔗 Integration Export Hub</h3>
+            </div>
+            <div class="page-content">
+                <div class="tabs">
+                    <div class="tab active">📊 System Overview</div>
+                    <div class="tab">⚡ ETAP Export</div>
+                    <div class="tab">🔌 PSS/e Export</div>
+                    <div class="tab">📈 Windchill RAM</div>
+                    <div class="tab">📁 Sample Files</div>
+                </div>
+                
+                <!-- System Overview Tab -->
+                <h3>System Overview Tab</h3>
+                <div class="grid">
+                    <div class="card">
+                        <div class="card-title">Single Line Diagram</div>
+                        <div class="diagram">
+                            <svg viewBox="0 0 600 300">
+                                <!-- Main Bus -->
+                                <line x1="50" y1="150" x2="550" y2="150" stroke="#333" stroke-width="4"/>
+                                <text x="300" y="175" text-anchor="middle" fill="#666" font-size="12">MAIN BUS (13.8 kV)</text>
+                                
+                                <!-- Recip Generators -->
+                                <g transform="translate(80,0)">
+                                    <line x1="0" y1="150" x2="0" y2="80" stroke="#666" stroke-width="2"/>
+                                    <circle cx="0" cy="60" r="20" fill="#4CAF50" stroke="#333" stroke-width="2"/>
+                                    <text x="0" y="65" text-anchor="middle" fill="white" font-size="12">G</text>
+                                    <text x="0" y="30" text-anchor="middle" fill="#333" font-size="10">R1</text>
+                                </g>
+                                <g transform="translate(130,0)">
+                                    <line x1="0" y1="150" x2="0" y2="80" stroke="#666" stroke-width="2"/>
+                                    <circle cx="0" cy="60" r="20" fill="#4CAF50" stroke="#333" stroke-width="2"/>
+                                    <text x="0" y="65" text-anchor="middle" fill="white" font-size="12">G</text>
+                                    <text x="0" y="30" text-anchor="middle" fill="#333" font-size="10">R2</text>
+                                </g>
+                                <text x="155" y="30" fill="#666" font-size="10">...×8</text>
+                                
+                                <!-- Gas Turbines -->
+                                <g transform="translate(400,0)">
+                                    <line x1="0" y1="150" x2="0" y2="80" stroke="#666" stroke-width="2"/>
+                                    <circle cx="0" cy="60" r="25" fill="#4CAF50" stroke="#333" stroke-width="2"/>
+                                    <text x="0" y="65" text-anchor="middle" fill="white" font-size="12">G</text>
+                                    <text x="0" y="25" text-anchor="middle" fill="#333" font-size="10">GT1</text>
+                                </g>
+                                <g transform="translate(470,0)">
+                                    <line x1="0" y1="150" x2="0" y2="80" stroke="#666" stroke-width="2"/>
+                                    <circle cx="0" cy="60" r="25" fill="#4CAF50" stroke="#333" stroke-width="2"/>
+                                    <text x="0" y="65" text-anchor="middle" fill="white" font-size="12">G</text>
+                                    <text x="0" y="25" text-anchor="middle" fill="#333" font-size="10">GT2</text>
+                                </g>
+                                
+                                <!-- BESS -->
+                                <g transform="translate(200,0)">
+                                    <line x1="0" y1="150" x2="0" y2="200" stroke="#666" stroke-width="2"/>
+                                    <rect x="-25" y="200" width="50" height="30" fill="#2196F3" stroke="#333" stroke-width="2"/>
+                                    <text x="0" y="220" text-anchor="middle" fill="white" font-size="10">BESS</text>
+                                    <text x="0" y="250" text-anchor="middle" fill="#666" font-size="10">30 MW</text>
+                                </g>
+                                
+                                <!-- Load -->
+                                <g transform="translate(500,0)">
+                                    <line x1="0" y1="150" x2="0" y2="200" stroke="#666" stroke-width="2"/>
+                                    <polygon points="-25,200 25,200 0,250" fill="#f44336" stroke="#333" stroke-width="2"/>
+                                    <text x="0" y="275" text-anchor="middle" fill="#333" font-size="10">DATACENTER</text>
+                                    <text x="0" y="290" text-anchor="middle" fill="#666" font-size="10">200 MW</text>
+                                </g>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-title">Configuration Summary</div>
+                        <div class="grid" style="grid-template-columns: 1fr 1fr;">
+                            <div class="metric">
+                                <div class="metric-value">200</div>
+                                <div class="metric-label">Peak Load (MW)</div>
+                            </div>
+                            <div class="metric">
+                                <div class="metric-value">246</div>
+                                <div class="metric-label">Total Generation (MW)</div>
+                            </div>
+                            <div class="metric">
+                                <div class="metric-value">46</div>
+                                <div class="metric-label">Reserve Capacity (MW)</div>
+                                <div class="metric-delta positive">+23%</div>
+                            </div>
+                            <div class="metric">
+                                <div class="metric-value">30/120</div>
+                                <div class="metric-label">BESS (MW/MWh)</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <h3>Equipment Table</h3>
+                <table class="table">
+                    <thead>
+                        <tr><th>Equipment</th><th>Count</th><th>Unit Size (MW)</th><th>Total (MW)</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>Reciprocating Engines</td><td>8</td><td>18.3</td><td>146.4</td></tr>
+                        <tr><td>Gas Turbines</td><td>2</td><td>50.0</td><td>100.0</td></tr>
+                        <tr><td>BESS</td><td>1</td><td>30.0</td><td>30.0</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- ETAP Export Tab Preview -->
+        <div class="page-mockup">
+            <div class="page-header" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                <h3>⚡ ETAP Export Tab</h3>
+            </div>
+            <div class="page-content">
+                <div class="tabs">
+                    <div class="tab active">📋 Preview Export Data</div>
+                    <div class="tab">📊 Expected Results Format</div>
+                    <div class="tab">⬇️ Download Files</div>
+                </div>
+                
+                <h3>Equipment Data Preview</h3>
+                <table class="table">
+                    <thead>
+                        <tr><th>ID</th><th>Name</th><th>Type</th><th>Rated_kV</th><th>Rated_MW</th><th>Xd_pu</th><th>H_sec</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>GEN_RECIP_01</td><td>Recip Engine 1</td><td>Sync Gen</td><td>13.8</td><td>18.3</td><td>1.80</td><td>1.5</td></tr>
+                        <tr><td>GEN_RECIP_02</td><td>Recip Engine 2</td><td>Sync Gen</td><td>13.8</td><td>18.3</td><td>1.80</td><td>1.5</td></tr>
+                        <tr><td>GEN_GT_01</td><td>Gas Turbine 1</td><td>Sync Gen</td><td>13.8</td><td>50.0</td><td>1.50</td><td>3.0</td></tr>
+                        <tr><td>BESS_01</td><td>Battery Storage</td><td>BESS</td><td>13.8</td><td>30.0</td><td>0.05</td><td>0.0</td></tr>
+                    </tbody>
+                </table>
+                
+                <h3>Scenarios Preview</h3>
+                <table class="table">
+                    <thead>
+                        <tr><th>Scenario_ID</th><th>Name</th><th>Type</th><th>Load_MW</th><th>Tripped_Equipment</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>BASE_100</td><td>Base Case - 100% Load</td><td>Normal</td><td>200.0</td><td>-</td></tr>
+                        <tr><td>N1_RECIP_01</td><td>N-1: Recip 1 Trip</td><td>N-1 Contingency</td><td>200.0</td><td>GEN_RECIP_01</td></tr>
+                        <tr><td>N1_GT_01</td><td>N-1: GT 1 Trip</td><td>N-1 Contingency</td><td>200.0</td><td>GEN_GT_01</td></tr>
+                        <tr><td>N2_GT_BOTH</td><td>N-2: Both GTs Trip</td><td>N-2 Contingency</td><td>200.0</td><td>GEN_GT_01,GEN_GT_02</td></tr>
+                    </tbody>
+                </table>
+                
+                <div style="margin-top: 20px;">
+                    <span class="button">📦 Generate Complete ETAP Package</span>
+                    <span class="button secondary">⬇️ Download Equipment.xlsx</span>
+                    <span class="button secondary">⬇️ Download Scenarios.xlsx</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- PSS/e RAW Preview -->
+        <div class="page-mockup">
+            <div class="page-header" style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);">
+                <h3>🔌 PSS/e Export - RAW File Preview</h3>
+            </div>
+            <div class="page-content">
+                <div class="file-preview">
+                    <span class="number">0</span>,   <span class="number">100.00</span>     <span class="comment">/ PSS/E-35    Fri, Dec 27 2024  12:00</span><br>
+                    <span class="string">Dallas Hyperscale DC - Power Flow Base Case</span><br>
+                    <span class="string">Behind-the-Meter Datacenter Generation System</span><br><br>
+                    <span class="comment">/ BUS DATA</span><br>
+                    <span class="number">100</span>,<span class="string">'RECIP_01'</span>,  <span class="number">13.800</span>,<span class="number">1</span>,   <span class="number">1</span>,   <span class="number">1</span>,   <span class="number">1</span>,<span class="number">1.01000</span>,   <span class="number">0.0000</span><br>
+                    <span class="number">120</span>,<span class="string">'GT_01   '</span>,  <span class="number">13.800</span>,<span class="number">1</span>,   <span class="number">1</span>,   <span class="number">1</span>,   <span class="number">1</span>,<span class="number">1.02500</span>,   <span class="number">0.0000</span><br>
+                    <span class="number">200</span>,<span class="string">'MAIN_BUS'</span>,  <span class="number">13.800</span>,<span class="number">3</span>,   <span class="number">1</span>,   <span class="number">1</span>,   <span class="number">1</span>,<span class="number">1.00000</span>,   <span class="number">0.0000</span><br>
+                    <span class="number">0</span> <span class="comment">/ END OF BUS DATA</span><br><br>
+                    <span class="comment">/ GENERATOR DATA</span><br>
+                    <span class="number">100</span>,<span class="string">'1 '</span>,   <span class="number">18.30</span>,    <span class="number">0.00</span>,  <span class="number">10.75</span>, <span class="number">-6.45</span>,<span class="number">1.0100</span>,     <span class="number">0</span>,  <span class="number">21.53</span><br>
+                    <span class="number">120</span>,<span class="string">'1 '</span>,   <span class="number">50.00</span>,    <span class="number">0.00</span>,  <span class="number">29.41</span>,<span class="number">-17.65</span>,<span class="number">1.0250</span>,     <span class="number">0</span>,  <span class="number">58.82</span><br>
+                    <span class="number">0</span> <span class="comment">/ END OF GENERATOR DATA</span><br><br>
+                    <span class="string">Q</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="section-divider"></div>
+
+        <!-- IMPORT PAGE -->
+        <h2>📥 Import Hub Page</h2>
+        <p>Parse validation results and track project progress.</p>
+
+        <!-- Validation Dashboard -->
+        <div class="page-mockup">
+            <div class="page-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                <h3>📥 Integration Import Hub</h3>
+            </div>
+            <div class="page-content">
+                <div class="tabs">
+                    <div class="tab active">📊 Validation Dashboard</div>
+                    <div class="tab">⚡ ETAP Import</div>
+                    <div class="tab">🔌 PSS/e Import</div>
+                    <div class="tab">📈 RAM Import</div>
+                    <div class="tab">🎯 Demo Mode</div>
+                </div>
+                
+                <h3>📊 Validation Dashboard</h3>
+                
+                <!-- Metrics Row -->
+                <div class="grid" style="grid-template-columns: repeat(4, 1fr); margin-bottom: 20px;">
+                    <div class="metric" style="border-left: 4px solid #4CAF50;">
+                        <div class="metric-value" style="color: #4CAF50;">3</div>
+                        <div class="metric-label">✅ Passed</div>
+                    </div>
+                    <div class="metric" style="border-left: 4px solid #f44336;">
+                        <div class="metric-value" style="color: #f44336;">1</div>
+                        <div class="metric-label">❌ Failed</div>
+                    </div>
+                    <div class="metric" style="border-left: 4px solid #FFC107;">
+                        <div class="metric-value" style="color: #FFC107;">0</div>
+                        <div class="metric-label">⚠️ Warnings</div>
+                    </div>
+                    <div class="metric" style="border-left: 4px solid #9e9e9e;">
+                        <div class="metric-value" style="color: #9e9e9e;">1</div>
+                        <div class="metric-label">⏳ Pending</div>
+                    </div>
+                </div>
+                
+                <!-- Stage Status -->
+                <h3>Validation Stages</h3>
+                <div class="card">
+                    <div class="status-row">
+                        <span class="status-icon status-pass">✅</span>
+                        <strong>Stage 1: Screening</strong>
+                        <span style="margin-left: auto; color: #4CAF50;">PASSED</span>
+                    </div>
+                    <div class="status-row">
+                        <span class="status-icon status-pass">✅</span>
+                        <strong>Stage 2a: ETAP Load Flow</strong>
+                        <span style="margin-left: auto; color: #4CAF50;">PASSED</span>
+                    </div>
+                    <div class="status-row">
+                        <span class="status-icon status-pass">✅</span>
+                        <strong>Stage 2b: ETAP Short Circuit</strong>
+                        <span style="margin-left: auto; color: #4CAF50;">PASSED</span>
+                    </div>
+                    <div class="status-row">
+                        <span class="status-icon status-pass">✅</span>
+                        <strong>Stage 2c: PSS/e Power Flow</strong>
+                        <span style="margin-left: auto; color: #4CAF50;">PASSED</span>
+                    </div>
+                    <div class="status-row">
+                        <span class="status-icon status-fail">❌</span>
+                        <strong>Stage 3: RAM Analysis</strong>
+                        <span style="margin-left: auto; color: #f44336;">FAILED</span>
+                    </div>
+                    <div class="status-row">
+                        <span class="status-icon status-pending">⏳</span>
+                        <strong>Stage 4: Final Review</strong>
+                        <span style="margin-left: auto; color: #9e9e9e;">PENDING</span>
+                    </div>
+                </div>
+                
+                <!-- Detailed Results -->
+                <h3>Detailed Results</h3>
+                <div class="alert error">
+                    <strong>❌ Windchill RAM - Availability Analysis (FAILED)</strong>
+                    <p style="margin-top: 10px;"><strong>Metrics:</strong></p>
+                    <ul style="margin-left: 20px;">
+                        <li>system_availability: 0.9972 (99.72%)</li>
+                        <li>annual_downtime_hrs: 24.53 hours</li>
+                    </ul>
+                    <p style="margin-top: 10px;"><strong>Violations:</strong></p>
+                    <ul style="margin-left: 20px; color: #c62828;">
+                        <li>System availability 99.720% < 99.950% target</li>
+                        <li>Annual downtime 24.53 hrs > 4.38 hrs target</li>
+                    </ul>
+                    <p style="margin-top: 10px;"><strong>💡 Recommendations:</strong></p>
+                    <ul style="margin-left: 20px; color: #1565c0;">
+                        <li>Increase redundancy or reduce MTTR through spare parts inventory</li>
+                    </ul>
+                </div>
+                
+                <!-- Constraint Updates -->
+                <h3>🔧 Suggested Constraint Updates</h3>
+                <div class="constraint-update">
+                    <div class="constraint-header">
+                        <span class="constraint-name">redundancy_level</span>
+                        <span class="constraint-priority">Critical</span>
+                    </div>
+                    <div class="grid" style="grid-template-columns: 1fr 1fr; gap: 10px; margin: 15px 0;">
+                        <div class="metric">
+                            <div class="metric-value">1</div>
+                            <div class="metric-label">Current (N+1)</div>
+                        </div>
+                        <div class="metric">
+                            <div class="metric-value" style="color: #4CAF50;">2</div>
+                            <div class="metric-label">Suggested (N+2)</div>
+                        </div>
+                    </div>
+                    <p><strong>Reason:</strong> Availability 99.72% below 99.95% target</p>
+                    <p><strong>Impact:</strong> Add one additional generator unit for N+2 redundancy</p>
+                    <div style="margin-top: 15px;">
+                        <span class="button">✅ Apply Update</span>
+                        <span class="button" style="background: #9e9e9e;">❌ Dismiss</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- RBD Diagram -->
+        <div class="page-mockup">
+            <div class="page-header" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                <h3>📈 Windchill RAM - Reliability Block Diagram</h3>
+            </div>
+            <div class="page-content">
+                <div class="diagram">
+                    <svg viewBox="0 0 700 250">
+                        <!-- Input -->
+                        <text x="20" y="125" fill="#333" font-size="12">IN</text>
+                        <line x1="40" y1="120" x2="70" y2="120" stroke="#333" stroke-width="2"/>
+                        <polygon points="70,115 80,120 70,125" fill="#333"/>
+                        
+                        <!-- Thermal Gen Block (Parallel) -->
+                        <rect x="90" y="30" width="200" height="180" fill="#e8f5e9" stroke="#388E3C" stroke-width="2" rx="5"/>
+                        <text x="190" y="50" text-anchor="middle" font-weight="bold" fill="#333" font-size="12">Thermal Generation</text>
+                        <text x="190" y="65" text-anchor="middle" fill="#666" font-size="10">(K of N: 9 of 10 required)</text>
+                        
+                        <!-- Individual Blocks -->
+                        <rect x="110" y="80" width="80" height="20" fill="#e3f2fd" stroke="#1976D2" stroke-width="1" rx="3"/>
+                        <text x="150" y="94" text-anchor="middle" fill="#333" font-size="9">Recip 1</text>
+                        <rect x="110" y="105" width="80" height="20" fill="#e3f2fd" stroke="#1976D2" stroke-width="1" rx="3"/>
+                        <text x="150" y="119" text-anchor="middle" fill="#333" font-size="9">Recip 2</text>
+                        <text x="150" y="145" text-anchor="middle" fill="#666" font-size="10">...</text>
+                        <rect x="110" y="155" width="80" height="20" fill="#e3f2fd" stroke="#1976D2" stroke-width="1" rx="3"/>
+                        <text x="150" y="169" text-anchor="middle" fill="#333" font-size="9">Recip 8</text>
+                        <rect x="200" y="110" width="80" height="25" fill="#e3f2fd" stroke="#1976D2" stroke-width="1" rx="3"/>
+                        <text x="240" y="127" text-anchor="middle" fill="#333" font-size="9">GT 1</text>
+                        <rect x="200" y="140" width="80" height="25" fill="#e3f2fd" stroke="#1976D2" stroke-width="1" rx="3"/>
+                        <text x="240" y="157" text-anchor="middle" fill="#333" font-size="9">GT 2</text>
+                        
+                        <!-- Arrow -->
+                        <line x1="290" y1="120" x2="320" y2="120" stroke="#333" stroke-width="2"/>
+                        <polygon points="320,115 330,120 320,125" fill="#333"/>
+                        
+                        <!-- Electrical Block (Series) -->
+                        <rect x="340" y="60" width="150" height="120" fill="#fff3e0" stroke="#F57C00" stroke-width="2" rx="5"/>
+                        <text x="415" y="80" text-anchor="middle" font-weight="bold" fill="#333" font-size="12">Electrical Distribution</text>
+                        <text x="415" y="95" text-anchor="middle" fill="#666" font-size="10">(Series: All Required)</text>
+                        
+                        <rect x="360" y="110" width="110" height="25" fill="#e3f2fd" stroke="#1976D2" stroke-width="1" rx="3"/>
+                        <text x="415" y="127" text-anchor="middle" fill="#333" font-size="9">Main Transformer</text>
+                        
+                        <line x1="415" y1="135" x2="415" y2="145" stroke="#333" stroke-width="2"/>
+                        <polygon points="410,145 415,155 420,145" fill="#333"/>
+                        
+                        <rect x="360" y="155" width="110" height="25" fill="#e3f2fd" stroke="#1976D2" stroke-width="1" rx="3"/>
+                        <text x="415" y="172" text-anchor="middle" fill="#333" font-size="9">Main Switchgear</text>
+                        
+                        <!-- Arrow to Output -->
+                        <line x1="490" y1="120" x2="520" y2="120" stroke="#333" stroke-width="2"/>
+                        <polygon points="520,115 530,120 520,125" fill="#333"/>
+                        
+                        <!-- Output -->
+                        <rect x="540" y="90" width="100" height="60" fill="#e3f2fd" stroke="#1976D2" stroke-width="2" rx="5"/>
+                        <text x="590" y="115" text-anchor="middle" fill="#333" font-size="11">DATACENTER</text>
+                        <text x="590" y="135" text-anchor="middle" fill="#666" font-size="10">200 MW</text>
+                        
+                        <line x1="640" y1="120" x2="670" y2="120" stroke="#333" stroke-width="2"/>
+                        <text x="680" y="125" fill="#333" font-size="12">OUT</text>
+                    </svg>
+                </div>
+            </div>
+        </div>
+
+        <!-- File Format Reference -->
+        <h2>📁 Sample File Formats Reference</h2>
+        
+        <div class="grid">
+            <div class="card">
+                <div class="card-title">ETAP Equipment (CSV)</div>
+                <div class="file-preview" style="font-size: 10px;">
+ID,Name,Type,Rated_kV,Rated_MW<br>
+GEN_RECIP_01,Recip 1,Sync Gen,13.8,18.3<br>
+GEN_GT_01,GT 1,Sync Gen,13.8,50.0<br>
+BESS_01,Battery,BESS,13.8,30.0
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-title">ETAP Load Flow Results (CSV)</div>
+                <div class="file-preview" style="font-size: 10px;">
+Bus_ID,Voltage_pu,Loading_pct<br>
+BUS_100,1.012,72.5<br>
+BUS_120,1.025,78.0<br>
+BUS_200,1.000,75.2
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-title">RAM Component Data (CSV)</div>
+                <div class="file-preview" style="font-size: 10px;">
+Component_ID,MTBF_Hours,MTTR_Hours,Availability<br>
+GEN_RECIP_01,8760,24,0.9973<br>
+GEN_GT_01,17520,48,0.9973<br>
+XFMR_MAIN,175200,168,0.9990
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-title">RAM Analysis Results (CSV)</div>
+                <div class="file-preview" style="font-size: 10px;">
+Block_ID,Availability,Annual_Downtime_Hours<br>
+THERMAL_GEN,0.99987,1.14<br>
+ELECTRICAL,0.99965,3.07<br>
+SYSTEM,0.99952,4.20
+                </div>
+            </div>
+        </div>
+
+        <div style="margin-top: 40px; padding: 20px; background: #e3f2fd; border-radius: 8px;">
+            <h3>📋 Quick Reference</h3>
+            <table class="table" style="background: white;">
+                <thead>
+                    <tr><th>Validation Type</th><th>Pass Criteria</th><th>Fail Action</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td>ETAP Voltage</td><td>0.95 - 1.05 pu</td><td>Add reactive compensation</td></tr>
+                    <tr><td>ETAP Loading</td><td>&lt; 80%</td><td>Resize equipment</td></tr>
+                    <tr><td>ETAP Breaker Duty</td><td>&lt; 100%</td><td>Upgrade breaker rating</td></tr>
+                    <tr><td>PSS/e Voltage Angle</td><td>&lt; 30°</td><td>Review power flow path</td></tr>
+                    <tr><td>RAM Availability</td><td>≥ 99.95%</td><td>Increase redundancy</td></tr>
+                    <tr><td>RAM Downtime</td><td>≤ 4.38 hrs/yr</td><td>Reduce MTTR or add spares</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div style="margin-top: 40px; text-align: center; color: #666;">
+            <p>bvNexus Integration Hub v2.0 | Black & Veatch</p>
+        </div>
+    </div>
+</body>
+</html>

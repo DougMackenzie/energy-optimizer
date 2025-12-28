@@ -1,0 +1,12 @@
+ID,Name,Type,Bus_ID,Rated_kV,Rated_MW,Rated_MVA,Rated_PF,Xd_pu,Xd_prime_pu,Xd_double_prime_pu,H_inertia_sec,Status,Redundancy_Group
+GEN_RECIP_01,Recip Engine 1,Synchronous Generator,BUS_100,13.8,18.3,21.5,0.85,1.80,0.25,0.18,1.5,Online,THERMAL_GEN
+GEN_RECIP_02,Recip Engine 2,Synchronous Generator,BUS_101,13.8,18.3,21.5,0.85,1.80,0.25,0.18,1.5,Online,THERMAL_GEN
+GEN_RECIP_03,Recip Engine 3,Synchronous Generator,BUS_102,13.8,18.3,21.5,0.85,1.80,0.25,0.18,1.5,Online,THERMAL_GEN
+GEN_RECIP_04,Recip Engine 4,Synchronous Generator,BUS_103,13.8,18.3,21.5,0.85,1.80,0.25,0.18,1.5,Online,THERMAL_GEN
+GEN_RECIP_05,Recip Engine 5,Synchronous Generator,BUS_104,13.8,18.3,21.5,0.85,1.80,0.25,0.18,1.5,Online,THERMAL_GEN
+GEN_RECIP_06,Recip Engine 6,Synchronous Generator,BUS_105,13.8,18.3,21.5,0.85,1.80,0.25,0.18,1.5,Online,THERMAL_GEN
+GEN_RECIP_07,Recip Engine 7,Synchronous Generator,BUS_106,13.8,18.3,21.5,0.85,1.80,0.25,0.18,1.5,Online,THERMAL_GEN
+GEN_RECIP_08,Recip Engine 8,Synchronous Generator,BUS_107,13.8,18.3,21.5,0.85,1.80,0.25,0.18,1.5,Online,THERMAL_GEN
+GEN_GT_01,Gas Turbine 1,Synchronous Generator,BUS_120,13.8,50.0,58.8,0.85,1.50,0.22,0.15,3.0,Online,THERMAL_GEN
+GEN_GT_02,Gas Turbine 2,Synchronous Generator,BUS_121,13.8,50.0,58.8,0.85,1.50,0.22,0.15,3.0,Online,THERMAL_GEN
+BESS_01,Battery Storage (120 MWh),Battery Energy Storage,BUS_140,13.8,30.0,30.0,1.00,0.00,0.00,0.05,0.0,Online,STORAGE

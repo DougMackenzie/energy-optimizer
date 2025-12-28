@@ -419,14 +419,12 @@ def load_site_optimization_stages(site_name: str) -> Dict:
             worksheet = spreadsheet.worksheet("Optimization_Results")
         except gspread.WorksheetNotFound:
             # Create worksheet
-            worksheet = spreadsheet.add_worksheet(title="Optimization_Results", rows=100, cols=15)
+            worksheet = spreadsheet.add_worksheet(title="Optimization_Results", rows=100, cols=16)
             headers = [
                 "site_name", "stage", "complete", "lcoe", "npv",
                 "equipment_json", "dispatch_summary_json", "completion_date", "notes",
-                "load_coverage_pct", "constraints_json", "capex_json", "runtime_seconds"
-                "site_name", "stage", "complete", "lcoe", "npv",
-                "equipment_json", "dispatch_summary_json", "completion_date", "notes",
-                "load_coverage_pct", "constraints_json", "capex_json", "runtime_seconds"
+                "load_coverage_pct", "constraints_json", "capex_json", "runtime_seconds",
+                "run_timestamp", "version", "equipment_details_json"  # Match actual sheet structure
             ]
             worksheet.append_row(headers)
             return {
@@ -487,25 +485,29 @@ def save_site_stage_result(site_name: str, stage: str, result_data: Dict) -> boo
                 existing_row = idx + 2
                 break
         
-        # Prepare row data - save ALL fields as JSON for flexibility
+        # Prepare row data - MUST match exact Google Sheets column order
+        # Columns: A-O (15 columns + adding equipment_details_json as P)
         row_data = [
-            site_name,
-            stage,
-            result_data.get('complete', True),
-            result_data.get('lcoe'),
-            result_data.get('npv'),
-            json.dumps(result_data.get('equipment', {})),
-            json.dumps(result_data.get('dispatch_summary', {})),
-            datetime.now().isoformat(),
-            result_data.get('notes', ''),
-            result_data.get('load_coverage_pct', 0),  # Add coverage
-            json.dumps(result_data.get('constraints', {})),  # Add constraints
-            json.dumps(result_data.get('capex', {})),  # Add capex
-            result_data.get('runtime_seconds', 0)  # Add runtime
+            site_name,                                              # A: site_name
+            stage,                                                   # B: stage
+            result_data.get('complete', True),                      # C: complete
+            result_data.get('lcoe'),                                # D: lcoe
+            result_data.get('npv'),                                 # E: npv
+            json.dumps(result_data.get('equipment', {})),          # F: equipment_json
+            json.dumps(result_data.get('dispatch_summary', {})),   # G: dispatch_summary_json
+            datetime.now().isoformat(),                             # H: completion_date
+            result_data.get('notes', ''),                           # I: notes
+            result_data.get('load_coverage_pct', 0),               # J: load_coverage_pct
+            json.dumps(result_data.get('constraints', {})),        # K: constraints_json
+            json.dumps(result_data.get('capex', {})),              # L: capex_json
+            result_data.get('runtime_seconds', 0),                 # M: runtime_seconds
+            result_data.get('run_timestamp', datetime.now().isoformat()),  # N: run_timestamp
+            result_data.get('version', 1),                         # O: version
+            json.dumps(result_data.get('equipment_details', {})),  # P: equipment_details_json (NEW)
         ]
         
         if existing_row:
-            # Update all columns (A through M for 13 columns)
+            # Update all columns (A through P for 16 columns)
             col_letter = chr(65 + len(row_data) - 1)  # Convert to column letter
             worksheet.update(f'A{existing_row}:{col_letter}{existing_row}', [row_data])
             print(f"✓ Updated {site_name} {stage} result at row {existing_row}")
@@ -593,6 +595,17 @@ def load_site_stage_result(site_name: str, stage: str) -> Optional[Dict]:
                         result['dispatch_summary'] = {}
                 else:
                     result['dispatch_summary'] = {}
+                
+                # NEW: Deserialize equipment_details
+                if 'equipment_details_json' in result and result['equipment_details_json']:
+                    try:
+                        result['equipment_details'] = json.loads(result['equipment_details_json'])
+                        print(f"DEBUG: Loaded equipment_details with {len(result['equipment_details'])} equipment types")
+                    except Exception as e:
+                        print(f"DEBUG: Failed to parse equipment_details: {e}")
+                        result['equipment_details'] = {}
+                else:
+                    result['equipment_details'] = {}
                 
                 # Normalize 'complete' field - Google Sheets returns 'TRUE'/'FALSE' as strings
                 complete_val = result.get('complete', False)

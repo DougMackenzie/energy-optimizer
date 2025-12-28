@@ -1,0 +1,7 @@
+Block_ID,Block_Name,Block_Type,Parent_Block,Components,K_Required,N_Total,Description
+THERMAL_GEN,Thermal Generation Block,PARALLEL_K_OF_N,SYSTEM,"GEN_RECIP_01,GEN_RECIP_02,GEN_RECIP_03,GEN_RECIP_04,GEN_RECIP_05,GEN_RECIP_06,GEN_RECIP_07,GEN_RECIP_08,GEN_GT_01,GEN_GT_02",9,10,N-1 redundancy: 9 of 10 units required for full load
+STORAGE,Energy Storage Block,STANDBY,SYSTEM,BESS_01,0,1,Optional backup - not required for availability but provides transient support
+ELECTRICAL,Electrical Distribution Block,SERIES,SYSTEM,"XFMR_MAIN,SWGR_MAIN",2,2,Series configuration - both transformer and switchgear required
+PROTECTION,Protection System Block,PARALLEL_K_OF_N,SYSTEM,"CB_GEN_01,CB_GEN_02",1,2,Redundant protection - 1 of 2 breakers required
+CONTROLS,Control System Block,SERIES,SYSTEM,CTRL_SYS,1,1,Single control system - critical path
+SYSTEM,Complete Power System,SERIES,,"THERMAL_GEN,ELECTRICAL,PROTECTION,CONTROLS",4,4,Top-level system - requires all subsystems operational
