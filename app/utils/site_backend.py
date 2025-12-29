@@ -179,8 +179,11 @@ def delete_site(site_name: str) -> bool:
         worksheet = spreadsheet.worksheet("Sites")
         sites = worksheet.get_all_records()
         for idx, site in enumerate(sites):
-            if site.get('site_name') == site_name:
+            # Check both 'name' and 'site_name' for compatibility
+            existing_name = site.get('name') or site.get('site_name')
+            if existing_name == site_name:
                 worksheet.delete_rows(idx + 2)  # +2 for header
+                print(f"✓ Deleted site '{site_name}' from Sites sheet")
                 break
         
         # Delete from Site_Loads
@@ -477,11 +480,16 @@ def save_site_stage_result(site_name: str, stage: str, result_data: Dict) -> boo
         spreadsheet = client.open_by_key(SHEET_ID)
         worksheet = spreadsheet.worksheet("Optimization_Results")  # Updated sheet name
         
-        # Check if stage result already exists
+        # Check if stage result already exists WITH SAME VERSION
         stages = worksheet.get_all_records()
         existing_row = None
+        version = result_data.get('version', 1)
+        
         for idx, stage_data in enumerate(stages):
-            if stage_data.get('site_name') == site_name and stage_data.get('stage') == stage:
+            # Only match if site + stage + version all match
+            if (stage_data.get('site_name') == site_name and 
+                stage_data.get('stage') == stage and
+                stage_data.get('version') == version):
                 existing_row = idx + 2
                 break
         

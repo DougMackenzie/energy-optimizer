@@ -36,17 +36,19 @@ try:
 except ImportError:
     # Fallback defaults if settings not updated yet
     EQUIPMENT_DEFAULTS = {
-        'recip': {'capacity_mw': 18.3, 'heat_rate_btu_kwh': 7700, 'nox_lb_mwh': 0.50,
+        'recip': {'capacity_mw': 18.3, 'heat_rate_btu_kwh': 7700, 'nox_lb_mwh': 0.10,  # POST-SCR (0.07-0.15 range)
                   'capex_per_kw': 1650, 'vom_per_mwh': 8.50, 'fom_per_kw_yr': 18.50,
                   'gas_mcf_per_mwh': 7.42, 'land_acres_per_mw': 0.5},
-        'turbine': {'capacity_mw': 50.0, 'heat_rate_btu_kwh': 8500, 'nox_lb_mwh': 0.25,
+        'turbine': {'capacity_mw': 50.0, 'heat_rate_btu_kwh': 8500, 'nox_lb_mwh': 0.12,  # POST-SCR Simple Cycle (0.08-0.15 range)
                     'capex_per_kw': 1300, 'vom_per_mwh': 6.50, 'fom_per_kw_yr': 12.50,
                     'gas_mcf_per_mwh': 8.20, 'land_acres_per_mw': 0.3},
         'bess': {'capex_per_kwh': 236, 'duration_hours': 4, 'roundtrip_efficiency': 0.90,
                  'land_acres_per_mwh': 0.01},
         'solar': {'capex_per_w_dc': 0.95, 'capacity_factor': 0.25, 'fom_per_kw_yr': 12.0,
                   'land_acres_per_mw': 5.0},
-        'grid': {'default_price_mwh': 65.0},
+        'grid': {'default_price_mwh': 65.0, 'lead_time_months': 60, 
+                 'interconnection_cost_mw': 100000, 'max_ciac_threshold': 500_000_000,
+                 'lcoe_threshold': 180.0, 'capacity_charge_kw_yr': 180.0},
     }
     CONSTRAINT_DEFAULTS = {'nox_tpy_annual': 100, 'gas_supply_mcf_day': 50000,
                            'land_area_acres': 500}
@@ -111,6 +113,149 @@ class HeuristicOptimizer:
         self.end_year = max(self.years)
         self.annual_energy_mwh = self.peak_load * 8760 * 0.85
         
+    def optimize_annual_energy_stack(self) -> Dict:
+        """
+        Run year-by-year optimization to build optimal energy stack over time.
+        
+        Considers:
+        - Grid availability timeline (default 60 months from start)
+        - Different load levels per year
+        - Annual NOx, gas, land constraints
+        - Minimizes total LCOE over planning horizon
+        
+        Returns:
+            Dict with annual equipment deployments and energy stack
+        """
+        grid_lead_months = self.equipment.get('grid', {}).get('lead_time_months', 60)
+        grid_available_year = self.start_year + (grid_lead_months // 12)
+        
+        annual_stack = {}
+        cumulative_equipment = {
+            'n_recip': 0, 'recip_mw': 0,
+            'n_turbine': 0, 'turbine_mw': 0,
+            'solar_mw': 0, 'bess_mw': 0, 'bess_mwh': 0,
+            'grid_mw': 0
+        }
+        
+        total_cost_npv = 0
+        discount_rate = self.economics.get('discount_rate', 0.08)
+        
+        for year in self.years:
+            year_load_mw = self.load_trajectory.get(year, 0)
+            
+            if year_load_mw == 0:
+                # No load this year, skip
+                annual_stack[year] = {
+                    'load_mw': 0,
+                    'equipment': cumulative_equipment.copy(),
+                    'new_equipment': {},
+                    'energy_delivered_mwh': 0,
+                    'unserved_pct': 0,
+                    'lcoe': 0,
+                }
+                continue
+            
+            
+            # Determine if grid is available this year
+            grid_available = (year >= grid_available_year)
+            
+            # Calculate existing FIRM capacity (with capacity credits)
+            # Import capacity credits from config
+            from config.settings import CAPACITY_CREDITS
+            
+            existing_firm_mw = (
+                cumulative_equipment.get('recip_mw', 0) * CAPACITY_CREDITS.get('recip', 1.0) +
+                cumulative_equipment.get('turbine_mw', 0) * CAPACITY_CREDITS.get('turbine', 1.0) +
+                cumulative_equipment.get('solar_mw', 0) * CAPACITY_CREDITS.get('solar', 0.10) +
+                cumulative_equipment.get('bess_mw', 0) * CAPACITY_CREDITS.get('bess', 0.50)
+            )
+
+            
+            # SMART SIZING: Size for this year's load, considering existing equipment
+            if grid_available and existing_firm_mw > 0:
+                # Grid is available - use it to fill gap between load and existing onsite
+                # Keep existing onsite (sunk cost, low marginal cost ~$22/MWh)
+                # Use grid for shortfall only
+                required_firm_mw = year_load_mw * (1.15 if self.constraints.get('n_minus_1_required', True) else 1.0)
+                
+                if required_firm_mw <= existing_firm_mw:
+                    # Existing onsite can serve load - no grid needed
+                    equipment_needed = cumulative_equipment.copy()
+                    equipment_needed['grid_mw'] = 0
+                else:
+                    # Need more capacity - use grid for shortfall
+                    grid_needed = required_firm_mw - existing_firm_mw
+                    equipment_needed = cumulative_equipment.copy()
+                    equipment_needed['grid_mw'] = grid_needed
+                
+                # Update cumulative with grid
+                cumulative_equipment['grid_mw'] = equipment_needed.get('grid_mw', 0)
+            else:
+                # Grid not available OR no existing equipment - size fresh
+                equipment_needed = self.size_equipment_to_load(
+                    target_mw=year_load_mw,
+                    require_n1=self.constraints.get('n_minus_1_required', True),
+                    grid_available_mw=0,  # Don't pass grid here
+                )
+                
+                # Update cumulative equipment (only increase, never decrease)
+                for key in ['n_recip', 'recip_mw', 'n_turbine', 'turbine_mw', 'solar_mw', 'bess_mw', 'bess_mwh']:
+                    new_val = equipment_needed.get(key, 0)
+                    old_val = cumulative_equipment.get(key, 0)
+                    cumulative_equipment[key] = max(old_val, new_val)
+            
+            # Update total capacity
+            cumulative_equipment['total_capacity_mw'] = (
+                cumulative_equipment.get('recip_mw', 0) +
+                cumulative_equipment.get('turbine_mw', 0) +
+                cumulative_equipment.get('solar_mw', 0) +
+                cumulative_equipment.get('bess_mw', 0) +
+                cumulative_equipment.get('grid_mw', 0)
+            )
+            
+            # Calculate which equipment is NEW this year
+            new_equipment = {}
+            for key in ['n_recip', 'recip_mw', 'n_turbine', 'turbine_mw', 'solar_mw', 'bess_mw', 'bess_mwh', 'grid_mw']:
+                current = cumulative_equipment.get(key, 0)
+                previous = annual_stack[sorted(annual_stack.keys())[-1]]['equipment'].get(key, 0) if annual_stack else 0
+                new_equipment[key] = max(0, current - previous)
+
+            # Calculate costs and LCOE for this year
+            annual_energy_mwh = year_load_mw * 8760 * 0.85
+            lcoe, lcoe_details = self.calculate_lcoe(cumulative_equipment, annual_energy_mwh)
+            
+            # Discount to present value
+            years_from_start = year - self.start_year
+            discount_factor = 1 / (1 + discount_rate) ** years_from_start
+            annual_cost = lcoe_details['annual_cost'] * discount_factor
+            total_cost_npv += annual_cost
+            
+            annual_stack[year] = {
+                'load_mw': year_load_mw,
+                'equipment': cumulative_equipment.copy(),
+                'new_equipment': new_equipment,
+                'energy_delivered_mwh': lcoe_details['energy_delivered_mwh'],
+                'unserved_mwh': lcoe_details['unserved_energy_mwh'],
+                'unserved_pct': lcoe_details['unserved_energy_pct'],
+                'lcoe': lcoe,
+                'annual_cost': lcoe_details['annual_cost'],
+                'annual_cost_npv': annual_cost,
+                'grid_available': grid_available,
+            }
+        
+        # Calculate blended LCOE over entire period
+        total_energy_delivered = sum(y['energy_delivered_mwh'] for y in annual_stack.values())
+        blended_lcoe = total_cost_npv / total_energy_delivered if total_energy_delivered > 0 else 0
+        
+        return {
+            'annual_stack': annual_stack,
+            'final_equipment': cumulative_equipment,
+            'grid_available_year': grid_available_year,
+            'total_cost_npv': total_cost_npv,
+            'total_energy_delivered_mwh': total_energy_delivered,
+            'blended_lcoe': blended_lcoe,
+        }
+    
     def size_equipment_to_load(
         self,
         target_mw: float,
@@ -155,12 +300,19 @@ class HeuristicOptimizer:
         solar_mw = 0
         if include_solar:
             available_land = self.constraints.get('land_area_acres', 500)
+            
+            # Reserve land for datacenter buildout: 3 MW per acre = 0.33 acres/MW
+            # This ensures land constraint doesn't limit datacenter, only onsite generation
+            datacenter_land_reservation = target_mw / 3.0  # 3 MW per acre = 0.33 acres per MW
+            
             thermal_land = (
                 recip_mw * self.equipment['recip'].get('land_acres_per_mw', 0.5) +
                 turbine_mw * self.equipment['turbine'].get('land_acres_per_mw', 0.3) +
                 bess_mwh * self.equipment['bess'].get('land_acres_per_mwh', 0.01)
             )
-            remaining_land = max(0, available_land - thermal_land)
+            
+            # Land available for solar = Total - Datacenter - Thermal
+            remaining_land = max(0, available_land - datacenter_land_reservation - thermal_land)
             solar_density = self.equipment['solar'].get('land_acres_per_mw', 5.0)
             solar_mw = remaining_land / solar_density if solar_density > 0 else 0
         
@@ -287,29 +439,68 @@ class HeuristicOptimizer:
         return generation
     
     def calculate_lcoe(self, equipment: Dict, annual_energy_required_mwh: float = None) -> Tuple[float, Dict]:
-        """Calculate LCOE - FIXED: No more $999/MWh errors."""
+        """Calculate LCOE - FIXED: Proper grid cost accounting."""
         if annual_energy_required_mwh is None:
             annual_energy_required_mwh = self.peak_load * 8760 * 0.85
         
         annual_generation_mwh = self._estimate_annual_generation(equipment)
         grid_mw = equipment.get('grid_mw', 0)
+        grid_gen_mwh = 0
+        
         if grid_mw > 0:
+            # Grid can provide up to its capacity
             grid_gen = min(grid_mw * 8760, annual_energy_required_mwh - annual_generation_mwh)
             grid_gen = max(0, grid_gen)
-            annual_generation_mwh += grid_gen
+            grid_gen_mwh = grid_gen
+            annual_generation_mwh += grid_gen_mwh
         
         energy_delivered_mwh = min(annual_generation_mwh, annual_energy_required_mwh)
         unserved_energy_mwh = max(0, annual_energy_required_mwh - energy_delivered_mwh)
         unserved_energy_pct = (unserved_energy_mwh / annual_energy_required_mwh * 100) if annual_energy_required_mwh > 0 else 0
         
         capex = self.calculate_capex(equipment)
+        
+        # Add grid interconnection CAPEX (CIAC)
+        if grid_mw > 0:
+            grid_interconnect_cost = grid_mw * 1000 * self.equipment.get('grid', {}).get('interconnection_cost_mw', 100000) / 1000  # $/MW
+            capex += grid_interconnect_cost
+        
         opex = self.calculate_annual_opex(equipment, energy_delivered_mwh)
+        
+        # Add grid-specific annual costs
+        if grid_mw > 0:
+            grid_config = self.equipment.get('grid', {})
+            
+            # Grid energy cost
+            grid_energy_cost = grid_gen_mwh * grid_config.get('default_price_mwh', 65.0)
+            
+            # Grid capacity/demand charges (annual)
+            grid_capacity_charge = grid_mw * 1000 * grid_config.get('capacity_charge_kw_yr', 180.0)
+            
+            # Grid standby charges (monthly -> annual)
+            grid_standby_charge = grid_mw * 1000 * grid_config.get('standby_charge_kw_mo', 5.0) * 12
+            
+            opex += grid_energy_cost + grid_capacity_charge + grid_standby_charge
+        
         crf = self.economics.get('crf_20yr_8pct', 0.1019)
         annualized_capex = capex * crf
         annual_cost = annualized_capex + opex
         
-        if energy_delivered_mwh > 0:
-            lcoe = annual_cost / energy_delivered_mwh
+        # === HIERARCHICAL OBJECTIVE ===
+        # 1. MAXIMIZE power served (via VOLL penalty on unserved)
+        # 2. MINIMIZE cost (among solutions that serve load)
+        
+        # Unserved energy penalty (makes unserved prohibitively expensive)
+        unserved_penalty = unserved_energy_mwh * VOLL_PENALTY
+        
+        # Total objective = cost + penalty for unserved
+        objective_value = annual_cost + unserved_penalty
+        
+        # LCOE is calculated for REPORTING only (NOT the objective!)
+        # LCOE = total_cost / energy_required (fixed denominator, not energy_delivered)
+        # This prevents "gaming" by just serving less load
+        if annual_energy_required_mwh > 0:
+            lcoe = annual_cost / annual_energy_required_mwh
         else:
             lcoe = 0
         
@@ -323,9 +514,11 @@ class HeuristicOptimizer:
             warnings.append(f"LCOE ${lcoe:.0f}/MWh is unusually low - verify inputs")
         
         details = {
+            'objective_value': objective_value,  # Total cost + VOLL penalty
             'annual_cost': annual_cost,
             'annualized_capex': annualized_capex,
             'annual_opex': opex,
+            'unserved_penalty': unserved_penalty,
             'energy_delivered_mwh': energy_delivered_mwh,
             'energy_required_mwh': annual_energy_required_mwh,
             'unserved_energy_mwh': unserved_energy_mwh,
@@ -410,6 +603,9 @@ class HeuristicOptimizer:
     
     def _calculate_land_acres(self, equipment: Dict) -> float:
         land = 0
+        # Add datacenter reservation: 3 MW per acre = 0.33 acres/MW
+        land += self.peak_load / 3.0
+        # Add onsite generation land use
         land += equipment.get('recip_mw', 0) * self.equipment['recip'].get('land_acres_per_mw', 0.5)
         land += equipment.get('turbine_mw', 0) * self.equipment['turbine'].get('land_acres_per_mw', 0.3)
         land += equipment.get('solar_mw', 0) * self.equipment['solar'].get('land_acres_per_mw', 5.0)
@@ -434,28 +630,52 @@ class GreenFieldHeuristic(HeuristicOptimizer):
     
     def optimize(self) -> HeuristicResult:
         start_time = time.time()
-        equipment = self.size_equipment_to_load(
-            target_mw=self.peak_load,
-            require_n1=self.constraints.get('n_minus_1_required', True),
-            include_solar=True,
-            include_bess=True,
-            grid_available_mw=self.constraints.get('grid_import_mw', 0),
-        )
-        annual_energy_mwh = self.peak_load * 8760 * 0.85
-        lcoe, lcoe_details = self.calculate_lcoe(equipment, annual_energy_mwh)
+        
+        # Use annual energy stack optimization if multi-year trajectory
+        if len(self.years) > 1:
+            annual_result = self.optimize_annual_energy_stack()
+            equipment = annual_result['final_equipment']
+            lcoe = annual_result['blended_lcoe']
+            
+            # Get final year data
+            final_year = max(annual_result['annual_stack'].keys())
+            final_year_data = annual_result['annual_stack'][final_year]
+            unserved_mwh = final_year_data['unserved_mwh']
+            unserved_pct = final_year_data['unserved_pct']
+            energy_delivered = final_year_data['energy_delivered_mwh']
+            
+            # Store annual stack for later use
+            dispatch_summary = {
+                'annual_generation_mwh': energy_delivered,
+                'annual_energy_required_mwh': self.annual_energy_mwh,
+                'annual_stack': annual_result['annual_stack'],
+                'grid_available_year': annual_result['grid_available_year'],
+                'blended_lcoe': lcoe,
+            }
+        else:
+            # Single year - use simple optimization
+            equipment = self.size_equipment_to_load(
+                target_mw=self.peak_load,
+                require_n1=self.constraints.get('n_minus_1_required', True),
+                include_solar=True,
+                include_bess=True,
+                grid_available_mw=self.constraints.get('grid_import_mw', 0),
+            )
+            annual_energy_mwh = self.peak_load * 8760 * 0.85
+            lcoe, lcoe_details = self.calculate_lcoe(equipment, annual_energy_mwh)
+            unserved_mwh = lcoe_details['unserved_energy_mwh']
+            unserved_pct = lcoe_details['unserved_energy_pct']
+            energy_delivered = lcoe_details['energy_delivered_mwh']
+            
+            dispatch_summary = {
+                'annual_generation_mwh': energy_delivered,
+                'annual_energy_required_mwh': annual_energy_mwh,
+            }
+        
         capex = self.calculate_capex(equipment)
         opex = self.calculate_annual_opex(equipment)
         constraint_status, violations, constraint_analysis = self.check_constraints(equipment)
         timeline_months = self.calculate_timeline(equipment)
-        
-        dispatch_summary = {
-            'annual_generation_mwh': lcoe_details['energy_delivered_mwh'],
-            'annual_energy_required_mwh': annual_energy_mwh,
-            'recip_generation_pct': 70 if equipment.get('recip_mw', 0) > 0 else 0,
-            'turbine_generation_pct': 15 if equipment.get('turbine_mw', 0) > 0 else 0,
-            'solar_generation_pct': 10 if equipment.get('solar_mw', 0) > 0 else 0,
-            'grid_generation_pct': 5 if equipment.get('grid_mw', 0) > 0 else 0,
-        }
         
         return HeuristicResult(
             feasible=len(violations) == 0,
@@ -470,17 +690,22 @@ class GreenFieldHeuristic(HeuristicOptimizer):
             timeline_months=timeline_months,
             shadow_prices={},
             solve_time_seconds=time.time() - start_time,
-            warnings=lcoe_details.get('warnings', []),
-            unserved_energy_mwh=lcoe_details['unserved_energy_mwh'],
-            unserved_energy_pct=lcoe_details['unserved_energy_pct'],
-            energy_delivered_mwh=lcoe_details['energy_delivered_mwh'],
-            constraint_utilization=constraint_analysis['utilization'],
-            binding_constraint=constraint_analysis['binding'],
+            warnings=[],
+            unserved_energy_mwh=unserved_mwh,
+            unserved_energy_pct=unserved_pct,
+            energy_delivered_mwh=energy_delivered,
+            constraint_utilization=constraint_analysis.get('utilization', {}),
+            binding_constraint=constraint_analysis.get('binding', ''),
         )
 
 
 class BrownfieldHeuristic(HeuristicOptimizer):
-    """Problem 2: Brownfield - Max load within LCOE ceiling"""
+    """Problem 2: Brownfield - Max load within LCOE ceiling
+    
+    Hierarchical Objective:
+    1. LCOE ≤ ceiling (hard constraint)
+    2. Maximize expansion capacity (MW added)
+    """
     
     def __init__(self, *args, existing_equipment: Dict = None, lcoe_threshold: float = 120, **kwargs):
         super().__init__(*args, **kwargs)
@@ -489,7 +714,11 @@ class BrownfieldHeuristic(HeuristicOptimizer):
     
     def optimize(self) -> HeuristicResult:
         start_time = time.time()
-        existing_mw = sum([self.existing_equipment.get('recip_mw', 0), self.existing_equipment.get('turbine_mw', 0)])
+        existing_mw = sum([
+            self.existing_equipment.get('recip_mw', 0),
+            self.existing_equipment.get('turbine_mw', 0),
+            self.existing_equipment.get('grid_mw', 0)
+        ])
         existing_lcoe = self.existing_equipment.get('existing_lcoe', 80)
         lcoe_headroom = self.lcoe_threshold - existing_lcoe
         
@@ -501,35 +730,83 @@ class BrownfieldHeuristic(HeuristicOptimizer):
                 solve_time_seconds=time.time() - start_time, warnings=['No expansion possible'],
             )
         
-        new_equipment = self.size_equipment_to_load(
-            target_mw=min(self.peak_load * 0.5, self.peak_load - existing_mw),
-            require_n1=False,
-        )
-        combined_equipment = {**self.existing_equipment, **new_equipment}
-        lcoe, lcoe_details = self.calculate_lcoe(combined_equipment)
-        capex = self.calculate_capex(new_equipment)
-        opex = self.calculate_annual_opex(combined_equipment)
-        constraint_status, violations, constraint_analysis = self.check_constraints(combined_equipment)
+        # Use annual stack for multi-year scenarios
+        if len(self.years) > 1:
+            annual_result = self.optimize_annual_energy_stack()
+            
+            # Check LCOE ceiling constraint
+            if annual_result['blended_lcoe'] > self.lcoe_threshold:
+                feasible = False
+                warnings = [f"Blended LCOE ${annual_result['blended_lcoe']:.1f}/MWh exceeds ceiling ${self.lcoe_threshold:.1f}/MWh"]
+            else:
+                feasible = True
+                warnings = []
+            
+            equipment = annual_result['final_equipment']
+            lcoe = annual_result['blended_lcoe']
+            max_expansion_mw = equipment.get('total_capacity_mw', 0) - existing_mw
+            
+            final_year = max(annual_result['annual_stack'].keys())
+            final_data = annual_result['annual_stack'][final_year]
+            unserved_mwh = final_data['unserved_mwh']
+            unserved_pct = final_data['unserved_pct']
+            energy_delivered = final_data['energy_delivered_mwh']
+        else:
+            # Single year optimization
+            new_equipment = self.size_equipment_to_load(
+                target_mw=min(self.peak_load * 0.5, self.peak_load - existing_mw),
+                require_n1=False,
+            )
+            equipment = {**self.existing_equipment, **new_equipment}
+            annual_energy_mwh = self.peak_load * 8760 * 0.85
+            lcoe, lcoe_details = self.calculate_lcoe(equipment, annual_energy_mwh)
+            
+            feasible = lcoe <= self.lcoe_threshold
+            warnings = lcoe_details.get('warnings', [])
+            max_expansion_mw = new_equipment.get('total_capacity_mw', 0)
+            unserved_mwh = lcoe_details.get('unserved_energy_mwh', 0)
+            unserved_pct = lcoe_details.get('unserved_energy_pct', 0)
+            energy_delivered = lcoe_details.get('energy_delivered_mwh', 0)
+        
+        capex = self.calculate_capex(equipment)
+        opex = self.calculate_annual_opex(equipment)
+        constraint_status, violations, constraint_analysis = self.check_constraints(equipment)
         
         return HeuristicResult(
-            feasible=len(violations) == 0 and lcoe <= self.lcoe_threshold,
-            objective_value=new_equipment.get('total_capacity_mw', 0),
-            lcoe=lcoe, capex_total=capex, opex_annual=opex,
-            equipment_config=new_equipment,
-            dispatch_summary={'max_expansion_mw': new_equipment.get('total_capacity_mw', 0), 'blended_lcoe': lcoe},
-            constraint_status=constraint_status, violations=violations,
-            timeline_months=self.calculate_timeline(new_equipment), shadow_prices={},
-            solve_time_seconds=time.time() - start_time, warnings=lcoe_details.get('warnings', []),
-            unserved_energy_mwh=lcoe_details.get('unserved_energy_mwh', 0),
-            unserved_energy_pct=lcoe_details.get('unserved_energy_pct', 0),
-            energy_delivered_mwh=lcoe_details.get('energy_delivered_mwh', 0),
+            feasible=feasible and len(violations) == 0,
+            objective_value=max_expansion_mw,  # Maximize expansion
+            lcoe=lcoe,
+            capex_total=capex,
+            opex_annual=opex,
+            equipment_config=equipment,
+            dispatch_summary={
+                'max_expansion_mw': max_expansion_mw,
+                'blended_lcoe': lcoe,
+                'existing_mw': existing_mw,
+                'lcoe_threshold': self.lcoe_threshold,
+            },
+            constraint_status=constraint_status,
+            violations=violations,
+            timeline_months=self.calculate_timeline(equipment),
+            shadow_prices={},
+            solve_time_seconds=time.time() - start_time,
+            warnings=warnings,
+            unserved_energy_mwh=unserved_mwh,
+            unserved_energy_pct=unserved_pct,
+            energy_delivered_mwh=energy_delivered,
             constraint_utilization=constraint_analysis.get('utilization', {}),
             binding_constraint=constraint_analysis.get('binding', ''),
         )
 
 
 class LandDevHeuristic(HeuristicOptimizer):
-    """Problem 3: Land Development - Max capacity by flexibility scenario"""
+    """Problem 3: Land Development - Max capacity by flexibility scenario
+    
+    Hierarchical Objective:
+    1. Respect constraints (NOx, Gas, Land hard limits)
+    2. Maximize firm capacity that can be built
+    3. Analyze across workload flexibility scenarios
+    """
     
     def optimize(self) -> HeuristicResult:
         start_time = time.time()
@@ -546,43 +823,78 @@ class LandDevHeuristic(HeuristicOptimizer):
         binding = 'nox' if max_firm_mw == constraint_limits.get('max_thermal_mw_from_nox') else \
                   'gas' if max_firm_mw == constraint_limits.get('max_thermal_mw_from_gas') else 'land'
         
+        # Run scenario for each flexibility level
         for flex in flex_scenarios:
             alignment_factor = 0.7
             load_max = max_firm_mw / (1 - flex * alignment_factor) if flex > 0 else max_firm_mw
             equipment = self.size_equipment_to_load(max_firm_mw, require_n1=False)
             lcoe, _ = self.calculate_lcoe(equipment, load_max * 8760 * 0.85)
             results_matrix[f'{int(flex*100)}%'] = {
-                'load_max_mw': load_max, 'firm_capacity_mw': max_firm_mw,
-                'lcoe': lcoe, 'binding_constraint': binding,
+                'load_max_mw': load_max,
+                'firm_capacity_mw': max_firm_mw,
+                'lcoe': lcoe,
+                'binding_constraint': binding,
             }
         
         equipment = self.size_equipment_to_load(max_firm_mw, require_n1=False)
+        
+        # Calculate actual firm capacity with credits
+        from config.settings import CAPACITY_CREDITS
+        actual_firm_mw = (
+            equipment.get('recip_mw', 0) * CAPACITY_CREDITS.get('recip', 1.0) +
+            equipment.get('turbine_mw', 0) * CAPACITY_CREDITS.get('turbine', 1.0) +
+            equipment.get('solar_mw', 0) * CAPACITY_CREDITS.get('solar', 0.10) +
+            equipment.get('bess_mw', 0) * CAPACITY_CREDITS.get('bess', 0.50)
+        )
+        
         lcoe, lcoe_details = self.calculate_lcoe(equipment)
         capex = self.calculate_capex(equipment)
         opex = self.calculate_annual_opex(equipment)
         constraint_status, violations, constraint_analysis = self.check_constraints(equipment)
         
         return HeuristicResult(
-            feasible=len(violations) == 0, objective_value=max_firm_mw, lcoe=lcoe,
-            capex_total=capex, opex_annual=opex, equipment_config=equipment,
-            dispatch_summary={'power_potential_matrix': results_matrix, 'binding_constraint': binding, 'max_firm_capacity_mw': max_firm_mw},
-            constraint_status=constraint_status, violations=violations,
-            timeline_months=self.calculate_timeline(equipment), shadow_prices={},
-            solve_time_seconds=time.time() - start_time, warnings=lcoe_details.get('warnings', []),
-            constraint_utilization=constraint_analysis.get('utilization', {}), binding_constraint=binding,
+            feasible=len(violations) == 0,
+            objective_value=actual_firm_mw,  # Maximize actual firm capacity
+            lcoe=lcoe,
+            capex_total=capex,
+            opex_annual=opex,
+            equipment_config=equipment,
+            dispatch_summary={
+                'power_potential_matrix': results_matrix,
+                'binding_constraint': binding,
+                'max_firm_capacity_mw': max_firm_mw
+            },
+            constraint_status=constraint_status,
+            violations=violations,
+            timeline_months=self.calculate_timeline(equipment),
+            shadow_prices={},
+            solve_time_seconds=time.time() - start_time,
+            warnings=lcoe_details.get('warnings', []),
+            constraint_utilization=constraint_analysis.get('utilization', {}),
+            binding_constraint=binding,
         )
 
 
 class GridServicesHeuristic(HeuristicOptimizer):
-    """Problem 4: Grid Services - Max DR revenue"""
+    """Problem 4: Grid Services - Max DR revenue
+    
+    Hierarchical Objective:
+    1. Size equipment for base load
+    2. Calculate flexible MW from workload mix
+    3. Maximize DR revenue (NOT minimize LCOE!)
+    """
     
     def __init__(self, *args, workload_mix: Dict = None, **kwargs):
         super().__init__(*args, **kwargs)
-        self.workload_mix = workload_mix or {'pre_training': 0.4, 'fine_tuning': 0.15,
-                                               'batch_inference': 0.20, 'realtime_inference': 0.15, 'cloud_hpc': 0.10}
+        self.workload_mix = workload_mix or {
+            'pre_training': 0.40, 'fine_tuning': 0.15,
+            'batch_inference': 0.20, 'realtime_inference': 0.15, 'cloud_hpc': 0.10
+        }
     
     def optimize(self) -> HeuristicResult:
         start_time = time.time()
+        
+        # Calculate flexible MW from workload mix        
         total_flex_mw = 0
         flex_by_workload = {}
         for workload, share in self.workload_mix.items():
@@ -591,6 +903,24 @@ class GridServicesHeuristic(HeuristicOptimizer):
             flex_by_workload[workload] = flex_mw
             total_flex_mw += flex_mw
         
+        # Size equipment (use annual stack if multi-year)
+        if len(self.years) > 1:
+            annual_result = self.optimize_annual_energy_stack()
+            equipment = annual_result['final_equipment']
+            lcoe = annual_result['blended_lcoe']
+            
+            # Store dispatch summary with annual stack
+            dispatch_summary = {
+                'annual_stack': annual_result['annual_stack'],
+                'grid_available_year': annual_result['grid_available_year'],
+                'blended_lcoe': lcoe
+            }
+        else:
+            equipment = self.size_equipment_to_load(self.peak_load)
+            lcoe, _ = self.calculate_lcoe(equipment)
+            dispatch_summary = {}
+        
+        # Calculate DR service revenue (SEPARATE from LCOE!)
         service_revenue = {}
         total_revenue = 0
         for service_id, service_params in DR_SERVICES.items():
@@ -602,21 +932,39 @@ class GridServicesHeuristic(HeuristicOptimizer):
                 service_revenue[service_id] = {'eligible_mw': eligible_mw, 'total_revenue': availability_revenue + activation_revenue}
                 total_revenue += availability_revenue + activation_revenue
         
-        equipment = self.size_equipment_to_load(self.peak_load)
-        lcoe, _ = self.calculate_lcoe(equipment)
+        # Merge DR metrics into dispatch_summary
+        dispatch_summary.update({
+            'total_flex_mw': total_flex_mw,
+            'flex_by_workload': flex_by_workload,
+            'service_revenue': service_revenue,
+            'total_annual_revenue': total_revenue
+        })
         
         return HeuristicResult(
-            feasible=True, objective_value=total_revenue, lcoe=lcoe, capex_total=0, opex_annual=0,
+            feasible=True,
+            objective_value=total_revenue,  # Maximize DR revenue!
+            lcoe=lcoe,
+            dispatch_summary=dispatch_summary,
+            capex_total=0,
+            opex_annual=0,
             equipment_config=equipment,
-            dispatch_summary={'total_flex_mw': total_flex_mw, 'flex_by_workload': flex_by_workload,
-                              'service_revenue': service_revenue, 'total_annual_revenue': total_revenue},
-            constraint_status={}, violations=[], timeline_months=0, shadow_prices={},
-            solve_time_seconds=time.time() - start_time, warnings=[],
+            constraint_status={},
+            violations=[],
+            timeline_months=0,
+            shadow_prices={},
+            solve_time_seconds=time.time() - start_time,
+            warnings=[],
         )
 
 
 class BridgePowerHeuristic(HeuristicOptimizer):
-    """Problem 5: Bridge Power - Min NPV of transition"""
+    """Problem 5: Bridge Power - Min NPV of transition
+    
+    Hierarchical Objective:
+    1. Meet load until grid arrives (month X)
+    2. Minimize NPV of total transition cost
+    3. Compare: rental vs purchase vs hybrid
+    """
     
     def __init__(self, *args, grid_available_month: int = 60, **kwargs):
         super().__init__(*args, **kwargs)
@@ -624,13 +972,48 @@ class BridgePowerHeuristic(HeuristicOptimizer):
     
     def optimize(self) -> HeuristicResult:
         start_time = time.time()
+        
+        # Use annual stack if multi-year
+        if len(self.years) > 1:
+            annual_result = self.optimize_annual_energy_stack()
+            equipment = annual_result['final_equipment']
+            lcoe = annual_result['blended_lcoe']
+            
+            dispatch_summary = {
+                'annual_stack': annual_result['annual_stack'],
+                'grid_available_year': annual_result['grid_available_year'],
+                'blended_lcoe': lcoe
+            }
+            
+            capex_total = self.calculate_capex(equipment)
+            opex_annual = self.calculate_annual_opex(equipment)
+            
+            return HeuristicResult(
+                feasible=True,
+                objective_value=-capex_total,
+                lcoe=lcoe,
+                capex_total=capex_total,
+                opex_annual=opex_annual,
+                equipment_config=equipment,
+                dispatch_summary=dispatch_summary,
+                constraint_status={},
+                violations=[],
+                timeline_months=self.grid_available_month,
+                shadow_prices={},
+                solve_time_seconds=time.time() - start_time,
+                warnings=[],
+            )
+        
+        # Single-year: Simple NPV comparison
         monthly_rate = self.economics.get('discount_rate', 0.08) / 12
         scenarios = {}
         
+        # Scenario 1: All rental until grid
         rental_cost = self.equipment.get('rental', {}).get('rental_cost_kw_month', 50)
         rental_npv = sum(self.peak_load * 1000 * rental_cost / (1 + monthly_rate) ** m for m in range(self.grid_available_month))
         scenarios['all_rental'] = rental_npv
         
+        # Scenario 2: All purchase until grid
         purchase_equipment = self.size_equipment_to_load(self.peak_load)
         purchase_capex = self.calculate_capex(purchase_equipment)
         residual_value = purchase_capex * self.economics.get('residual_value_pct', 0.10)
@@ -639,6 +1022,7 @@ class BridgePowerHeuristic(HeuristicOptimizer):
         purchase_npv -= residual_value / (1 + monthly_rate) ** self.grid_available_month
         scenarios['all_purchase'] = purchase_npv
         
+        # Scenario 3: Hybrid
         crossover_months = (purchase_capex - residual_value) / (rental_cost * self.peak_load * 1000 - purchase_opex_monthly) \
                            if (rental_cost * self.peak_load * 1000 - purchase_opex_monthly) > 0 else 999
         scenarios['hybrid'] = min(rental_npv, purchase_npv)
@@ -647,15 +1031,35 @@ class BridgePowerHeuristic(HeuristicOptimizer):
         best_npv = scenarios[best_scenario]
         
         return HeuristicResult(
-            feasible=True, objective_value=best_npv, lcoe=0,
+            feasible=True,
+            objective_value=best_npv,  # Minimize NPV
+            lcoe=0,
             capex_total=purchase_capex if best_scenario == 'all_purchase' else 0,
             opex_annual=self.calculate_annual_opex(purchase_equipment) if best_scenario != 'all_rental' else 0,
             equipment_config=purchase_equipment,
-            dispatch_summary={'scenarios': scenarios, 'recommended': best_scenario, 'npv': best_npv,
-                              'crossover_months': crossover_months, 'grid_available_month': self.grid_available_month},
-            constraint_status={}, violations=[], timeline_months=self.grid_available_month, shadow_prices={},
-            solve_time_seconds=time.time() - start_time, warnings=["Transition timing is indicative only"],
+            dispatch_summary={
+                'scenarios': scenarios,
+                'recommended': best_scenario,
+                'npv': best_npv,
+                'crossover_months': crossover_months,
+                'grid_available_month': self.grid_available_month
+            },
+            constraint_status={},
+            violations=[],
+            timeline_months=self.grid_available_month,
+            shadow_prices={},
+            solve_time_seconds=time.time() - start_time,
+            warnings=["Transition timing is indicative only"],
         )
+
+
+def create_heuristic_optimizer(problem_type: int, **kwargs) -> HeuristicOptimizer:
+    """Factory function to create appropriate heuristic optimizer."""
+    optimizers = {1: GreenFieldHeuristic, 2: BrownfieldHeuristic, 3: LandDevHeuristic,
+                  4: GridServicesHeuristic, 5: BridgePowerHeuristic}
+    if problem_type not in optimizers:
+        raise ValueError(f"Unknown problem type: {problem_type}")
+    return optimizers[problem_type](**kwargs)
 
 
 def create_heuristic_optimizer(problem_type: int, **kwargs) -> HeuristicOptimizer:
