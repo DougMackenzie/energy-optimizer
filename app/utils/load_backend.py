@@ -18,6 +18,9 @@ def save_load_configuration(site_name: str, load_config: dict) -> bool:
     """
     Save load configuration to Google Sheets Load_Profiles tab
     
+    Stores only growth_steps (source data), NOT load_trajectory (derived data).
+    Trajectory will be regenerated from growth_steps on load.
+    
     Args:
         site_name: Name of the site
         load_config: Dict with load parameters and trajectory
@@ -45,32 +48,47 @@ def save_load_configuration(site_name: str, load_config: dict) -> bool:
                 existing_row = idx + 2  # +2 for header and 1-indexing
                 break
         
-        # Generate trajectory JSON from growth steps
-        trajectory = generate_full_trajectory(
-            load_config.get('growth_steps', []),
-            load_config.get('pue', 1.25),
-            planning_horizon=15
-        )
+        # Extract values from load_config
+        peak_it_load_mw = float(load_config.get('peak_it_load_mw', 600.0))
+        pue = float(load_config.get('pue', 1.25))
+        load_factor_pct = float(load_config.get('load_factor_pct', 85.0))
+        growth_enabled = bool(load_config.get('growth_enabled', True))
+        growth_steps = load_config.get('growth_steps', [])
         
-        # Prepare row data - columns A-H
-        row_data = [
-            site_name,  # A: site_name
-            float(load_config.get('peak_it_load_mw', 600)),  # B: peak_it_load_mw
-            float(load_config.get('pue', 1.25)),  # C: pue
-            float(load_config.get('load_factor_pct', 85)),  # D: load_factor_pct
-            bool(load_config.get('growth_enabled', True)),  # E: growth_enabled
-            json.dumps(load_config.get('growth_steps', [])),  # F: growth_steps_json
-            json.dumps(trajectory),  # G: load_trajectory_json
-            datetime.now().isoformat(),  # H: last_updated
+        # Prepare row data for columns J-O (NEW schema)
+        # NOTE: We do NOT save load_trajectory_json - it's regenerated from growth_steps
+        new_cols_data = [
+            round(peak_it_load_mw, 1),  # J: peak_it_load_mw
+            float(pue),  # K: pue
+            float(load_factor_pct),  # L: load_factor_pct
+            growth_enabled,  # M: growth_enabled
+            json.dumps(growth_steps),  # N: growth_steps_json
+            datetime.now().isoformat(),  # O: last_updated
         ]
         
         if existing_row:
-            # Update existing
-            worksheet.update(f'A{existing_row}:H{existing_row}', [row_data])
+            # Update existing (columns J-O only)
+            update_range = f'J{existing_row}:O{existing_row}'
+            worksheet.update(range_name=update_range, values=[new_cols_data])
             print(f"✓ Updated load config for {site_name}")
         else:
-            # Append new
-            worksheet.append_row(row_data)
+            # For new rows, need ALL columns A-O
+            # Columns A-I (legacy schema - keep for backward compatibility)
+            full_row = [
+                site_name,  # A: site_name
+                '',  # B: load_trajectory_json (DEPRECATED - leave empty)
+                datetime.now().isoformat(),  # C: created_date
+                datetime.now().isoformat(),  # D: updated_date
+                load_factor_pct,  # E: flexibility_pct (legacy)
+                45,  # F: pre_training_pct (legacy default)
+                20,  # G: fine_tuning_pct (legacy default)
+                15,  # H: batch_inference_pct (legacy default)
+                20,  # I: real_time_inference_pct (legacy default)
+            ]
+            # Add new columns J-O
+            full_row.extend(new_cols_data)
+            
+            worksheet.append_row(full_row)
             print(f"✓ Created new load config for {site_name}")
         
         return True
@@ -86,11 +104,13 @@ def load_load_configuration(site_name: str) -> Dict:
     """
     Load load configuration from Google Sheets
     
+    Regenerates load_trajectory from growth_steps - does NOT read stored trajectory.
+    
     Args:
         site_name: Name of the site
     
     Returns:
-        Dict with load config, or default config if not found
+       Dict with load config including regenerated trajectory, or default config if not found
     """
     try:
         from config.settings import GOOGLE_SHEET_ID as SHEET_ID
@@ -103,20 +123,30 @@ def load_load_configuration(site_name: str) -> Dict:
         
         for record in all_records:
             if record.get('site_name') == site_name:
-                # Parse JSON fields
+                # Parse growth_steps from JSON
                 growth_steps_json = record.get('growth_steps_json', '[]')
                 growth_steps = json.loads(growth_steps_json) if growth_steps_json else []
                 
+                # Get PUE for trajectory generation
+                pue = float(record.get('pue', 1.25))
+                
                 config = {
                     'peak_it_load_mw': float(record.get('peak_it_load_mw', 600)),
-                    'pue': float(record.get('pue', 1.25)),
+                    'pue': pue,
                     'load_factor_pct': float(record.get('load_factor_pct', 85)),
                     'growth_enabled': bool(record.get('growth_enabled', True)),
                     'growth_steps': growth_steps,
                     'last_updated': record.get('last_updated', ''),
                 }
                 
-                print(f"✓ Loaded load config for {site_name}")
+                # REGENERATE trajectory from growth_steps (don't use stored trajectory)
+                if growth_steps:
+                    config['load_trajectory'] = generate_full_trajectory(growth_steps, pue, planning_horizon=15)
+                else:
+                    # If no growth steps, create flat trajectory
+config['load_trajectory'] = {y: 0.0 for y in range(2027, 2042)}
+                
+                print(f"✓ Loaded load config for {site_name} (regenerated trajectory from {len(growth_steps)} growth steps)")
                 return config
         
         # Return default if not found
@@ -169,19 +199,24 @@ def generate_full_trajectory(growth_steps: list, pue: float, planning_horizon: i
 
 
 def get_default_load_config() -> Dict:
-    """Return default load configuration"""
+    """Return default load configuration with regenerated trajectory"""
+    default_steps = [
+        {'year': 2027, 'load_mw': 0},
+        {'year': 2028, 'load_mw': 150},
+        {'year': 2029, 'load_mw': 300},
+        {'year': 2030, 'load_mw': 450},
+        {'year': 2031, 'load_mw': 600},
+    ]
+    
+    default_pue = 1.25
+    
     return {
         'peak_it_load_mw': 600.0,
-        'pue': 1.25,
+        'pue': default_pue,
         'load_factor_pct': 85.0,
         'growth_enabled': True,
-        'growth_steps': [
-            {'year': 2027, 'load_mw': 0},
-            {'year': 2028, 'load_mw': 150},
-            {'year': 2029, 'load_mw': 300},
-            {'year': 2030, 'load_mw': 450},
-            {'year': 2031, 'load_mw': 600},
-        ],
+        'growth_steps': default_steps,
+        'load_trajectory': generate_full_trajectory(default_steps, default_pue, 15),
         'last_updated': '',
     }
 
