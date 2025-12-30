@@ -1308,6 +1308,10 @@ class GreenfieldHeuristicV2:
             grid_available = grid_year is not None and year >= grid_year
             grid_cap = self.constraints.get('grid_capacity_mw', 0) if grid_available else 0
             
+            print(f"  📅 Year {year}: Running dispatch for {len(total_load)} hours...")
+            import time
+            dispatch_start = time.time()
+            
             dispatch = self.dispatcher.run_dispatch(
                 equipment_config=config,
                 load_profile=total_load,
@@ -1316,6 +1320,10 @@ class GreenfieldHeuristicV2:
                 grid_available=grid_available,
                 grid_capacity_mw=grid_cap,
             )
+            
+            dispatch_time = time.time() - dispatch_start
+            print(f"     ⏱  Dispatch completed in {dispatch_time:.2f}s")
+            
             dispatch.year = year
             dispatch_by_year[year] = dispatch
             
