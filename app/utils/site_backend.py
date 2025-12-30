@@ -551,6 +551,11 @@ def save_site_stage_result(site_name: str, stage: str, result_data: Dict) -> boo
             worksheet.append_row(row_data)
             print(f"✓ Created new {site_name} {stage} result")
         
+        # Save dispatch_by_year to separate Dispatch_Data tab
+        if 'dispatch_by_year' in result_data and result_data['dispatch_by_year']:
+            from app.utils.dispatch_persistence import save_dispatch_data
+            save_dispatch_data(site_name, stage, version, result_data['dispatch_by_year'])
+        
         return True
     except Exception as e:
         print(f"Error saving site stage result: {e}")
@@ -651,6 +656,14 @@ def load_site_stage_result(site_name: str, stage: str) -> Optional[Dict]:
                     result['complete'] = bool(complete_val)
                 else:
                     result['complete'] = bool(complete_val)
+                
+                # Load dispatch_by_year from separate Dispatch_Data tab
+                from app.utils.dispatch_persistence import load_dispatch_data
+                result['dispatch_by_year'] = load_dispatch_data(
+                    site_name, 
+                    stage, 
+                    result.get('version', 1)
+                )
                 
                 return result
         
