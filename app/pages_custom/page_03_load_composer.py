@@ -308,7 +308,7 @@ def render():
             # Generate and visualize trajectory
             from app.utils.load_backend import generate_full_trajectory
             trajectory = generate_full_trajectory(
-                edited_df.to_dict('records'),
+                edited_steps_it,
                 pue,
                 planning_horizon=15
             )
