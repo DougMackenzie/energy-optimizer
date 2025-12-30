@@ -171,7 +171,25 @@ def render():
     st.markdown("#### 15-Year Energy Stack Forecast")
     if has_results:
         from app.utils.energy_stack_chart import render_energy_stack_forecast
-        render_energy_stack_forecast(equipment, selected_site)
+        
+        # Extract optimizer data for chart
+        equipment_by_year = result_data.get('equipment_by_year')
+        load_trajectory = result_data.get('load_trajectory')
+        
+        # Get grid constraints
+        result_constraints = result_data.get('constraints', {})
+        grid_available_year = result_constraints.get('grid_available_year')
+        grid_capacity_mw = result_constraints.get('grid_capacity_mw', 0)
+        
+        # Render chart with full data
+        render_energy_stack_forecast(
+            equipment=equipment,
+            selected_site=selected_site,
+            equipment_by_year=equipment_by_year,
+            load_trajectory=load_trajectory,
+            grid_available_year=grid_available_year,
+            grid_capacity_mw=grid_capacity_mw,
+        )
     
     # === NEW: Constraint Analysis & Shadow Pricing ===
     if has_results:

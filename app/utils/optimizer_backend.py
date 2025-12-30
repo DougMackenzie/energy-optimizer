@@ -300,6 +300,22 @@ def run_heuristic_optimization(site_data: Dict, problem_num: int, load_profile: 
             # Equipment (MW/MWh)
             'equipment': getattr(result, 'equipment_config', {}) if not isinstance(result, dict) else result.get('equipment_config', {}),
             
+            # === NEW FIELDS FOR CHART INTEGRATION ===
+            # Equipment by year (from v2.1.1 optimizer)
+            'equipment_by_year': getattr(result, 'equipment_by_year', None) if not isinstance(result, dict) else result.get('equipment_by_year'),
+            
+            # Load trajectory (from backend)
+            'load_trajectory': load_trajectory,
+            
+            # Constraints (for chart to respect grid_available_year)
+            'constraints': {
+                'grid_available_year': constraints.get('grid_available_year'),
+                'grid_capacity_mw': constraints.get('grid_capacity_mw', 0),
+                'nox_tpy_annual': constraints.get('nox_tpy_annual'),
+                'gas_supply_mcf_day': constraints.get('gas_supply_mcf_day'),
+                'land_area_acres': constraints.get('land_area_acres'),
+            },
+            
             # ===NEW: Equipment Details with counts, electrical specs, reliability ===
             # Provides complete metadata for integration export (ETAP, PSS/e, Windchill RAM)
             'equipment_details': _build_equipment_details(
