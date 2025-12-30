@@ -17,8 +17,8 @@ def migrate_load_profiles():
     # Connect to Google Sheets
     client = gspread.service_account(filename='credentials.json')
     
-    # Open spreadsheet
-    from config.settings import GOOGLE_SHEET_ID as SHEET_ID
+    # Hardcode to avoid import issues
+    SHEET_ID = "1a3AhvgtwyoNtxEVOJt82gwzLNt13c8uDttKHg1eB0so"
     spreadsheet = client.open_by_key(SHEET_ID)
     worksheet = spreadsheet.worksheet("Load_Profiles")
     
@@ -56,9 +56,16 @@ def migrate_load_profiles():
         missing = required_cols[len(headers):]
         print(f"\n➕ Adding {len(missing)} new columns: {missing}")
         
+        # Expand sheet if needed
+        current_cols = worksheet.col_count
+        needed_cols = len(required_cols)
+        if current_cols < needed_cols:
+            print(f"  ⤵️ Expanding sheet from {current_cols} to {needed_cols} columns")
+            worksheet.resize(rows=worksheet.row_count, cols=needed_cols)
+        
         # Update header row
         header_range = f'{chr(65 + len(headers))}1:{chr(65 + len(required_cols) - 1)}1'
-        worksheet.update(header_range, [missing])
+        worksheet.update(values=[missing], range_name=header_range)
     
     print(f"\n🔄 Processing {len(all_records)} sites...")
     
