@@ -141,8 +141,32 @@ def render():
     # Load actual load profile if available
     load_profile_8760 = load_actual_8760_profile(site_obj, selected_site, year_num)
     
-    # Generate 8760 dispatch data based on actual load and optimization equipment
-    dispatch_df = generate_8760_dispatch(equipment, load_profile_8760)
+    # Get actual dispatch from optimizer results (priority #1)
+    actual_year = 2027 + (year_num - 1)  # Convert Year 1 -> 2027, Year 2 -> 2028, etc.
+    dispatch_df = None
+    
+    if 'dispatch_by_year' in result_data and actual_year in result_data['dispatch_by_year']:
+        # Use optimizer's actual dispatch
+        dispatch_result = result_data['dispatch_by_year'][actual_year]
+        if hasattr(dispatch_result, 'dispatch_df'):
+            dispatch_df = dispatch_result.dispatch_df.copy()
+            print(f"✅ Using optimizer dispatch for year {actual_year}")
+        elif isinstance(dispatch_result, pd.DataFrame):
+            dispatch_df = dispatch_result.copy()
+            print(f"✅ Using optimizer dispatch DataFrame for year {actual_year}")
+    
+    # Respect grid_available_year constraint
+    grid_available_year = result_data.get('constraints', {}).get('grid_available_year')
+    if dispatch_df is not None and grid_available_year and actual_year < grid_available_year:
+        # Zero out grid before it's available
+        if 'grid_mw' in dispatch_df.columns:
+            dispatch_df['grid_mw'] = 0
+            print(f"⚠️ Grid zeroed - not available until {grid_available_year} (current year: {actual_year})")
+    
+    # Fallback: Generate synthetic dispatch if optimizer data not available
+    if dispatch_df is None:
+        print(f"⚠️ No optimizer dispatch for year {actual_year}, generating synthetic data")
+        dispatch_df = generate_8760_dispatch(equipment, load_profile_8760)
     
     # 8760 Hourly Dispatch Chart
     st.markdown("#### 8760 Hourly Dispatch")
