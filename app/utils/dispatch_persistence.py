@@ -56,11 +56,28 @@ def save_dispatch_data(site_name: str, stage: str, version: int, dispatch_by_yea
                 int(row.get('version', 0)) == version):
                 rows_to_delete.append(idx + 2)  # +2 for 1-indexing and header
         
-        # Delete from bottom to top to preserve row numbers
+        # Delete from bottom to top - use BATCH delete to avoid quota
         if rows_to_delete:
             print(f"🗑️  Deleting {len(rows_to_delete)} existing rows")
-            for row_idx in sorted(rows_to_delete, reverse=True):
-                worksheet.delete_rows(row_idx)
+            # CRITICAL: Delete in contiguous ranges to minimize API calls
+            sorted_rows = sorted(rows_to_delete)
+            ranges = []
+            start = sorted_rows[0]
+            end = sorted_rows[0]
+            for row in sorted_rows[1:]:
+                if row == end + 1:
+                    end = row
+                else:
+                    ranges.append((start, end))
+                    start = row
+                    end = row
+            ranges.append((start, end))
+            
+            # Delete from bottom to top
+            for start, end in reversed(ranges):
+                count = end - start + 1
+                worksheet.delete_rows(start, count)
+                print(f"  ✓ Deleted rows {start}-{end} ({count} rows)")
         
         # Prepare batch data
         rows_to_add = []
