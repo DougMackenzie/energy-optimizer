@@ -16,6 +16,9 @@ def generate_8760_load_profile(
     """
     Generate realistic 8760 hourly load profile
     
+    PRIORITY: Uses detailed profile from Load page if available
+    FALLBACK: Generates simple pattern if not found
+    
     Args:
         base_load_mw: Peak facility load (MW)
         load_factor: Average capacity utilization (0-1)
@@ -24,6 +27,22 @@ def generate_8760_load_profile(
     Returns:
         Array of 8760 hourly load values (MW)
     """
+    
+    # PRIORITY 1: Check for detailed load profile from Load page
+    try:
+        import streamlit as st
+        if 'load_8760_mw' in st.session_state:
+            load_8760 = st.session_state['load_8760_mw']
+            if isinstance(load_8760, (list, np.ndarray)):
+                profile = np.array(load_8760)
+                if len(profile) == 8760:
+                    print(f"✓ Using detailed 8760 profile from Load page (peak={np.max(profile):.1f} MW)")
+                    return profile
+    except:
+        pass
+    
+    # FALLBACK: Generate simple pattern
+    print(f"⚠️  Generating fallback load pattern")
     
     hours = 8760
     load_profile = np.zeros(hours)
@@ -57,7 +76,6 @@ def generate_8760_load_profile(
     load_profile = np.clip(load_profile, base_load_mw * 0.5, base_load_mw)
     
     return load_profile
-
 
 def dispatch_equipment(
     load_profile: np.ndarray,

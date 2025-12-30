@@ -597,8 +597,23 @@ def render():
             
             st.plotly_chart(fig, use_container_width=True, key='tab4_flexibility_profile')
             
-            # Store load data in session state
+            # Store load data in session state for DR page
             st.session_state.load_profile_dr['load_data'] = load_data
+            
+            # ALSO store 8760 arrays for optimizer use
+            st.session_state['load_8760_mw'] = load_data['total_load_mw']  # Total facility load
+            st.session_state['firm_load_8760_mw'] = load_data['firm_load_mw']  # Non-flexible portion
+            st.session_state['flex_load_8760_mw'] = load_data['total_flex_mw']  # Flexible portion
+            
+            # Store metadata
+            st.session_state['load_8760_metadata'] = {
+                'peak_it_mw': peak_it_mw,
+                'peak_facility_mw': load_data['summary']['peak_facility_mw'],
+                'pue': pue,
+                'load_factor': load_factor / 100.0,
+                'workload_mix': st.session_state.load_profile_dr['workload_mix'],
+                'cooling_flex_pct': st.session_state.load_profile_dr['cooling_flex']
+            }
         
         else:
             st.warning("⚠️ Please fix workload mix to sum to 100% before viewing DR economics.")
