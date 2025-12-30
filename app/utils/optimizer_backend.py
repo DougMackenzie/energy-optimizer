@@ -174,6 +174,29 @@ def run_heuristic_optimization(site_data: Dict, problem_num: int, load_profile: 
             'iso': site_data.get('iso')
         }
         
+        # EMERGENCY FIX: Load missing data from Load_Profiles if not in site dict
+        site_name = site_data.get('name')
+        if not site_data.get('load_trajectory_json'):
+            print(f"⚠️ load_trajectory_json MISSING for {site_name}")
+            try:
+                import gspread
+                from config.settings import GOOGLE_SHEET_ID
+                gc_emergency = gspread.service_account(filename='credentials.json')
+                spreadsheet = gc_emergency.open_by_key(GOOGLE_SHEET_ID)
+                profiles_ws = spreadsheet.worksheet("Load_Profiles")
+                profiles_data = profiles_ws.get_all_records()
+                
+                for profile in profiles_data:
+                    if profile.get('site_name') == site_name:
+                        site_data['load_trajectory_json'] = profile.get('load_trajectory_json', '')
+                        site_data['grid_available_year'] = profile.get('grid_available_year')
+                        site_data['grid_capacity_mw'] = profile.get('grid_capacity_mw')
+                        site_data['flexibility_pct'] = profile.get('flexibility_pct', 30.6)
+                        print(f"✓ Loaded from Load_Profiles: {site_data['load_trajectory_json'][:50] if site_data['load_trajectory_json'] else 'N/A'}...")
+                        break
+            except Exception as e:
+                print(f"Failed to load profile: {e}")
+        
         # Read load trajectory from backend (for v2.1.1)
         # Define load_mw first for later use (lines 316-318)
         load_mw = site_data.get('facility_mw', 500)
