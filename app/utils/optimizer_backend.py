@@ -176,8 +176,14 @@ def run_heuristic_optimization(site_data: Dict, problem_num: int, load_profile: 
         
         # EMERGENCY FIX: Load missing data from Load_Profiles if not in site dict
         site_name = site_data.get('name')
-        if not site_data.get('load_trajectory_json'):
-            print(f"⚠️ load_trajectory_json MISSING for {site_name}")
+        needs_load_trajectory = not site_data.get('load_trajectory_json')
+        needs_grid_params = not site_data.get('grid_available_year') or not site_data.get('grid_capacity_mw')
+        
+        if needs_load_trajectory or needs_grid_params:
+            if needs_load_trajectory:
+                print(f"⚠️ load_trajectory_json MISSING for {site_name}")
+            if needs_grid_params:
+                print(f"⚠️ Grid parameters MISSING for {site_name}")
             try:
                 import gspread
                 from config.settings import GOOGLE_SHEET_ID
@@ -188,11 +194,18 @@ def run_heuristic_optimization(site_data: Dict, problem_num: int, load_profile: 
                 
                 for profile in profiles_data:
                     if profile.get('site_name') == site_name:
-                        site_data['load_trajectory_json'] = profile.get('load_trajectory_json', '')
+                        # Load trajectory if missing
+                        if needs_load_trajectory:
+                            site_data['load_trajectory_json'] = profile.get('load_trajectory_json', '')
+                        
+                        # ALWAYS load grid parameters from Load_Profiles
                         site_data['grid_available_year'] = profile.get('grid_available_year')
                         site_data['grid_capacity_mw'] = profile.get('grid_capacity_mw')
                         site_data['flexibility_pct'] = profile.get('flexibility_pct', 30.6)
-                        print(f"✓ Loaded from Load_Profiles: {site_data['load_trajectory_json'][:50] if site_data['load_trajectory_json'] else 'N/A'}...")
+                        
+                        print(f"✓ Loaded for {site_name}: grid_year={site_data.get('grid_available_year')}, grid_cap={site_data.get('grid_capacity_mw')} MW")
+                        if needs_load_trajectory:
+                            print(f"✓ Loaded trajectory: {site_data.get('load_trajectory_json', '')[:50]}...")
                         break
             except Exception as e:
                 print(f"Failed to load profile: {e}")
