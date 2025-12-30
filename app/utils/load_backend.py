@@ -1,6 +1,8 @@
 """
 Load Configuration Backend
 Save and load facility load trajectories and parameters to/from Google Sheets
+
+ARCHITECTURE: Facility Load is source of truth, IT load is derived (Facility / PUE)
 """
 
 import json
@@ -18,17 +20,17 @@ def save_load_configuration(site_name: str, load_config: dict) -> bool:
     """
     Save load configuration to Google Sheets Load_Profiles tab
     
-    Stores only growth_steps (source data), NOT load_trajectory (derived data).
-    Trajectory will be regenerated from growth_steps on load.
+   Stores growth_steps with FACILITY loads (source of truth).
+    IT loads are derived: IT = Facility / PUE
     
     Args:
         site_name: Name of the site
         load_config: Dict with load parameters and trajectory
-            - peak_it_load_mw: float
+            - peak_facility_load_mw: float (derived from trajectory)
             - pue: float
             - load_factor_pct: float
             - growth_enabled: bool
-            - growth_steps: list of {'year': int, 'load_mw': float}
+            - growth_steps: list of {'year': int, 'facility_load_mw': float}
     
     Returns:
         True if successful
@@ -49,20 +51,26 @@ def save_load_configuration(site_name: str, load_config: dict) -> bool:
                 break
         
         # Extract values from load_config
-        peak_it_load_mw = float(load_config.get('peak_it_load_mw', 600.0))
         pue = float(load_config.get('pue', 1.25))
         load_factor_pct = float(load_config.get('load_factor_pct', 85.0))
         growth_enabled = bool(load_config.get('growth_enabled', True))
         growth_steps = load_config.get('growth_steps', [])
         
+        # Calculate peak_it_load from trajectory
+        if growth_steps:
+            peak_facility = max(step.get('facility_load_mw', 0) for step in growth_steps)
+            peak_it_load_mw = round(peak_facility / pue, 1)
+        else:
+            peak_it_load_mw = float(load_config.get('peak_it_load_mw', 600.0))
+        
         # Prepare row data for columns J-O (NEW schema)
-        # NOTE: We do NOT save load_trajectory_json - it's regenerated from growth_steps
+        # NOTE: growth_steps now stores FACILITY loads, not IT loads
         new_cols_data = [
-            round(peak_it_load_mw, 1),  # J: peak_it_load_mw
+            round(peak_it_load_mw, 1),  # J: peak_it_load_mw (derived)
             float(pue),  # K: pue
             float(load_factor_pct),  # L: load_factor_pct
             growth_enabled,  # M: growth_enabled
-            json.dumps(growth_steps),  # N: growth_steps_json
+            json.dumps(growth_steps),  # N: growth_steps_json (FACILITY loads!)
             datetime.now().isoformat(),  # O: last_updated
         ]
         
@@ -104,13 +112,13 @@ def load_load_configuration(site_name: str) -> Dict:
     """
     Load load configuration from Google Sheets
     
-    Regenerates load_trajectory from growth_steps - does NOT read stored trajectory.
+    Loads growth_steps with FACILITY loads. Calculates trajectory directly.
     
     Args:
         site_name: Name of the site
     
     Returns:
-       Dict with load config including regenerated trajectory, or default config if not found
+        Dict with load config including facility trajectory, or default config if not found
     """
     try:
         from config.settings import GOOGLE_SHEET_ID as SHEET_ID
@@ -125,28 +133,49 @@ def load_load_configuration(site_name: str) -> Dict:
             if record.get('site_name') == site_name:
                 # Parse growth_steps from JSON
                 growth_steps_json = record.get('growth_steps_json', '[]')
-                growth_steps = json.loads(growth_steps_json) if growth_steps_json else []
+                growth_steps_raw = json.loads(growth_steps_json) if growth_steps_json else []
                 
-                # Get PUE for trajectory generation
+                # Get PUE
                 pue = float(record.get('pue', 1.25))
                 
+                # MIGRATION: Convert old IT load format to facility load format
+                growth_steps = []
+                for step in growth_steps_raw:
+                    if 'facility_load_mw' in step:
+                        # New format - already has facility load
+                        growth_steps.append(step)
+                    elif 'load_mw' in step:
+                        # Old format - has IT load, convert to facility
+                        growth_steps.append({
+                            'year': step['year'],
+                            'facility_load_mw': round(step['load_mw'] * pue, 1)
+                        })
+                
+                # Calculate peak facility from trajectory
+                if growth_steps:
+                    peak_facility = max(step['facility_load_mw'] for step in growth_steps)
+                    peak_it_load = round(peak_facility / pue, 1)
+                else:
+                    peak_it_load = float(record.get('peak_it_load_mw', 600))
+                    peak_facility = round(peak_it_load * pue, 1)
+                
                 config = {
-                    'peak_it_load_mw': float(record.get('peak_it_load_mw', 600)),
+                    'peak_it_load_mw': peak_it_load,
+                    'peak_facility_load_mw': peak_facility,
                     'pue': pue,
                     'load_factor_pct': float(record.get('load_factor_pct', 85)),
                     'growth_enabled': bool(record.get('growth_enabled', True)),
-                    'growth_steps': growth_steps,
+                    'growth_steps': growth_steps,  # FACILITY loads
                     'last_updated': record.get('last_updated', ''),
                 }
                 
-                # REGENERATE trajectory from growth_steps (don't use stored trajectory)
+                # Generate full trajectory from growth_steps (facility loads)
                 if growth_steps:
-                    config['load_trajectory'] = generate_full_trajectory(growth_steps, pue, planning_horizon=15)
+                    config['load_trajectory'] = generate_full_trajectory_facility(growth_steps, planning_horizon=15)
                 else:
-                    # If no growth steps, create flat trajectory
                     config['load_trajectory'] = {y: 0.0 for y in range(2027, 2042)}
                 
-                print(f"✓ Loaded load config for {site_name} (regenerated trajectory from {len(growth_steps)} growth steps)")
+                print(f"✓ Loaded load config for {site_name} ({len(growth_steps)} growth steps, facility loads)")
                 return config
         
         # Return default if not found
@@ -160,13 +189,12 @@ def load_load_configuration(site_name: str) -> Dict:
         return get_default_load_config()
 
 
-def generate_full_trajectory(growth_steps: list, pue: float, planning_horizon: int = 15) -> dict:
+def generate_full_trajectory_facility(growth_steps: list, planning_horizon: int = 15) -> dict:
     """
-    Generate full 15-year trajectory from growth steps
+    Generate full 15-year trajectory from growth steps (FACILITY loads)
     
     Args:
-        growth_steps: List of {'year': int, 'load_mw': float}
-        pue: Power Usage Effectiveness
+        growth_steps: List of {'year': int, 'facility_load_mw': float}
         planning_horizon: Number of years
     
     Returns:
@@ -176,7 +204,6 @@ def generate_full_trajectory(growth_steps: list, pue: float, planning_horizon: i
     start_year = 2027
     
     if not growth_steps:
-        # No growth steps defined, use flat trajectory
         return {start_year + i: 0.0 for i in range(planning_horizon)}
     
     # Sort steps by year
@@ -185,68 +212,38 @@ def generate_full_trajectory(growth_steps: list, pue: float, planning_horizon: i
     for i in range(planning_horizon):
         year = start_year + i
         
-        # Find applicable IT load for this year
-        it_load = 0
+        # Find applicable facility load for this year
+        facility_load = 0
         for step in sorted_steps:
             if year >= step['year']:
-                it_load = step['load_mw']
+                facility_load = step['facility_load_mw']
         
-        # Convert IT load to facility load
-        facility_load = it_load * pue
         trajectory[year] = round(facility_load, 2)
     
     return trajectory
 
 
 def get_default_load_config() -> Dict:
-    """Return default load configuration with regenerated trajectory"""
+    """Return default load configuration with facility loads"""
     default_steps = [
-        {'year': 2027, 'load_mw': 0},
-        {'year': 2028, 'load_mw': 150},
-        {'year': 2029, 'load_mw': 300},
-        {'year': 2030, 'load_mw': 450},
-        {'year': 2031, 'load_mw': 600},
+        {'year': 2027, 'facility_load_mw': 0},
+        {'year': 2028, 'facility_load_mw': 187.5},
+        {'year': 2029, 'facility_load_mw': 375},
+        {'year': 2030, 'facility_load_mw': 562.5},
+        {'year': 2031, 'facility_load_mw': 750},
     ]
     
     default_pue = 1.25
+    peak_facility = 750
+    peak_it = round(peak_facility / default_pue, 1)
     
     return {
-        'peak_it_load_mw': 600.0,
+        'peak_it_load_mw': peak_it,
+        'peak_facility_load_mw': peak_facility,
         'pue': default_pue,
         'load_factor_pct': 85.0,
         'growth_enabled': True,
-        'growth_steps': default_steps,
-        'load_trajectory': generate_full_trajectory(default_steps, default_pue, 15),
+        'growth_steps': default_steps,  # FACILITY loads
+        'load_trajectory': generate_full_trajectory_facility(default_steps, 15),
         'last_updated': '',
     }
-
-
-def infer_growth_steps_from_trajectory(trajectory_json: str, pue: float = 1.25) -> list:
-    """
-    Infer growth steps from existing trajectory JSON
-    For backward compatibility with old data
-    
-    Args:
-        trajectory_json: JSON string of {year: facility_load_mw}
-        pue: PUE to convert facility load back to IT load
-    
-    Returns:
-        List of {'year': int, 'load_mw': float}
-    """
-    try:
-        trajectory = json.loads(trajectory_json)
-        steps = []
-        
-        prev_it_load = 0
-        for year_str, facility_load in sorted(trajectory.items()):
-            year = int(year_str)
-            it_load = round(facility_load / pue, 1)
-            
-            # Only add step if load changed
-            if it_load != prev_it_load:
-                steps.append({'year': year, 'load_mw': it_load})
-                prev_it_load = it_load
-        
-        return steps
-    except:
-        return []

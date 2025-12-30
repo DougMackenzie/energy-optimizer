@@ -61,6 +61,8 @@ def render():
         st.session_state.load_config = load_load_configuration(selected_site)
         st.session_state.load_config_site = selected_site
         print(f"✓ Loaded load config for {selected_site} from backend")
+        print(f"DEBUG - Loaded growth_steps (IT): {st.session_state.load_config.get('growth_steps')}")
+        print(f"DEBUG - PUE: {st.session_state.load_config.get('pue')}")
     
     st.markdown("---")
     # Add button to load 600MW sample problem
@@ -194,16 +196,20 @@ def render():
         col1, col2, col3 = st.columns(3)
         
         with col1:
-            peak_it_mw = st.number_input(
-                "Peak IT Load (MW)", 
-                min_value=10.0, max_value=2000.0, 
-                value=float(st.session_state.load_config.get('peak_it_load_mw', 600.0)), 
-                step=10.0,
-                help="Peak IT equipment load excluding cooling",
-                key='tab1_peak_it'
+            # Peak IT is now DERIVED from peak facility / PUE
+            peak_facility_mw = float(st.session_state.load_config.get('peak_facility_load_mw', 750.0))
+            peak_it_mw = round(peak_facility_mw / pue, 1)
+            
+            # Display as read-only metric
+            st.metric(
+                "Peak IT Load (MW)",
+                f"{peak_it_mw:.1f}",
+                help="Calculated as Peak Facility / PUE"
             )
+            st.caption("= Peak Facility / PUE")
+            
+            # Store calculated value
             st.session_state.load_config['peak_it_load_mw'] = peak_it_mw
-            # Also update DR config for compatibility
             st.session_state.load_profile_dr['peak_it_mw'] = peak_it_mw
         
         with col2:
@@ -251,25 +257,19 @@ def render():
         
         if enable_growth:
             st.markdown("**Edit Growth Steps:**")
-            st.caption("Define when Facility load (IT + cooling) reaches each milestone. IT Load = Facility Load / PUE.")
+            st.caption("Define when Facility load (IT + cooling) reaches each milestone. Peak IT will be calculated automatically.")
             
-            # Get current growth steps (stored as IT load)
+            # Get current growth steps (FACILITY loads - source of truth)
             import pandas as pd
-            growth_steps_it = st.session_state.load_config.get('growth_steps', [
-                {'year': 2027, 'load_mw': 0},
-                {'year': 2028, 'load_mw': 150},
-                {'year': 2029, 'load_mw': 300},
-                {'year': 2030, 'load_mw': 450},
-                {'year': 2031, 'load_mw': 600},
+            growth_steps = st.session_state.load_config.get('growth_steps', [
+                {'year': 2027, 'facility_load_mw': 0},
+                {'year': 2028, 'facility_load_mw': 187.5},
+                {'year': 2029, 'facility_load_mw': 375},
+                {'year': 2030, 'facility_load_mw': 562.5},
+                {'year': 2031, 'facility_load_mw': 750},
             ])
             
-            # Convert IT load to Facility load for display
-            growth_steps_facility = [
-                {'year': step['year'], 'facility_load_mw': round(step['load_mw'] * pue, 1)}
-                for step in growth_steps_it
-            ]
-            
-            growth_df = pd.DataFrame(growth_steps_facility)
+            growth_df = pd.DataFrame(growth_steps)
             
             # Editable table
             edited_df = st.data_editor(
@@ -296,20 +296,17 @@ def render():
                 key='tab1_trajectory_editor'
             )
             
-            # Convert Facility load back to IT load for storage
-            edited_steps_it = [
-                {'year': int(row['year']), 'load_mw': round(row['facility_load_mw'] / pue, 1)}
-                for _, row in edited_df.iterrows()
-            ]
             
-            # Update session state with IT load (for backend storage)
-            st.session_state.load_config['growth_steps'] = edited_steps_it
+            # Update session state with facility loads (source of truth)\n            st.session_state.load_config['growth_steps'] = edited_df.to_dict('records')\n            
+            # Update peak facility load from trajectory
+            if len(edited_df) > 0:
+                peak_facility = edited_df['facility_load_mw'].max()
+                st.session_state.load_config['peak_facility_load_mw'] = peak_facility
             
-            # Generate and visualize trajectory
-            from app.utils.load_backend import generate_full_trajectory
-            trajectory = generate_full_trajectory(
-                edited_steps_it,
-                pue,
+            # Generate and visualize trajectory (facility loads)
+            from app.utils.load_backend import generate_full_trajectory_facility
+            trajectory = generate_full_trajectory_facility(
+                edited_df.to_dict('records'),
                 planning_horizon=15
             )
             
