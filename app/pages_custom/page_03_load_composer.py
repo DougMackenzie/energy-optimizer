@@ -193,6 +193,9 @@ def render():
         st.markdown("#### Basic Facility Parameters")
         
         # Use load_config from backend
+        # Get PUE first (needed for calculations in col1)
+        pue = float(st.session_state.load_config.get('pue', 1.25))
+        
         col1, col2, col3 = st.columns(3)
         
         with col1:
@@ -216,7 +219,7 @@ def render():
             pue = st.number_input(
                 "PUE", 
                 min_value=1.0, max_value=2.0, 
-                value=float(st.session_state.load_config.get('pue', 1.25)), 
+                value=pue, 
                 step=0.01,
                 help="Power Usage Effectiveness (1.2-1.4 typical for modern facilities)",
                 key='tab1_pue'
