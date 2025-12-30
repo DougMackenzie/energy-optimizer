@@ -314,7 +314,7 @@ def render():
                 yaxis_title="Facility Load (MW)",
                 height=400
             )
-            st.plotly_chart(fig_traj, use_container_width=True)
+            st.plotly_chart(fig_traj, use_container_width=True, key='tab6_trajectory_chart')
         
         # Save button
         st.markdown("---")
@@ -470,7 +470,7 @@ def render():
                 yaxis_title="Facility Load (MW)",
                 height=400
             )
-            st.plotly_chart(fig_traj, use_container_width=True)
+            st.plotly_chart(fig_traj, use_container_width=True, key='tab1_trajectory_chart')
             
             # Also update load_profile_dr for compatibility
             st.session_state.load_profile_dr['load_trajectory'] = trajectory
@@ -589,7 +589,7 @@ def render():
                 marker_colors=['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b']
             )])
             fig_pie.update_layout(title="Workload Composition", height=350)
-            st.plotly_chart(fig_pie, use_container_width=True)
+            st.plotly_chart(fig_pie, use_container_width=True, key='tab2_workload_pie')
     
     # =========================================================================
     # TAB 3: COOLING FLEXIBILITY
@@ -701,7 +701,7 @@ def render():
                 yaxis_title="Annual Revenue ($)",
                 height=350
             )
-            st.plotly_chart(fig_revenue, use_container_width=True)
+            st.plotly_chart(fig_revenue, use_container_width=True, key='tab4_dr_revenue')
             
             st.markdown("---")
             st.markdown("#### Flexibility Profile (First Week)")
@@ -740,7 +740,7 @@ def render():
                 legend=dict(orientation="h", yanchor="bottom", y=1.02)
             )
             
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, use_container_width=True, key='tab4_flexibility_profile')
             
             # Store load data in session state
             st.session_state.load_profile_dr['load_data'] = load_data
