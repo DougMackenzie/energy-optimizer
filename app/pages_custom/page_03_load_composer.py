@@ -190,50 +190,32 @@ def render():
     # TAB 1: BASIC FACILITY PARAMETERS
     # =========================================================================
     with tab1:
+# New version - lines 193-255
         st.markdown("#### Basic Facility Parameters")
         
-        # Use load_config from backend
-        # Get PUE first (needed for calculations in col1)
-        pue = float(st.session_state.load_config.get('pue', 1.25))
+        # Get peak facility from trajectory (source of truth)
+        growth_steps = st.session_state.load_config.get('growth_steps', [])
+        if growth_steps:
+            peak_facility_mw = max(step.get('facility_load_mw', 0) for step in growth_steps)
+        else:
+            peak_facility_mw = float(st.session_state.load_config.get('peak_facility_load_mw', 750.0))
         
+        # INPUT WIDGETS (PUE first so it's available for calculations)
         col1, col2, col3 = st.columns(3)
         
         with col1:
-            # Peak Facility is from trajectory (source of truth)
-            growth_steps = st.session_state.load_config.get('growth_steps', [])
-            if growth_steps:
-                peak_facility_mw = max(step.get('facility_load_mw', 0) for step in growth_steps)
-            else:
-                peak_facility_mw = float(st.session_state.load_config.get('peak_facility_load_mw', 750.0))
-            
-            # Peak IT is DERIVED: Facility / PUE
-            peak_it_mw = round(peak_facility_mw / pue, 1)
-            
-            # Display as read-only metric
-            st.metric(
-                "Peak IT Load (MW)",
-                f"{peak_it_mw:.1f}",
-                help="Calculated as Peak Facility / PUE"
-            )
-            st.caption("= Peak Facility / PUE")
-            
-            # Store calculated value
-            st.session_state.load_config['peak_it_load_mw'] = peak_it_mw
-            st.session_state.load_profile_dr['peak_it_mw'] = peak_it_mw
-        
-        with col2:
             pue = st.number_input(
                 "PUE", 
                 min_value=1.0, max_value=2.0, 
-                value=pue, 
+                value=float(st.session_state.load_config.get('pue', 1.25)),
                 step=0.01,
-                help="Power Usage Effectiveness (1.2-1.4 typical for modern facilities)",
+                help="Power Usage Effectiveness",
                 key='tab1_pue'
             )
             st.session_state.load_config['pue'] = pue
             st.session_state.load_profile_dr['pue'] = pue
         
-        with col3:
+        with col2:
             load_factor = st.slider(
                 "Load Factor (%)", 
                 min_value=50, max_value=100, 
@@ -244,14 +226,22 @@ def render():
             st.session_state.load_config['load_factor_pct'] = float(load_factor)
             st.session_state.load_profile_dr['load_factor'] = load_factor / 100.0
         
-        # Calculate derived values (peak_facility already calculated from trajectory above)
-        avg_facility_mw = peak_facility_mw * (load_factor / 100.0)
+        with col3:
+            st.write("")  # Placeholder
         
+        # CALCULATIONS (after inputs!)
+        peak_it_mw = round(peak_facility_mw / pue, 1)
+        avg_facility_mw = peak_facility_mw * (load_factor / 100.0)
+        st.session_state.load_config['peak_it_load_mw'] = peak_it_mw  
+        st.session_state.load_profile_dr['peak_it_mw'] = peak_it_mw
+        
+        # METRICS
         st.markdown("---")
-        col_m1, col_m2, col_m3 = st.columns(3)
-        col_m1.metric("Peak Facility Load", f"{peak_facility_mw:.1f} MW")
-        col_m2.metric("Average Load", f"{avg_facility_mw:.1f} MW")
-        col_m3.metric("Annual Energy", f"{avg_facility_mw * 8760 / 1000:.1f} GWh")
+        col_m1, col_m2, col_m3, col_m4 = st.columns(4)
+        col_m1.metric("Peak IT", f"{peak_it_mw:.1f} MW", help="= Facility / PUE")
+        col_m2.metric("Peak Facility", f"{peak_facility_mw:.1f} MW")
+        col_m3.metric("Avg Load", f"{avg_facility_mw:.1f} MW")
+        col_m4.metric("Annual Energy", f"{avg_facility_mw * 8760 / 1000:.1f} GWh")
         
         # TRAJECTORY EDITOR (moved from Tab 6)
         st.markdown("#### 📈 Load Growth Trajectory")
