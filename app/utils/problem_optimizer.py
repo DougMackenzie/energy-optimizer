@@ -184,6 +184,18 @@ def prepare_milp_inputs(
         'use_fast_milp': True,
     }
     
+    # === DEBUG LOGGING ===
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.info("="*80)
+    logger.info(f"🐛 DEBUG: Problem {problem_num} - Preparing MILP Inputs")
+    logger.info("="*80)
+    logger.info(f"Peak load from trajectory: {peak_load} MW")
+    logger.info(f"Load trajectory: {load_trajectory}")
+    logger.info(f"Constraints dict: {constraints}")
+    logger.info(f"Constraints keys: {list(constraints.keys())}")
+    logger.info("="*80)
+    
     # Problem-specific adjustments
     if problem_num == 1:
         # Greenfield: minimize LCOE

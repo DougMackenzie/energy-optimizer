@@ -1,0 +1,26 @@
+{
+    "type": "FeatureCollection",
+    "features": [
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "Water Main",
+                "diameter_in": 24,
+                "type": "Water"
+            },
+            "geometry": {
+                "type": "LineString",
+                "coordinates": [
+                    [
+                        -77.50699999999999,
+                        39.033
+                    ],
+                    [
+                        -77.467,
+                        39.023
+                    ]
+                ]
+            }
+        }
+    ]
+}

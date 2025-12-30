@@ -7,24 +7,92 @@ from datetime import datetime
 import json
 
 
-def get_sample_site():
-    """Sample site: Austin Greenfield Datacenter"""
-    return {
-        'name': 'Austin Greenfield DC',
-        'location': 'Austin, TX',
-        'iso': 'ERCOT',
-        'it_capacity_mw': 500,
-        'pue': 1.22,
-        'facility_mw': 610,
-        'land_acres': 380,
-        'nox_limit_tpy': 95,
-        'gas_supply_mcf': 125000,
-        'voltage_kv': 345,
-        'coordinates': [30.267, -97.743],
-        'geojson_prefix': 'austin',
-        'problem_num': 1,
-        'problem_name': 'Greenfield Datacenter'
-    }
+def get_sample_sites():
+    """Sample sites for all 5 problem statements"""
+    return [
+        {
+            'name': 'Austin Greenfield DC',
+            'location': 'Austin, TX',
+            'iso': 'ERCOT',
+            'it_capacity_mw': 500,
+            'pue': 1.22,
+            'facility_mw': 610,
+            'land_acres': 380,
+            'nox_limit_tpy': 95,
+            'gas_supply_mcf': 125000,
+            'voltage_kv': 345,
+            'coordinates': [30.267, -97.743],
+            'geojson_prefix': 'austin',
+            'problem_num': 1,
+            'problem_name': 'Greenfield Datacenter'
+        },
+        {
+            'name': 'Dallas Brownfield Exp',
+            'location': 'Dallas, TX',
+            'iso': 'ERCOT',
+            'it_capacity_mw': 600,
+            'pue': 1.25,
+            'facility_mw': 750,
+            'land_acres': 600,
+            'nox_limit_tpy': 150,
+            'gas_supply_mcf': 200000,
+            'voltage_kv': 345,
+            'coordinates': [32.776, -96.797],
+            'geojson_prefix': 'dallas',
+            'problem_num': 2,
+            'problem_name': 'Brownfield Expansion',
+            'notes': 'Existing: 100MW Recip, LCOE $60/MWh'
+        },
+        {
+            'name': 'Phoenix Land Constrained',
+            'location': 'Phoenix, AZ',
+            'iso': 'CAISO',
+            'it_capacity_mw': 750,
+            'pue': 1.20,
+            'facility_mw': 900,
+            'land_acres': 200,
+            'nox_limit_tpy': 50,
+            'gas_supply_mcf': 20000,
+            'voltage_kv': 500,
+            'coordinates': [33.448, -112.074],
+            'geojson_prefix': 'phoenix',
+            'problem_num': 3,
+            'problem_name': 'Land Development'
+        },
+        {
+            'name': 'Chicago Grid Hub',
+            'location': 'Chicago, IL',
+            'iso': 'PJM',
+            'it_capacity_mw': 800,
+            'pue': 1.25,
+            'facility_mw': 1000,
+            'land_acres': 400,
+            'nox_limit_tpy': 100,
+            'gas_supply_mcf': 150000,
+            'voltage_kv': 345,
+            'coordinates': [41.878, -87.629],
+            'geojson_prefix': 'chicago',
+            'problem_num': 4,
+            'problem_name': 'Grid Services'
+        },
+        {
+            'name': 'Northern Virginia Bridge',
+            'location': 'Ashburn, VA',
+            'iso': 'PJM',
+            'it_capacity_mw': 1000,
+            'pue': 1.20,
+            'facility_mw': 1200,
+            'land_acres': 500,
+            'nox_limit_tpy': 150,
+            'gas_supply_mcf': 200000,
+            'voltage_kv': 500,
+            'coordinates': [39.043, -77.487],
+            'geojson_prefix': 'ashburn',
+            'problem_num': 5,
+            'problem_name': 'Bridge Power',
+            'notes': 'Grid available in 60 months'
+        }
+    ]
 
 
 def get_sample_optimization_results():
@@ -309,10 +377,14 @@ def save_sample_data_to_sheets():
     try:
         from app.utils.site_backend import save_site, save_site_stage_result
         
-        # Save sample site
-        sample_site = get_sample_site()
-        save_site(sample_site)
-        print(f"✓ Saved sample site: {sample_site['name']}")
+        # Save sample sites
+        sample_sites = get_sample_sites()
+        for site in sample_sites:
+            save_site(site)
+            print(f"✓ Saved sample site: {site['name']}")
+        
+        # Use Austin for results example
+        sample_site = sample_sites[0]
         
         # Save all 4 stage results
         results = get_sample_optimization_results()
@@ -332,7 +404,8 @@ def save_sample_data_to_sheets():
 
 if __name__ == "__main__":
     # Test data generation
-    site = get_sample_site()
+    sites = get_sample_sites()
+    site = sites[0]
     results = get_sample_optimization_results()
     
     print("Sample Site:")

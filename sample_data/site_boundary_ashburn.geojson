@@ -1,0 +1,40 @@
+{
+    "type": "FeatureCollection",
+    "features": [
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "Northern Virginia Bridge",
+                "type": "Boundary",
+                "area_acres": 500
+            },
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [
+                    [
+                        [
+                            -77.497,
+                            39.053
+                        ],
+                        [
+                            -77.47699999999999,
+                            39.053
+                        ],
+                        [
+                            -77.47699999999999,
+                            39.033
+                        ],
+                        [
+                            -77.497,
+                            39.033
+                        ],
+                        [
+                            -77.497,
+                            39.053
+                        ]
+                    ]
+                ]
+            }
+        }
+    ]
+}

@@ -1,0 +1,26 @@
+{
+    "type": "FeatureCollection",
+    "features": [
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "Gas Main",
+                "pressure_psi": 800,
+                "type": "Gas"
+            },
+            "geometry": {
+                "type": "LineString",
+                "coordinates": [
+                    [
+                        -77.50699999999999,
+                        39.028
+                    ],
+                    [
+                        -77.467,
+                        39.038
+                    ]
+                ]
+            }
+        }
+    ]
+}

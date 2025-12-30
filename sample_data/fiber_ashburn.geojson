@@ -1,0 +1,26 @@
+{
+    "type": "FeatureCollection",
+    "features": [
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "Fiber Trunk",
+                "provider": "Dark Fiber Co",
+                "type": "Fiber"
+            },
+            "geometry": {
+                "type": "LineString",
+                "coordinates": [
+                    [
+                        -77.50699999999999,
+                        39.048
+                    ],
+                    [
+                        -77.467,
+                        39.068000000000005
+                    ]
+                ]
+            }
+        }
+    ]
+}

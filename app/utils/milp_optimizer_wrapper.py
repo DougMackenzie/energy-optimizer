@@ -253,8 +253,17 @@ def optimize_with_milp(
         gas_limit = constraints.get('Gas_Supply_MCF_day', constraints.get('gas_supply_mcf_day', 50000))
         land_limit = constraints.get('Available_Land_Acres', constraints.get('land_area_acres', 500))
         
-        logger.info(f"  Constraints: NOx={nox_limit} tpy, Gas={gas_limit} MCF/day, Land={land_limit} acres")
-        
+        # === DEBUG LOGGING - CRITICAL VALUES ===
+        logger.info("="*80)
+        logger.info("🐛 DEBUG: MILP OPTIMIZATION INPUTS")
+        logger.info("="*80)
+        logger.info(f"CONSTRAINTS BEING PASSED TO OPTIMIZER:")
+        logger.info(f"  NOx_Limit_tpy: {nox_limit} tons/year")
+        logger.info(f"  Gas_Supply_MCF_day: {gas_limit} MCF/day")
+        logger.info(f"  Available_Land_Acres: {land_limit} acres")
+        logger.info(f"  Raw constraints dict keys: {list(constraints.keys())}")
+        logger.info(f"  Raw constraints dict: {constraints}")
+        logger.info("")
         # Validate load profile
         if not load_profile_dr:
             load_profile_dr = {}
@@ -262,7 +271,21 @@ def optimize_with_milp(
         peak_it_mw = load_profile_dr.get('peak_it_mw', 160.0)
         pue = load_profile_dr.get('pue', 1.25)
         
-        logger.info(f"  Load: {peak_it_mw} MW peak IT, PUE={pue}")
+        # === DEBUG LOGGING - LOAD PROFILE ===
+        logger.info(f"LOAD PROFILE BEING PASSED TO OPTIMIZER:")
+        logger.info(f"  peak_it_mw: {peak_it_mw} MW")
+        logger.info(f"  pue: {pue}")
+        logger.info(f"  peak_facility_mw: {peak_it_mw * pue:.1f} MW")
+        logger.info(f"  load_profile_dr keys: {list(load_profile_dr.keys())}")
+        if 'load_trajectory' in load_profile_dr:
+            logger.info(f"  LOAD TRAJECTORY:")
+            for year, mw in sorted(load_profile_dr['load_trajectory'].items()):
+                logger.info(f"    Year {year}: {mw} MW")
+        else:
+            logger.info(f"  ⚠️ WARNING: No load_trajectory in load_profile_dr!")
+        logger.info("="*80)
+        logger.info("")
+        
         logger.info("✓ STEP 2: Inputs validated")
         
     except Exception as e:

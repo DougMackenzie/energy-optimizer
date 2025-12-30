@@ -208,17 +208,18 @@ def render_problem_progress_tab():
                         })
                 
                 with col_btn:
-                    # Quick optimize button (compact)
+                    # Quick optimize button (compact) - Routes to Configuration page
                     if site_tracker.get('problem_num'):
                         if st.button("🚀", use_container_width=True, type="primary", key=f"opt_matrix_{site_idx}", help="Open Optimizer"):
                             st.session_state.current_site = site.get('name', 'Unknown')
                             st.session_state.current_stage = 'screening'
+                            st.session_state.optimization_problem_num = site_tracker['problem_num']
                             
-                            from app.utils.site_backend import save_site
+                            from app.utils.site_backend import save_site  
                             save_site(site)
                             
-                            st.session_state.current_page = f"problem_{site_tracker['problem_num']}"
-                            st.session_state.selected_problem = site_tracker['problem_num']
+                            # NEW: Route to Configuration page (unified workflow)
+                            st.session_state.current_page = 'configuration'
                             st.rerun()
             
             # Stage columns: Show compact status + LCOE
@@ -660,20 +661,20 @@ def render_sites_infrastructure_tab():
                     })
             
             with col_h3:
-                # Quick optimize button
+                # Quick optimize button - Routes to Configuration page
                 if site_tracker.get('problem_num'):
                     if st.button("🚀 Open Optimizer", use_container_width=True, type="primary", key=f"site_opt_btn_{selected_site_idx}"):
                         # Set current site context in session state
                         st.session_state.current_site = site.get('name', 'Unknown')
                         st.session_state.current_stage = 'screening'  # Default to first stage
+                        st.session_state.optimization_problem_num = site_tracker['problem_num']
                         
                         # Save site to Google Sheets if it doesn't exist
                         from app.utils.site_backend import save_site
                         save_site(site)
                         
-                        # Navigate to problem page
-                        st.session_state.current_page = f"problem_{site_tracker['problem_num']}"
-                        st.session_state.selected_problem = site_tracker['problem_num']
+                        # Navigate to Configuration page (unified workflow)
+                        st.session_state.current_page = 'configuration'
                         st.rerun()
                 else:
                     st.info("Assign problem type first", icon="ℹ️")

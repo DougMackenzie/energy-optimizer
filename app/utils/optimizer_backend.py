@@ -135,12 +135,37 @@ def run_heuristic_optimization(site_data: Dict, problem_num: int, load_profile: 
     Returns:
         Result dict with equipment, costs, metrics, etc.
     """
+    # PROMINENT DEBUG OUTPUT
+    print("\n" + "=" * 80)
+    print("🚀 RUN_HEURISTIC_OPTIMIZATION CALLED")
+    print(f"   Site: {site_data.get('name', 'Unknown')}")
+    print(f"   Problem: {problem_num}")
+    print(f"   Facility MW: {site_data.get('facility_mw', 'N/A')}")
+    print(f"   Has load_trajectory_json: {'load_trajectory_json' in site_data}")
+    print("=" * 80 + "\n")
+    
     try:
+        # Import v2.1.1 optimizer via __init__.py for Problem 1
+        from app.optimization import GreenfieldHeuristicV2
+        
+        # Import legacy optimizers for other problems
         from app.optimization.heuristic_optimizer import (
-            GreenFieldHeuristic, BrownfieldHeuristic, LandDevHeuristic,
+            BrownfieldHeuristic, LandDevHeuristic,
             GridServicesHeuristic, BridgePowerHeuristic
         )
         from config.settings import CONSTRAINT_DEFAULTS, EQUIPMENT_DEFAULTS, ECONOMIC_DEFAULTS
+        import json
+        
+        # Connect to backend for v2.1.1
+        import gspread
+        try:
+            gc = gspread.service_account(filename='credentials.json')
+            from config.settings import GOOGLE_SHEET_ID
+            spreadsheet_id = GOOGLE_SHEET_ID
+        except Exception as e:
+            print(f"Warning: Could not connect to backend: {e}")
+            gc = None
+            spreadsheet_id = None
         
         # Prepare site parameters
         site = {
@@ -149,22 +174,80 @@ def run_heuristic_optimization(site_data: Dict, problem_num: int, load_profile: 
             'iso': site_data.get('iso')
         }
         
-        # Prepare load trajectory (single year for heuristic)
+        # Read load trajectory from backend (for v2.1.1)
+        # Define load_mw first for later use (lines 316-318)
         load_mw = site_data.get('facility_mw', 500)
-        load_trajectory = {0: load_mw}  # Year 0
         
-        # Prepare constraints from site data
+        load_trajectory = {}
+        if 'load_trajectory_json' in site_data and site_data['load_trajectory_json']:
+            try:
+                traj_data = json.loads(site_data['load_trajectory_json'])
+                # Convert string keys to int years
+                load_trajectory = {int(k): float(v) for k, v in traj_data.items()}
+                print(f"✓ Loaded trajectory from backend: {load_trajectory}")
+            except Exception as e:
+                print(f"Warning: Could not parse load_trajectory_json: {e}")
+                load_trajectory = {}
+        
+        # Fallback to single year if no trajectory
+        if not load_trajectory:
+            # Use current year as baseline
+            from datetime import datetime as dt
+            current_year = dt.now().year
+            load_trajectory = {current_year: load_mw}
+            print(f"⚠ Using fallback single-year trajectory: {load_trajectory}")
+        
+        # Prepare constraints from site data (including grid params for v2.1.1)
         constraints = {
             'nox_tpy_annual': site_data.get('nox_limit_tpy', 100),
             'gas_supply_mcf_day': site_data.get('gas_supply_mcf', 150000) / 365,  # Convert annual to daily
             'land_area_acres': site_data.get('land_acres', 400),
             'n_minus_1_required': True,
-            'min_availability_pct': 99.5
+            'min_availability_pct': 99.5,
         }
+        
+        # Add grid configuration for v2.1.1
+        if 'grid_available_year' in site_data and site_data.get('grid_available_year'):
+            constraints['grid_available_year'] = int(site_data['grid_available_year'])
+            print(f"✓ Grid available year: {constraints['grid_available_year']}")
+        
+        if 'grid_capacity_mw' in site_data and site_data.get('grid_capacity_mw'):
+            constraints['grid_capacity_mw'] = float(site_data['grid_capacity_mw'])
+            print(f"✓ Grid capacity: {constraints['grid_capacity_mw']} MW")
+        
+        if 'grid_lead_time_months' in site_data and site_data.get('grid_lead_time_months'):
+            constraints['grid_lead_time_months'] = int(site_data['grid_lead_time_months'])
+        
+        # Read workload mix from backend (for v2.1.1)
+        load_profile_data = {}
+        if 'flexibility_pct' in site_data:
+            load_profile_data['flexibility_pct'] = float(site_data.get('flexibility_pct', 30.6))
+            workload_mix = {}
+            if 'pre_training_pct' in site_data:
+                workload_mix['pre_training'] = float(site_data.get('pre_training_pct', 45.0))
+            if 'fine_tuning_pct' in site_data:
+                workload_mix['fine_tuning'] = float(site_data.get('fine_tuning_pct', 20.0))
+            if 'batch_inference_pct' in site_data:
+                workload_mix['batch_inference'] = float(site_data.get('batch_inference_pct', 15.0))
+            if 'real_time_inference_pct' in site_data:
+                workload_mix['real_time_inference'] = float(site_data.get('real_time_inference_pct', 20.0))
+            
+            if workload_mix:
+                load_profile_data['workload_mix'] = workload_mix
+                print(f"✓ Workload mix: {workload_mix}")
         
         # Select optimizer based on problem number
         if problem_num == 1:
-            optimizer = GreenFieldHeuristic(site, load_trajectory, constraints)
+            # Use Greenfield Heuristic v2.1.1 with backend integration
+            print("Using GreenfieldHeuristicV2 with backend integration")
+            optimizer = GreenfieldHeuristicV2(
+                site=site,
+                load_trajectory=load_trajectory,
+                constraints=constraints,
+                sheets_client=gc,
+                spreadsheet_id=spreadsheet_id,
+                load_profile_data=load_profile_data
+            )
         elif problem_num == 2:
             # Brownfield: Assume existing facility at current LCOE
             existing_equipment = {

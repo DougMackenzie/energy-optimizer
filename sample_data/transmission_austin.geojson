@@ -1,0 +1,26 @@
+{
+    "type": "FeatureCollection",
+    "features": [
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "HV Line",
+                "voltage_kv": 345,
+                "type": "Transmission"
+            },
+            "geometry": {
+                "type": "LineString",
+                "coordinates": [
+                    [
+                        -97.76299999999999,
+                        30.282
+                    ],
+                    [
+                        -97.723,
+                        30.282
+                    ]
+                ]
+            }
+        }
+    ]
+}

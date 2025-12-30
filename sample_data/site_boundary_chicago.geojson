@@ -1,0 +1,40 @@
+{
+    "type": "FeatureCollection",
+    "features": [
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "Chicago Grid Hub",
+                "type": "Boundary",
+                "area_acres": 500
+            },
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [
+                    [
+                        [
+                            -87.63900000000001,
+                            41.888
+                        ],
+                        [
+                            -87.619,
+                            41.888
+                        ],
+                        [
+                            -87.619,
+                            41.868
+                        ],
+                        [
+                            -87.63900000000001,
+                            41.868
+                        ],
+                        [
+                            -87.63900000000001,
+                            41.888
+                        ]
+                    ]
+                ]
+            }
+        }
+    ]
+}

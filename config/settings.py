@@ -277,14 +277,14 @@ EQUIPMENT_DEFAULTS = {
     'recip': {
         'capacity_mw': 18.3,
         'heat_rate_btu_kwh': 7700,
-        'nox_lb_mwh': 0.50,
+        'nox_lb_mwh': 0.10,  # POST-SCR (Modern Tier 4F with SCR: 0.07-0.15 lb/MWh, using mid-range)
         'co_lb_mwh': 0.40,
         'capex_per_kw': 1650,
         'vom_per_mwh': 8.50,
         'fom_per_kw_yr': 18.50,
         'availability': 0.975,
         'lead_time_months': 18,
-        'land_acres_per_mw': 0.5,
+        'land_acres_per_mw': 0.5,  # Onsite generation land use
         'ramp_rate_mw_min': 3.0,
         # NEW fields for heuristic calculations
         'min_load_pct': 0.30,           # 30% minimum stable load
@@ -294,8 +294,8 @@ EQUIPMENT_DEFAULTS = {
     },
     'turbine': {
         'capacity_mw': 50.0,
-        'heat_rate_btu_kwh': 8500,
-        'nox_lb_mwh': 0.25,
+        'heat_rate_btu_kwh': 8500,  # Simple Cycle (higher than combined cycle 6500-7000)
+        'nox_lb_mwh': 0.12,  # POST-SCR Simple Cycle (0.08-0.15 lb/MWh range, using mid-high)
         'co_lb_mwh': 0.15,
         'capex_per_kw': 1300,
         'vom_per_mwh': 6.50,
@@ -305,7 +305,7 @@ EQUIPMENT_DEFAULTS = {
         'land_acres_per_mw': 0.3,
         'ramp_rate_mw_min': 8.0,
         # NEW fields
-        'min_load_pct': 0.50,           # 50% minimum stable load
+        'min_load_pct': 0.50,           # 50% minimum stable load (simple cycle)
         'start_time_min': 15,           # 15-minute hot start
         'nox_lb_mmbtu': 0.029,          # NOx per fuel input
         'gas_mcf_per_mwh': 8.20,        # Gas consumption rate
@@ -341,11 +341,15 @@ EQUIPMENT_DEFAULTS = {
     },
     'grid': {
         'availability': 0.9997,
-        'lead_time_months': 60,  # 5 years typical
+        'lead_time_months': 60,  # 5 years typical (can bridge to full grid)
         # NEW fields
-        'default_price_mwh': 65.0,      # Default wholesale price
+        'default_price_mwh': 65.0,      # Wholesale energy price
         'demand_charge_kw_mo': 15.0,    # $/kW-month demand charge
-        'interconnection_cost_mw': 100000,  # $/MW interconnection
+        'interconnection_cost_mw': 100_000,  # $/MW CIAC (Contribution in Aid of Construction)
+        'max_ciac_threshold': 500_000_000,  # $500M max CIAC before cost prohibitive
+        'lcoe_threshold': 180.0,  # $/MWh - cost prohibitive above this
+        'capacity_charge_kw_yr': 180.0,  # $/kW-year capacity charge (for LCOE calc)
+        'standby_charge_kw_mo': 5.0,  # $/kW-month standby/backup charge
     },
     'rental': {
         # NEW: Rental generator parameters for Problem 5 (Bridge Power)
@@ -357,8 +361,23 @@ EQUIPMENT_DEFAULTS = {
         'availability': 0.92,           # Lower availability
         'lead_time_months': 2,          # Fast deployment
         'mobilization_cost': 50000,     # Per-unit mobilization
-    },
+    }
 }
+
+# Capacity Credits for Firm Capacity Calculation
+# Conservative values for datacenter 24/7 load reliability
+CAPACITY_CREDITS = {
+    'solar': 0.10,      # 10% - Conservative for 24/7 load (vs 15-25% ISO peak)
+    'bess': 0.50,       # 50% - Very conservative (vs 80-95% ISO duration-based)
+    'recip': 1.00,      # 100% - Fully dispatchable thermal
+    'turbine': 1.00,    # 100% - Fully dispatchable thermal
+    'grid': 1.00,       # 100% - Fully firm import
+}
+
+# Rationale:
+# - Solar: 10% accounts for some daytime contribution, but DC load is 24/7
+# - BESS: 50% very conservative due to duration limits and cycling constraints
+# - Thermal/Grid: 100% true firm capacity, dispatchable anytime
 
 # =============================================================================
 # bvNexus Integration: Economic Parameters

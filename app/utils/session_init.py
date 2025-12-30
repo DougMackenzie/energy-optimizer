@@ -71,35 +71,6 @@ def initialize_default_data():
             # Initialize with sample sites from dashboard
             st.session_state.sites_list = [
                 {
-                    'name': 'Phoenix AI Campus',
-                    'location': 'Phoenix, AZ',
-                    'iso': 'CAISO',
-                    'it_capacity_mw': 750,
-                    'pue': 1.20,
-                    'facility_mw': 900,
-                    'land_acres': 450,
-                    'nox_limit_tpy': 120,
-                    'gas_supply_mcf': 150000,
-                    'voltage_kv': 500,
-                    'coordinates': [33.448, -112.074],
-                    'geojson_prefix': 'phoenix'
-                },
-                {
-                    'name': 'Dallas Hyperscale DC',
-                    'location': 'Dallas, TX',
-                    'iso': 'ERCOT',
-                    'it_capacity_mw': 600,
-                    'pue': 1.25,
-                    'facility_mw': 750,
-                    'land_acres': 600,
-                    'nox_limit_tpy': 150,
-                    'gas_supply_mcf': 200000,
-                    'voltage_kv': 345,
-                    'coordinates': [32.776, -96.797],
-                    'geojson_prefix': 'dallas'
-                }
-                ,
-                {
                     'name': 'Austin Greenfield DC',
                     'location': 'Austin, TX',
                     'iso': 'ERCOT',
@@ -114,6 +85,72 @@ def initialize_default_data():
                     'geojson_prefix': 'austin',
                     'problem_num': 1,
                     'problem_name': 'Greenfield Datacenter'
+                },
+                {
+                    'name': 'Dallas Brownfield Exp',
+                    'location': 'Dallas, TX',
+                    'iso': 'ERCOT',
+                    'it_capacity_mw': 600,
+                    'pue': 1.25,
+                    'facility_mw': 750,
+                    'land_acres': 600,
+                    'nox_limit_tpy': 150,
+                    'gas_supply_mcf': 200000,
+                    'voltage_kv': 345,
+                    'coordinates': [32.776, -96.797],
+                    'geojson_prefix': 'dallas',
+                    'problem_num': 2,
+                    'problem_name': 'Brownfield Expansion',
+                    'notes': 'Existing: 100MW Recip, LCOE $60/MWh'
+                },
+                {
+                    'name': 'Phoenix Land Constrained',
+                    'location': 'Phoenix, AZ',
+                    'iso': 'CAISO',
+                    'it_capacity_mw': 750,
+                    'pue': 1.20,
+                    'facility_mw': 900,
+                    'land_acres': 200,  # Tight land
+                    'nox_limit_tpy': 50,  # Tight NOx
+                    'gas_supply_mcf': 20000,  # Tight Gas
+                    'voltage_kv': 500,
+                    'coordinates': [33.448, -112.074],
+                    'geojson_prefix': 'phoenix',
+                    'problem_num': 3,
+                    'problem_name': 'Land Development'
+                },
+                {
+                    'name': 'Chicago Grid Hub',
+                    'location': 'Chicago, IL',
+                    'iso': 'PJM',
+                    'it_capacity_mw': 800,
+                    'pue': 1.25,
+                    'facility_mw': 1000,
+                    'land_acres': 400,
+                    'nox_limit_tpy': 100,
+                    'gas_supply_mcf': 150000,
+                    'voltage_kv': 345,
+                    'coordinates': [41.878, -87.629],
+                    'geojson_prefix': 'chicago',
+                    'problem_num': 4,
+                    'problem_name': 'Grid Services'
+                },
+                {
+                    'name': 'Northern Virginia Bridge',
+                    'location': 'Ashburn, VA',
+                    'iso': 'PJM',
+                    'it_capacity_mw': 1000,
+                    'pue': 1.20,
+                    'facility_mw': 1200,
+                    'land_acres': 500,
+                    'nox_limit_tpy': 150,
+                    'gas_supply_mcf': 200000,
+                    'voltage_kv': 500,
+                    'coordinates': [39.043, -77.487],
+                    'geojson_prefix': 'ashburn',
+                    'problem_num': 5,
+                    'problem_name': 'Bridge Power',
+                    'notes': 'Grid available in 60 months'
                 }
             ]
             print(f"✓ Using {len(st.session_state.sites_list)} fallback sites")

@@ -68,6 +68,19 @@ def load_all_sites(use_cache: bool = True) -> List[Dict]:
         
         sites = worksheet.get_all_records()
         
+        # Load Load_Profiles data for backend integration
+        load_profiles = {}
+        try:
+            profiles_ws = spreadsheet.worksheet("Load_Profiles")
+            profiles_data = profiles_ws.get_all_records()
+            for profile in profiles_data:
+                site_name = profile.get('site_name')
+                if site_name:
+                    load_profiles[site_name] = profile
+                    print(f"✓ Loaded load profile for: {site_name}")
+        except Exception as e:
+            print(f"Warning: Could not load Load_Profiles: {e}")
+        
         # DEDUPLICATE by site_name (keep first occurrence)
         seen_names = set()
         deduped_sites = []
@@ -77,6 +90,21 @@ def load_all_sites(use_cache: bool = True) -> List[Dict]:
                 seen_names.add(site_name)
                 # Ensure 'name' field exists for consistency
                 site['name'] = site_name
+                
+                # JOIN: Merge Load_Profiles data if available
+                if site_name in load_profiles:
+                    profile = load_profiles[site_name]
+                    # Add load trajectory and workload mix
+                    site['load_trajectory_json'] = profile.get('load_trajectory_json', '')
+                    site['flexibility_pct'] = profile.get('flexibility_pct')
+                    site['pre_training_pct'] = profile.get('pre_training_pct')
+                    site['fine_tuning_pct'] = profile.get('fine_tuning_pct')
+                    site['batch_inference_pct'] = profile.get('batch_inference_pct')
+                    site['real_time_inference_pct'] = profile.get('real_time_inference_pct')
+                    print(f"✓ Joined load profile data for: {site_name}")
+                else:
+                    print(f"⚠️  No load profile found for: {site_name}")
+                
                 deduped_sites.append(site)
             else:
                 print(f"⚠️  Skipping duplicate site: {site_name} (capacity: {site.get('it_capacity_mw')})")

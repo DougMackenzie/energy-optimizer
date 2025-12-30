@@ -130,10 +130,11 @@ def render():
             except Exception as e:
                 st.error(f"Failed to load sample problem: {e}")
     
-    # Initialize session state (now with 600MW default)
-    if 'load_profile_dr' not in st.session_state:
-        st.session_state.load_profile_dr = {
-            'peak_it_mw': 600.0,  # Updated to 600 MW default
+    # Comprehensive session state initialization
+    def ensure_load_profile_complete():
+        """Ensure load_profile_dr dict has all required keys with defaults"""
+        defaults = {
+            'peak_it_mw': 600.0,
             'pue': 1.25,
             'load_factor': 0.85,
             'workload_mix': {
@@ -148,6 +149,23 @@ def render():
             'thermal_constant_min': 30,
             'enabled_dr_products': ['economic_dr'],
         }
+        
+        if 'load_profile_dr' not in st.session_state:
+            st.session_state.load_profile_dr = defaults.copy()
+            return
+        
+        # Merge missing keys (existing values take precedence)
+        for key, value in defaults.items():
+            if key not in st.session_state.load_profile_dr:
+                st.session_state.load_profile_dr[key] = value
+            elif isinstance(value, dict) and isinstance(st.session_state.load_profile_dr.get(key), dict):
+                # Deep merge nested dicts like workload_mix
+                for subkey, subvalue in value.items():
+                    if subkey not in st.session_state.load_profile_dr[key]:
+                        st.session_state.load_profile_dr[key][subkey] = subvalue
+    
+    # Call initialization helper
+    ensure_load_profile_complete()
     
     # Create tabs
     tab1, tab2, tab3, tab4, tab5 = st.tabs([
@@ -163,6 +181,7 @@ def render():
         col1, col2, col3 = st.columns(3)
         
         with col1:
+            # No defensive check needed - ensure_load_profile_complete() guarantees key exists
             peak_it_mw = st.number_input(
                 "Peak IT Load (MW)", 
                 min_value=10.0, max_value=2000.0, 

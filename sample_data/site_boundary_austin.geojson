@@ -1,0 +1,40 @@
+{
+    "type": "FeatureCollection",
+    "features": [
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "Austin Greenfield DC",
+                "type": "Boundary",
+                "area_acres": 500
+            },
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [
+                    [
+                        [
+                            -97.753,
+                            30.277
+                        ],
+                        [
+                            -97.73299999999999,
+                            30.277
+                        ],
+                        [
+                            -97.73299999999999,
+                            30.256999999999998
+                        ],
+                        [
+                            -97.753,
+                            30.256999999999998
+                        ],
+                        [
+                            -97.753,
+                            30.277
+                        ]
+                    ]
+                ]
+            }
+        }
+    ]
+}

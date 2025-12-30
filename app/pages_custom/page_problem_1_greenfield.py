@@ -146,7 +146,15 @@ def render():
             # Run the optimization
             with st.spinner("Running Phase 1 Heuristic Optimization..."):
                 try:
-                    from app.optimization.heuristic_optimizer import GreenFieldHeuristic
+                    #  Use GreenfieldHeuristicV2 instead of old GreenFieldHeuristic
+                    from app.optimization import GreenfieldHeuristicV2
+                    import gspread
+                    from config.settings import GOOGLE_SHEET_ID
+                    
+                    print("\n" + "=" * 80)
+                    print("🚀 RUNNING GREENFIELD HEURISTIC V2.1.1")
+                    print(f"   Load Trajectory: {facility_trajectory}")
+                    print("=" * 80 + "\n")
                     
                     constraints = {
                         'nox_tpy_annual': nox_limit,
@@ -161,12 +169,23 @@ def render():
                         'project_life_years': project_life,
                     }
                     
-                    # Use facility (not IT) load for sizing
-                    optimizer = GreenFieldHeuristic(
+                    # Connect to backend
+                    try:
+                        gc = gspread.service_account(filename='credentials.json')
+                        spreadsheet_id = GOOGLE_SHEET_ID
+                    except Exception as e:
+                        print(f"Warning: Could not connect to backend: {e}")
+                        gc = None
+                        spreadsheet_id = None
+                    
+                    # Use facility (not IT) load for sizing with v2.1.1
+                    optimizer = GreenfieldHeuristicV2(
                         site={'name': 'Configured Site'},
                         load_trajectory=facility_trajectory,
                         constraints=constraints,
                         economic_params=economic_params,
+                        sheets_client=gc,
+                        spreadsheet_id=spreadsheet_id,
                     )
                     
                     result = optimizer.optimize()
@@ -374,9 +393,9 @@ def render_dispatch_tab(result_data, load_trajectory):
     
     # Generate dispatch data
     try:
-        from app.optimization.heuristic_optimizer import GreenFieldHeuristic
+        from app.optimization import GreenfieldHeuristicV2
         
-        optimizer = GreenFieldHeuristic(
+        optimizer = GreenfieldHeuristicV2(
             site={},
             load_trajectory=load_trajectory,
             constraints={},
