@@ -199,8 +199,14 @@ def render():
         col1, col2, col3 = st.columns(3)
         
         with col1:
-            # Peak IT is now DERIVED from peak facility / PUE
-            peak_facility_mw = float(st.session_state.load_config.get('peak_facility_load_mw', 750.0))
+            # Peak Facility is from trajectory (source of truth)
+            growth_steps = st.session_state.load_config.get('growth_steps', [])
+            if growth_steps:
+                peak_facility_mw = max(step.get('facility_load_mw', 0) for step in growth_steps)
+            else:
+                peak_facility_mw = float(st.session_state.load_config.get('peak_facility_load_mw', 750.0))
+            
+            # Peak IT is DERIVED: Facility / PUE
             peak_it_mw = round(peak_facility_mw / pue, 1)
             
             # Display as read-only metric
@@ -231,15 +237,14 @@ def render():
             load_factor = st.slider(
                 "Load Factor (%)", 
                 min_value=50, max_value=100, 
-                value=int(st.session_state.load_config.get('load_factor_pct', 85.0)),
+                value=int(st.session_state.load_config.get('load_factor_pct', 80.0)),
                 help="Average utilization as % of peak",
                 key='tab1_load_factor'
             )
             st.session_state.load_config['load_factor_pct'] = float(load_factor)
             st.session_state.load_profile_dr['load_factor'] = load_factor / 100.0
         
-        # Calculate derived values
-        peak_facility_mw = peak_it_mw * pue
+        # Calculate derived values (peak_facility already calculated from trajectory above)
         avg_facility_mw = peak_facility_mw * (load_factor / 100.0)
         
         st.markdown("---")

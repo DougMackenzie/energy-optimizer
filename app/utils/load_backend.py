@@ -52,7 +52,7 @@ def save_load_configuration(site_name: str, load_config: dict) -> bool:
         
         # Extract values from load_config
         pue = float(load_config.get('pue', 1.25))
-        load_factor_pct = float(load_config.get('load_factor_pct', 85.0))
+        load_factor_pct = float(load_config.get('load_factor_pct', 80.0))
         growth_enabled = bool(load_config.get('growth_enabled', True))
         growth_steps = load_config.get('growth_steps', [])
         
@@ -163,7 +163,7 @@ def load_load_configuration(site_name: str) -> Dict:
                     'peak_it_load_mw': peak_it_load,
                     'peak_facility_load_mw': peak_facility,
                     'pue': pue,
-                    'load_factor_pct': float(record.get('load_factor_pct', 85)),
+                    'load_factor_pct': float(record.get('load_factor_pct', 80)),
                     'growth_enabled': bool(record.get('growth_enabled', True)),
                     'growth_steps': growth_steps,  # FACILITY loads
                     'last_updated': record.get('last_updated', ''),
