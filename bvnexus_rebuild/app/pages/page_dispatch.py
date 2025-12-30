@@ -46,9 +46,10 @@ def render():
     load_trajectory = st.session_state.get('load_trajectory', {2025: 750})
     
     try:
-        from app.optimization.heuristic_optimizer import GreenFieldHeuristic
+        # Use v2.1.1 for dispatch generation
+        from app.optimization import GreenfieldHeuristicV2
         
-        optimizer = GreenFieldHeuristic(
+        optimizer = GreenfieldHeuristicV2(
             site={},
             load_trajectory=load_trajectory,
             constraints={},

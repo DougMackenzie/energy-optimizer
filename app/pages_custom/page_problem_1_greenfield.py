@@ -178,14 +178,51 @@ def render():
                         gc = None
                         spreadsheet_id = None
                     
+                    # Add grid constraints from session if available
+                    site_data = st.session_state.get('selected_site', {})
+                    if site_data.get('grid_available_year'):
+                        constraints['grid_available_year'] = int(site_data['grid_available_year'])
+                        print(f"✓ Grid available year: {constraints['grid_available_year']}")
+                    if site_data.get('grid_capacity_mw'):
+                        constraints['grid_capacity_mw'] = float(site_data['grid_capacity_mw'])
+                        print(f"✓ Grid capacity: {constraints['grid_capacity_mw']} MW")
+                    if site_data.get('grid_lead_time_months'):
+                        constraints['grid_lead_time_months'] = int(site_data['grid_lead_time_months'])
+                    
+                    # Load profile data for workload mix
+                    load_profile_data = {}
+                    if site_data.get('flexibility_pct'):
+                        load_profile_data['flexibility_pct'] = float(site_data['flexibility_pct'])
+                        workload_mix = {}
+                        if site_data.get('pre_training_pct'):
+                            workload_mix['pre_training'] = float(site_data['pre_training_pct'])
+                        if site_data.get('fine_tuning_pct'):
+                            workload_mix['fine_tuning'] = float(site_data['fine_tuning_pct'])
+                        if site_data.get('batch_inference_pct'):
+                            workload_mix['batch_inference'] = float(site_data['batch_inference_pct'])
+                        if site_data.get('real_time_inference_pct'):
+                            workload_mix['real_time_inference'] = float(site_data['real_time_inference_pct'])
+                        if workload_mix:
+                            load_profile_data['workload_mix'] = workload_mix
+                    
+                    # Use the load trajectory from backend if available
+                    import json
+                    if site_data.get('load_trajectory_json'):
+                        try:
+                            traj_data = json.loads(site_data['load_trajectory_json'])
+                            facility_trajectory = {int(k): float(v) for k, v in traj_data.items()}
+                            print(f"✓ Using backend trajectory: {facility_trajectory}")
+                        except Exception as e:
+                            print(f"Warning: Could not parse load_trajectory_json: {e}")
+                    
                     # Use facility (not IT) load for sizing with v2.1.1
                     optimizer = GreenfieldHeuristicV2(
-                        site={'name': 'Configured Site'},
+                        site={'name': site_data.get('name', 'Configured Site')},
                         load_trajectory=facility_trajectory,
                         constraints=constraints,
-                        economic_params=economic_params,
                         sheets_client=gc,
                         spreadsheet_id=spreadsheet_id,
+                        load_profile_data=load_profile_data,
                     )
                     
                     result = optimizer.optimize()

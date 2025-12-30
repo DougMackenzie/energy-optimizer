@@ -16,7 +16,8 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from app.optimization.heuristic_optimizer import GreenFieldHeuristic
+# Use v2.1.1 Greenfield optimizer with backend integration
+from app.optimization import GreenfieldHeuristicV2
 
 # Test with realistic constraints
 load_trajectory = {
@@ -48,7 +49,7 @@ print("  - Years 1-5: Onsite generation (no grid)")
 print("  - Year 6+: Optimal mix of grid + onsite")
 print("  - Grid competes with onsite based on LCOE")
 
-optimizer = GreenFieldHeuristic(
+optimizer = GreenfieldHeuristicV2(
     site={'name': 'Grid Option Test'},
     load_trajectory=load_trajectory,
     constraints=constraints,

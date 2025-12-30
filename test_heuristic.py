@@ -9,7 +9,8 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from app.optimization.heuristic_optimizer import GreenFieldHeuristic
+# Use v2.1.1 Greenfield optimizer with backend integration
+from app.optimization import GreenfieldHeuristicV2
 
 # Test parameters matching Problem 1
 load_trajectory = {
@@ -49,7 +50,7 @@ for k, v in constraints.items():
 
 print("\n🔧 Running optimizer...")
 
-optimizer = GreenFieldHeuristic(
+optimizer = GreenfieldHeuristicV2(
     site={'name': 'Test Site'},
     load_trajectory=load_trajectory,
     constraints=constraints,

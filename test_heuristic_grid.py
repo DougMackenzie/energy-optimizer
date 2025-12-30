@@ -8,7 +8,8 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from app.optimization.heuristic_optimizer import GreenFieldHeuristic
+# Use v2.1.1 Greenfield optimizer with backend integration
+from app.optimization import GreenfieldHeuristicV2
 
 # Test parameters with GRID
 load_trajectory = {
@@ -37,7 +38,7 @@ print("=" * 80)
 print(f"Peak load: {max(load_trajectory.values())} MW")
 print(f"Grid capacity: {constraints['grid_import_mw']} MW")
 
-optimizer = GreenFieldHeuristic(
+optimizer = GreenfieldHeuristicV2(
     site={'name': 'Test Site with Grid'},
     load_trajectory=load_trajectory,
     constraints=constraints,

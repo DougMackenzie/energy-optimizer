@@ -142,7 +142,8 @@ def render():
             # Run the optimization
             with st.spinner("Running Phase 1 Heuristic Optimization..."):
                 try:
-                    from app.optimization.heuristic_optimizer import GreenFieldHeuristic
+                    # Use v2.1.1 Greenfield optimizer with backend integration
+                    from app.optimization import GreenfieldHeuristicV2
                     
                     constraints = {
                         'nox_tpy_annual': nox_limit,
@@ -157,8 +158,8 @@ def render():
                         'project_life_years': project_life,
                     }
                     
-                    # Use facility (not IT) load for sizing
-                    optimizer = GreenFieldHeuristic(
+                    # Use facility (not IT) load for sizing with v2.1.1
+                    optimizer = GreenfieldHeuristicV2(
                         site={'name': 'Configured Site'},
                         load_trajectory=facility_trajectory,
                         constraints=constraints,
@@ -370,9 +371,10 @@ def render_dispatch_tab(result_data, load_trajectory):
     
     # Generate dispatch data
     try:
-        from app.optimization.heuristic_optimizer import GreenFieldHeuristic
+        # Use v2.1.1 for dispatch generation
+        from app.optimization import GreenfieldHeuristicV2
         
-        optimizer = GreenFieldHeuristic(
+        optimizer = GreenfieldHeuristicV2(
             site={},
             load_trajectory=load_trajectory,
             constraints={},
