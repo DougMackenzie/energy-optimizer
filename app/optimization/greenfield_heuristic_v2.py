@@ -1309,7 +1309,6 @@ class GreenfieldHeuristicV2:
             grid_cap = self.constraints.get('grid_capacity_mw', 0) if grid_available else 0
             
             print(f"  📅 Year {year}: Running dispatch for {len(total_load)} hours...")
-            import time
             dispatch_start = time.time()
             
             dispatch = self.dispatcher.run_dispatch(
