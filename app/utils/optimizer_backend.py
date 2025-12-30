@@ -290,7 +290,25 @@ def run_heuristic_optimization(site_data: Dict, problem_num: int, load_profile: 
             raise ValueError(f"Unknown problem number: {problem_num}")
         
         # Run optimization
+        print("\n" + "="*80)
+        print("🔧 CALLING optimizer.optimize()")
+        print("="*80)
+        import time
+        start_time = time.time()
+        
         result = optimizer.optimize()
+        
+        end_time = time.time()
+        actual_runtime = end_time - start_time
+        print("="*80)
+        print(f"✅ optimizer.optimize() RETURNED")
+        print(f"⏱  Actual execution time: {actual_runtime:.2f} seconds")
+        print(f"📊 Result type: {type(result)}")
+        if hasattr(result, 'solve_time_seconds'):
+            print(f"🕐 Result.solve_time_seconds: {result.solve_time_seconds:.2f}s")
+        elif isinstance(result, dict) and 'runtime_seconds' in result:
+            print(f"🕐 Result runtime_seconds: {result.get('runtime_seconds')}s")
+        print("="*80 + "\n")
         
         # Accept result even if heuristic marks it "infeasible" due to constraint violations
         # We'll report coverage % and unserved load instead of rejecting it

@@ -1237,6 +1237,15 @@ class GreenfieldHeuristicV2:
     
     def optimize(self) -> HeuristicResultV2:
         """Run hierarchical optimization."""
+        print("\n" + "🔷"*40)
+        print("🚀 GreenfieldHeuristicV2.optimize() STARTED")
+        print(f"📍 Site: {self.site}")
+        print(f"📅 Years to optimize: {self.years}")
+        print(f"📊 Load trajectory: {self.load_trajectory}")
+        print(f"⚡ Equipment specs loaded: {len(self.equipment_specs)} types")
+        print(f"⚙️  Global params loaded: {len(self.global_params)} parameters")
+        print("🔷"*40 + "\n")
+        
         start_time = time.time()
         warnings = []
         
