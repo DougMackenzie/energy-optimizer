@@ -167,6 +167,12 @@ def render():
     if dispatch_df is None:
         print(f"⚠️ No optimizer dispatch for year {actual_year}, generating synthetic data")
         dispatch_df = generate_8760_dispatch(equipment, load_profile_8760)
+        
+        # IMPORTANT: Zero out grid if before grid_available_year (even in synthetic mode)
+        if grid_available_year and actual_year < grid_available_year:
+            if 'grid_mw' in dispatch_df.columns:
+                dispatch_df['grid_mw'] = 0
+                print(f"⚠️ Synthetic dispatch: Grid zeroed - not available until {grid_available_year}")
     
     # 8760 Hourly Dispatch Chart
     st.markdown("#### 8760 Hourly Dispatch")
