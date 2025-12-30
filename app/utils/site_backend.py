@@ -522,7 +522,7 @@ def save_site_stage_result(site_name: str, stage: str, result_data: Dict) -> boo
                 break
         
         # Prepare row data - MUST match exact Google Sheets column order
-        # Columns: A-O (15 columns + adding equipment_details_json as P)
+        # Columns: A-P (16 columns) + adding equipment_by_year_json as Q
         row_data = [
             site_name,                                              # A: site_name
             stage,                                                   # B: stage
@@ -539,7 +539,8 @@ def save_site_stage_result(site_name: str, stage: str, result_data: Dict) -> boo
             result_data.get('runtime_seconds', 0),                 # M: runtime_seconds
             result_data.get('run_timestamp', datetime.now().isoformat()),  # N: run_timestamp
             result_data.get('version', 1),                         # O: version
-            json.dumps(result_data.get('equipment_details', {})),  # P: equipment_details_json (NEW)
+            json.dumps(result_data.get('equipment_details', {})),  # P: equipment_details_json
+            json.dumps(result_data.get('equipment_by_year', {})),  # Q: equipment_by_year_json (NEW)
         ]
         
         if existing_row:
@@ -647,6 +648,19 @@ def load_site_stage_result(site_name: str, stage: str) -> Optional[Dict]:
                         result['equipment_details'] = {}
                 else:
                     result['equipment_details'] = {}
+                
+                # NEW: Deserialize equipment_by_year (phased deployment data)
+                if 'equipment_by_year_json' in result and result['equipment_by_year_json']:
+                    try:
+                        equipment_by_year_loaded = json.loads(result['equipment_by_year_json'])
+                        # Convert string keys back to int years
+                        result['equipment_by_year'] = {int(year): data for year, data in equipment_by_year_loaded.items()}
+                        print(f"DEBUG: Loaded equipment_by_year with {len(result['equipment_by_year'])} years")
+                    except Exception as e:
+                        print(f"DEBUG: Failed to parse equipment_by_year: {e}")
+                        result['equipment_by_year'] = {}
+                else:
+                    result['equipment_by_year'] = {}
                 
                 # Normalize 'complete' field - Google Sheets returns 'TRUE'/'FALSE' as strings
                 complete_val = result.get('complete', False)

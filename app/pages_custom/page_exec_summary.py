@@ -181,6 +181,17 @@ def render():
         grid_available_year = result_constraints.get('grid_available_year')
         grid_capacity_mw = result_constraints.get('grid_capacity_mw', 0)
         
+        # DEBUG: Check equipment_by_year
+        print(f"\n🔍 EXEC SUMMARY: equipment_by_year type: {type(equipment_by_year)}")
+        if equipment_by_year:
+            print(f"  Keys: {list(equipment_by_year.keys())[:5]}...")  # First 5 years
+            if 2027 in equipment_by_year:
+                print(f"  2027: recip_mw={equipment_by_year[2027].get('recip_mw', 'N/A')}")
+            if 2029 in equipment_by_year:
+                print(f"  2029 recip_mw={equipment_by_year[2029].get('recip_mw', 'N/A')}")
+        else:
+            print("  equipment_by_year is None or empty!")
+        
         # Render chart with full data
         render_energy_stack_forecast(
             equipment=equipment,
