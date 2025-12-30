@@ -112,6 +112,10 @@ def render_energy_stack_forecast(
     grid_capacity = []
     
     if equipment_by_year and len(equipment_by_year) > 0:
+        # DEBUG: Print grid_mw values
+        print("\n🔍 CHART: equipment_by_year grid_mw:")
+        for y in sorted(equipment_by_year.keys()):
+            print(f"  {y}: {equipment_by_year[y].get('grid_mw', 0):.1f} MW")
         # Use optimizer's year-by-year results
         for year in years:
             if year in equipment_by_year:
