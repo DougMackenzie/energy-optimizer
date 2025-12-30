@@ -347,6 +347,12 @@ def run_heuristic_optimization(site_data: Dict, problem_num: int, load_profile: 
                 elif isinstance(disp_result, dict):
                     dispatch_by_year_serialized[year] = disp_result
         
+        # DEBUG: Check constraints before saving
+        print(f"\n🔍 CONSTRAINTS before saving:")
+        print(f"  grid_available_year: {constraints.get('grid_available_year')}")
+        print(f"  grid_capacity_mw: {constraints.get('grid_capacity_mw')}")
+        print(f"  Full dict: {constraints}")
+        
         # Convert result to dict format for storage
         result_dict = {
             'site_name': site['name'],
@@ -380,7 +386,7 @@ def run_heuristic_optimization(site_data: Dict, problem_num: int, load_profile: 
             # Load trajectory (from backend)
             'load_trajectory': load_trajectory,
             
-            # Constraints (for chart to respect grid_available_year)
+            
             'constraints': {
                 'grid_available_year': constraints.get('grid_available_year'),
                 'grid_capacity_mw': constraints.get('grid_capacity_mw', 0),

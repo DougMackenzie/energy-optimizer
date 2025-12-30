@@ -50,6 +50,13 @@ logger = logging.getLogger(__name__)
 # SECTION 1: BACKEND DATA LOADERS
 # =============================================================================
 
+# Module-level cache to prevent API quota exhaustion
+_CACHE_TTL_SECONDS = 300  # 5 minutes
+_EQUIPMENT_CACHE = None
+_EQUIPMENT_CACHE_TIME = 0
+_PARAMS_CACHE = None
+_PARAMS_CACHE_TIME = 0
+
 class BackendDataLoader:
     """
     Loads equipment specs and global parameters from Google Sheets backend.
