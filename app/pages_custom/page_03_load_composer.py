@@ -509,7 +509,7 @@ def render():
             load_data = generate_load_profile_with_flexibility(
                 peak_it_load_mw=peak_it_mw,
                 pue=pue,
-                load_factor=load_factor,
+                load_factor=load_factor / 100.0,  # Convert percentage to fraction
                 workload_mix=st.session_state.load_profile_dr['workload_mix'],
                 cooling_flex_pct=st.session_state.load_profile_dr['cooling_flex']
             )
