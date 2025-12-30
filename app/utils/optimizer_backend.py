@@ -358,6 +358,9 @@ def run_heuristic_optimization(site_data: Dict, problem_num: int, load_profile: 
             # Equipment by year (from v2.1.1 optimizer)
             'equipment_by_year': getattr(result, 'equipment_by_year', None) if not isinstance(result, dict) else result.get('equipment_by_year'),
             
+            # Dispatch by year (actual hourly dispatch for charts)
+            'dispatch_by_year': getattr(result, 'dispatch_by_year', None) if not isinstance(result, dict) else result.get('dispatch_by_year'),
+            
             # Load trajectory (from backend)
             'load_trajectory': load_trajectory,
             
