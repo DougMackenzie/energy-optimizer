@@ -51,6 +51,17 @@ def render():
         st.info("💡 **Tip:** The Load Composer requires a site to be selected first. Each site can have its own unique load profile.")
         return
     
+    # =========================================================================
+    # LOAD CONFIGURATION FROM BACKEND
+    # =========================================================================
+    # Initialize load config from Google Sheets on first load or site change
+    if ('load_config' not in st.session_state or 
+        st.session_state.get('load_config_site') != selected_site):
+        from app.utils.load_backend import load_load_configuration
+        st.session_state.load_config = load_load_configuration(selected_site)
+        st.session_state.load_config_site = selected_site
+        print(f"✓ Loaded load config for {selected_site} from backend")
+    
     st.markdown("---")
     # Add button to load 600MW sample problem
     col_header1, col_header2 = st.columns([3, 1])
@@ -168,9 +179,163 @@ def render():
     ensure_load_profile_complete()
     
     # Create tabs
-    tab1, tab2, tab3, tab4, tab5 = st.tabs([
-        "📊 Basic Load", "🔄 Workload Mix", "❄️ Cooling Flexibility", "💰 DR Economics", "📈 Load Variability"
+    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+        "📊 Basic Load", "🔄 Workload Mix", "❄️ Cooling Flexibility", "💰 DR Economics", "📈 Load Variability", "💾 Backend & Trajectory"
     ])
+    
+    # =========================================================================
+    # TAB 6: BACKEND & TRAJECTORY (NEW)
+    # =========================================================================
+    with tab6:
+        st.markdown("#### 💾 Load Configuration Management")
+        st.caption("Configure load trajectory and sync with Google Sheets backend")
+        
+        # Display current configuration
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            peak_it = st.number_input(
+                "Peak IT Load (MW)",
+                min_value=0.0,
+                max_value=2000.0,
+                value=st.session_state.load_config.get('peak_it_load_mw', 600.0),
+                step=10.0,
+                key='backend_peak_it'
+            )
+            st.session_state.load_config['peak_it_load_mw'] = peak_it
+        
+        with col2:
+            pue_backend = st.number_input(
+                "PUE",
+                min_value=1.0,
+                max_value=2.0,
+                value=st.session_state.load_config.get('pue', 1.25),
+                step=0.01,
+                key='backend_pue'
+            )
+            st.session_state.load_config['pue'] = pue_backend
+        
+        with col3:
+            load_factor_backend = st.slider(
+                "Load Factor (%)",
+                min_value=50.0,
+                max_value=100.0,
+                value=st.session_state.load_config.get('load_factor_pct', 85.0),
+                step=1.0,
+                key='backend_load_factor'
+            )
+            st.session_state.load_config['load_factor_pct'] = load_factor_backend
+        
+        # Calculated metrics
+        peak_facility = peak_it * pue_backend
+        avg_load = peak_facility * (load_factor_backend / 100.0)
+        annual_energy = avg_load * 8760 / 1000
+        
+        st.markdown("---")
+        col_m1, col_m2, col_m3 = st.columns(3)
+        col_m1.metric("Peak Facility Load", f"{peak_facility:.1f} MW")
+        col_m2.metric("Average Load", f"{avg_load:.1f} MW")
+        col_m3.metric("Annual Energy", f"{annual_energy:.1f} GWh")
+        
+        # Growth trajectory editor
+        st.markdown("#### 📈 Load Growth Trajectory")
+        
+        growth_enabled = st.checkbox(
+            "Enable load growth over planning horizon",
+            value=st.session_state.load_config.get('growth_enabled', True),
+            key='backend_growth_enabled'
+        )
+        st.session_state.load_config['growth_enabled'] = growth_enabled
+        
+        if growth_enabled:
+            st.markdown("**Edit Growth Steps:**")
+            st.caption("Define when IT load reaches each milestone. Facility load will be calculated as IT Load × PUE.")
+            
+            # Get current growth steps
+            import pandas as pd
+            growth_steps = st.session_state.load_config.get('growth_steps', [
+                {'year': 2027, 'load_mw': 0},
+                {'year': 2028, 'load_mw': 150},
+                {'year': 2029, 'load_mw': 300},
+                {'year': 2030, 'load_mw': 450},
+                {'year': 2031, 'load_mw': 600},
+            ])
+            
+            growth_df = pd.DataFrame(growth_steps)
+            
+            # Editable table
+            edited_df = st.data_editor(
+                growth_df,
+                num_rows="dynamic",
+                column_config={
+                    "year": st.column_config.NumberColumn(
+                        "Year",
+                        min_value=2025,
+                        max_value=2050,
+                        step=1,
+                        required=True
+                    ),
+                    "load_mw": st.column_config.NumberColumn(
+                        "IT Load (MW)",
+                        min_value=0.0,
+                        max_value=peak_it,
+                        step=10.0,
+                        required=True
+                    )
+                },
+                hide_index=True,
+                key='trajectory_editor'
+            )
+            
+            # Update session state
+            st.session_state.load_config['growth_steps'] = edited_df.to_dict('records')
+            
+            # Generate and visualize trajectory
+            from app.utils.load_backend import generate_full_trajectory
+            trajectory = generate_full_trajectory(
+                edited_df.to_dict('records'),
+                pue_backend,
+                planning_horizon=15
+            )
+            
+            # Trajectory chart
+            import plotly.graph_objects as go
+            fig_traj = go.Figure()
+            fig_traj.add_trace(go.Scatter(
+                x=list(trajectory.keys()),
+                y=list(trajectory.values()),
+                mode='lines+markers',
+                name='Facility Load',
+                line=dict(color='#1f77b4', width=3),
+                marker=dict(size=8)
+            ))
+            fig_traj.update_layout(
+                title="15-Year Load Trajectory",
+                xaxis_title="Year",
+                yaxis_title="Facility Load (MW)",
+                height=400
+            )
+            st.plotly_chart(fig_traj, use_container_width=True)
+        
+        # Save button
+        st.markdown("---")
+        col_save1, col_save2 = st.columns([3, 1])
+        
+        with col_save1:
+            if st.session_state.load_config.get('last_updated'):
+                st.caption(f"💾 Last saved: {st.session_state.load_config['last_updated'][:19]}")
+            else:
+                st.caption("⚠️ Configuration not yet saved to backend")
+        
+        with col_save2:
+            if st.button("💾 Save Configuration", type="primary", use_container_width=True, key='save_load_config'):
+                from app.utils.load_backend import save_load_configuration
+                success = save_load_configuration(selected_site, st.session_state.load_config)
+                if success:
+                    st.success("✅ Load configuration saved to Google Sheets!")
+                    st.session_state.load_config['last_updated'] = pd.Timestamp.now().isoformat()
+                    st.rerun()
+                else:
+                    st.error("❌ Failed to save configuration. Check terminal for errors.")
     
     # =========================================================================
     # TAB 1: BASIC FACILITY PARAMETERS
