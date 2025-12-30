@@ -332,6 +332,21 @@ def run_heuristic_optimization(site_data: Dict, problem_num: int, load_profile: 
                 'violations': ['Unknown error']
             }
         
+        
+        # Serialize dispatch_by_year before adding to result dict
+        dispatch_by_year_raw = getattr(result, 'dispatch_by_year', None) if not isinstance(result, dict) else result.get('dispatch_by_year')
+        dispatch_by_year_serialized = {}
+        if dispatch_by_year_raw:
+            for year, disp_result in dispatch_by_year_raw.items():
+                if hasattr(disp_result, 'dispatch_df'):
+                    # Convert DataFrame to dict of lists (JSON-serializable)
+                    dispatch_by_year_serialized[year] = {
+                        'dispatch_data': disp_result.dispatch_df.to_dict('list'),
+                        'columns': list(disp_result.dispatch_df.columns)
+                    }
+                elif isinstance(disp_result, dict):
+                    dispatch_by_year_serialized[year] = disp_result
+        
         # Convert result to dict format for storage
         result_dict = {
             'site_name': site['name'],
@@ -358,8 +373,9 @@ def run_heuristic_optimization(site_data: Dict, problem_num: int, load_profile: 
             # Equipment by year (from v2.1.1 optimizer)
             'equipment_by_year': getattr(result, 'equipment_by_year', None) if not isinstance(result, dict) else result.get('equipment_by_year'),
             
-            # Dispatch by year (actual hourly dispatch for charts)
-            'dispatch_by_year': getattr(result, 'dispatch_by_year', None) if not isinstance(result, dict) else result.get('dispatch_by_year'),
+            
+            # Dispatch by year (serialized above for JSON compatibility)
+            'dispatch_by_year': dispatch_by_year_serialized,
             
             # Load trajectory (from backend)
             'load_trajectory': load_trajectory,

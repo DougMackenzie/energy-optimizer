@@ -149,9 +149,15 @@ def render():
         # Use optimizer's actual dispatch
         dispatch_result = result_data['dispatch_by_year'][actual_year]
         if hasattr(dispatch_result, 'dispatch_df'):
+            # DispatchResult object (from fresh session_state)
             dispatch_df = dispatch_result.dispatch_df.copy()
             print(f"✅ Using optimizer dispatch for year {actual_year}")
+        elif isinstance(dispatch_result, dict) and 'dispatch_data' in dispatch_result:
+            # Serialized format (from Google Sheets) - reconstruct DataFrame
+            dispatch_df = pd.DataFrame(dispatch_result['dispatch_data'])
+            print(f"✅ Using saved dispatch for year {actual_year} (loaded from Google Sheets)")
         elif isinstance(dispatch_result, pd.DataFrame):
+            # Direct DataFrame
             dispatch_df = dispatch_result.copy()
             print(f"✅ Using optimizer dispatch DataFrame for year {actual_year}")
     
