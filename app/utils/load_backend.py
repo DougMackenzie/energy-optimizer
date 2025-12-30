@@ -144,7 +144,7 @@ def load_load_configuration(site_name: str) -> Dict:
                     config['load_trajectory'] = generate_full_trajectory(growth_steps, pue, planning_horizon=15)
                 else:
                     # If no growth steps, create flat trajectory
-config['load_trajectory'] = {y: 0.0 for y in range(2027, 2042)}
+                    config['load_trajectory'] = {y: 0.0 for y in range(2027, 2042)}
                 
                 print(f"✓ Loaded load config for {site_name} (regenerated trajectory from {len(growth_steps)} growth steps)")
                 return config
