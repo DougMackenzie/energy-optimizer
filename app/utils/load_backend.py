@@ -62,7 +62,8 @@ def save_load_configuration(site_name: str, load_config: dict) -> bool:
                 existing_row = idx + 2  # +2 for header and 1-indexing
                 break
         
-        # Extract values from load_config        pue = float(load_config.get('pue', 1.25))
+        # Extract values from load_config
+        pue = float(load_config.get('pue', 1.25))
         load_factor_pct = float(load_config.get('load_factor_pct', 80.0))
         growth_enabled = bool(load_config.get('growth_enabled', True))
         growth_steps = load_config.get('growth_steps', [])
