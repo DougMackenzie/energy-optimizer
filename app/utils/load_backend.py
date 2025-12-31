@@ -85,10 +85,10 @@ def save_load_configuration(site_name: str, load_config: dict) -> bool:
             load_8760 = load_config['load_8760_mw']
             if hasattr(load_8760, 'tolist'):
                 load_8760_json = json.dumps(load_8760.tolist())
-        with open("/tmp/load_save_debug.txt", "a") as f: f.write(f">>> Serialized 8760: {len(load_8760_json)} chars\n")
             elif isinstance(load_8760, list):
                 load_8760_json = json.dumps(load_8760)
-        with open("/tmp/load_save_debug.txt", "a") as f: f.write(f">>> Serialized 8760: {len(load_8760_json)} chars\n")
+            with open('/tmp/load_save_debug.txt', 'a') as f:
+                f.write(f'>>> Serialized 8760: {len(load_8760_json)} chars\n')
         
         new_cols_data = [
             round(peak_it_load_mw, 1),  # J: peak_it_load_mw (derived)
