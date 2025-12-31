@@ -186,7 +186,18 @@ def load_load_configuration(site_name: str) -> Dict:
                 else:
                     config['load_trajectory'] = {y: 0.0 for y in range(2027, 2042)}
                 
-                \n                # Load 8760 profile if available (column P)\n                load_8760_json = record.get('load_8760_json', '')\n                if load_8760_json:\n                    try:\n                        import numpy as np\n                        load_8760 = json.loads(load_8760_json)\n                        config['load_8760_mw'] = np.array(load_8760)\n                        print(f"✓ Loaded 8760 profile (peak={np.max(load_8760):.1f} MW)")\n                    except Exception as e:\n                        print(f"⚠️  Could not parse 8760 profile: {e}")\n                print(f"✓ Loaded load config for {site_name} ({len(growth_steps)} growth steps, facility loads)")
+                # Load 8760 profile if available (column P)
+                load_8760_json = record.get('load_8760_json', '')
+                if load_8760_json:
+                    try:
+                        import numpy as np
+                        load_8760 = json.loads(load_8760_json)
+                        config['load_8760_mw'] = np.array(load_8760)
+                        print(f"✓ Loaded 8760 profile (peak={np.max(load_8760):.1f} MW)")
+                    except Exception as e:
+                        print(f"⚠️  Could not parse 8760 profile: {e}")
+                
+                print(f"✓ Loaded load config for {site_name} ({len(growth_steps)} growth steps, facility loads)")
                 return config
         
         # Return default if not found
