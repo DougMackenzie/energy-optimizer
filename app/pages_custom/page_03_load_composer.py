@@ -666,25 +666,33 @@ def render():
             else:
                 try:
                     from app.utils.load_backend import save_load_configuration
+                    import traceback
+                    
+                    print(f"\n=== SAVE DEBUG ===")
+                    print(f"Site name: {st.session_state.current_site}")
                     
                     # Include 8760 profile if available
                     if 'load_8760_mw' in st.session_state:
                         st.session_state.load_config['load_8760_mw'] = st.session_state['load_8760_mw']
+                        print(f"Added 8760 profile")
                     
-                    # Save to Google Sheets (includes 8760 in column P)
+                    # Save to Google Sheets
                     success = save_load_configuration(
                         st.session_state.current_site, 
                         st.session_state.load_config
                     )
                     
                     if success:
-                        st.success(f"✅ Saved to backend: {st.session_state.current_site}")
-                        st.info("💡 8760 profile saved. Used in all optimizations.")
+                        st.success(f"✅ Saved!")
+                        st.info("💡 8760 profile saved")
                     else:
-                        st.error("❌ Failed to save - check console")
+                        st.error("❌ Save returned False")
                         
                 except Exception as e:
-                    st.error(f"❌ Error saving load profile: {e}")
+                    print(f"\n=== ERROR ===\n{traceback.format_exc()}")
+                    st.error(f"❌ Error: {str(e)}")
+                    with st.expander("Details"):
+                        st.code(traceback.format_exc())
     
     with col_save_btn2:
         if st.session_state.get('current_site'):
