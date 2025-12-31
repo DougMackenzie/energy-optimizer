@@ -62,9 +62,7 @@ def save_load_configuration(site_name: str, load_config: dict) -> bool:
                 existing_row = idx + 2  # +2 for header and 1-indexing
                 break
         
-        # Extract values from load_config
-        with open("/tmp/load_save_debug.txt", "a") as f: f.write(">>> Extracting values...\n")
-        pue = float(load_config.get('pue', 1.25))
+        # Extract values from load_config        pue = float(load_config.get('pue', 1.25))
         load_factor_pct = float(load_config.get('load_factor_pct', 80.0))
         growth_enabled = bool(load_config.get('growth_enabled', True))
         growth_steps = load_config.get('growth_steps', [])
@@ -100,13 +98,9 @@ def save_load_configuration(site_name: str, load_config: dict) -> bool:
             load_8760_json,  # P: load_8760_json (8760 hourly values)
         ]
         
-        if existing_row:
-        with open("/tmp/load_save_debug.txt", "a") as f: f.write(f">>> Existing row: {existing_row}\n")
-            # Update existing (columns J-P)
+        if existing_row:            # Update existing (columns J-P)
             update_range = f'J{existing_row}:P{existing_row}'
-            worksheet.update(range_name=update_range, values=[new_cols_data])
-        with open("/tmp/load_save_debug.txt", "a") as f: f.write(">>> About to update worksheet...\n")
-            print(f"✓ Updated load config for {site_name} (with 8760 profile)")
+            worksheet.update(range_name=update_range, values=[new_cols_data])            print(f"✓ Updated load config for {site_name} (with 8760 profile)")
         else:
             # For new rows, need ALL columns A-P
             # Columns A-I (legacy schema - keep for backward compatibility)
@@ -124,12 +118,7 @@ def save_load_configuration(site_name: str, load_config: dict) -> bool:
             # Add new columns J-P
             full_row.extend(new_cols_data)
             
-            worksheet.append_row(full_row)
-        with open("/tmp/load_save_debug.txt", "a") as f: f.write(">>> About to append row...\n")
-            print(f"✓ Created new load config for {site_name} (with 8760 profile)")
-        
-        with open("/tmp/load_save_debug.txt", "a") as f: f.write(">>> SUCCESS - returning True\n")
-        return True
+            worksheet.append_row(full_row)            print(f"✓ Created new load config for {site_name} (with 8760 profile)")        return True
         
     except Exception as e:
         print(f"❌ Error saving load configuration: {e}")
