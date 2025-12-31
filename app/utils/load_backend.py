@@ -36,6 +36,14 @@ def save_load_configuration(site_name: str, load_config: dict) -> bool:
         True if successful
     """
     try:
+        # Debug logging to file
+        with open('/tmp/load_save_debug.txt', 'a') as f:
+            f.write(f"\n=== save_load_configuration START ===\n")
+            f.write(f"Time: {__import__('datetime').datetime.now()}\n")
+            f.write(f"Site: {site_name}\n")
+            f.write(f"Config keys: {list(load_config.keys())}\n")
+            f.write(f"Config: {load_config}\n")
+        
         print(f"\n=== save_load_configuration START ===")
         print(f"Site: {site_name}")
         print(f"Config keys: {load_config.keys()}")
