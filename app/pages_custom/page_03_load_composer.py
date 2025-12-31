@@ -665,28 +665,23 @@ def render():
                 st.error("❌ No site selected. Navigate to Dashboard to select a site.")
             else:
                 try:
-                    from app.utils.site_backend import save_site_load_profile
-                    from datetime import datetime
+                    from app.utils.load_backend import save_load_configuration
                     
-                    # Prepare load data for saving
-                    load_data_to_save = {
-                        'load_profile': st.session_state.load_profile_dr.copy(),
-                        'workload_mix': st.session_state.load_profile_dr.get('workload_mix', {}),
-                        'dr_params': {
-                            'cooling_flex': st.session_state.load_profile_dr.get('cooling_flex', 0),
-                            'thermal_constant_min': st.session_state.load_profile_dr.get('thermal_constant_min', 30),
-                            'enabled_dr_products': st.session_state.load_profile_dr.get('enabled_dr_products', [])
-                        }
-                    }
+                    # Include 8760 profile if available
+                    if 'load_8760_mw' in st.session_state:
+                        st.session_state.load_config['load_8760_mw'] = st.session_state['load_8760_mw']
                     
-                    # Save to Google Sheets
-                    success = save_site_load_profile(st.session_state.current_site, load_data_to_save)
+                    # Save to Google Sheets (includes 8760 in column P)
+                    success = save_load_configuration(
+                        st.session_state.current_site, 
+                        st.session_state.load_config
+                    )
                     
                     if success:
-                        st.success(f"✅ Load profile saved to Google Sheets for site: {st.session_state.current_site}")
-                        st.info("This load profile will now be used in all optimizations for this site.")
+                        st.success(f"✅ Saved to backend: {st.session_state.current_site}")
+                        st.info("💡 8760 profile saved. Used in all optimizations.")
                     else:
-                        st.error("❌ Failed to save load profile to Google Sheets")
+                        st.error("❌ Failed to save - check console")
                         
                 except Exception as e:
                     st.error(f"❌ Error saving load profile: {e}")
