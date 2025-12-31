@@ -83,11 +83,21 @@ def save_load_configuration(site_name: str, load_config: dict) -> bool:
             # Convert numpy array to list for JSON serialization
             load_8760 = load_config['load_8760_mw']
             if hasattr(load_8760, 'tolist'):
-                load_8760_json = json.dumps(load_8760.tolist())
+                json_str = json.dumps(load_8760.tolist())
             elif isinstance(load_8760, list):
-                load_8760_json = json.dumps(load_8760)
-            with open('/tmp/load_save_debug.txt', 'a') as f:
-                f.write(f'>>> Serialized 8760: {len(load_8760_json)} chars\n')
+                json_str = json.dumps(load_8760)
+            else:
+                json_str = ''
+            
+            # Compress to fit in Google Sheets 50k character limit
+            if json_str:
+                import gzip
+                import base64
+                compressed = gzip.compress(json_str.encode('utf-8'))
+                load_8760_json = base64.b64encode(compressed).decode('utf-8')
+                
+                with open('/tmp/load_save_debug.txt', 'a') as f:
+                    f.write(f'>>> Original: {len(json_str)} chars, Compressed: {len(load_8760_json)} chars\n')
         
         new_cols_data = [
             round(peak_it_load_mw, 1),  # J: peak_it_load_mw (derived)
@@ -208,7 +218,14 @@ def load_load_configuration(site_name: str) -> Dict:
                 if load_8760_json:
                     try:
                         import numpy as np
-                        load_8760 = json.loads(load_8760_json)
+                        import gzip
+                        import base64
+                        
+                        # Decompress gzipped base64 data
+                        compressed = base64.b64decode(load_8760_json)
+                        json_str = gzip.decompress(compressed).decode('utf-8')
+                        load_8760 = json.loads(json_str)
+                        
                         config['load_8760_mw'] = np.array(load_8760)
                         print(f"✓ Loaded 8760 profile (peak={np.max(load_8760):.1f} MW)")
                     except Exception as e:
