@@ -505,6 +505,13 @@ def render():
         
         # Generate load profile only if workload mix is valid
         if total_pct == 100:
+            # Debug: Print load_factor value
+            print(f"\n=== DR TAB DEBUG ===")
+            print(f"load_factor (slider value): {load_factor}")
+            print(f"load_factor / 100.0: {load_factor / 100.0}")
+            print(f"peak_it_mw: {peak_it_mw}")
+            print(f"pue: {pue}")
+            
             # Generate flexibility profile
             load_data = generate_load_profile_with_flexibility(
                 peak_it_load_mw=peak_it_mw,
