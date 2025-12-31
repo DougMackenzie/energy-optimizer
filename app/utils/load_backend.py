@@ -36,6 +36,10 @@ def save_load_configuration(site_name: str, load_config: dict) -> bool:
         True if successful
     """
     try:
+        print(f"\n=== save_load_configuration START ===")
+        print(f"Site: {site_name}")
+        print(f"Config keys: {load_config.keys()}")
+        
         from config.settings import GOOGLE_SHEET_ID as SHEET_ID
         
         client = get_google_sheets_client()
