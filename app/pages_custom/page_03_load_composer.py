@@ -697,7 +697,28 @@ def render():
         if st.button("🔄 Refresh"):
             st.rerun()
     
-
+    
+    # Admin button to add column P if missing
+    with col_save_btn3:
+        if st.button("🔧 Add Column P", help="One-time: Add load_8760_json column to Google Sheets"):
+            try:
+                from app.utils.load_backend import get_google_sheets_client
+                from config.settings import GOOGLE_SHEET_ID as SHEET_ID
+                
+                client = get_google_sheets_client()
+                spreadsheet = client.open_by_key(SHEET_ID)
+                worksheet = spreadsheet.worksheet("Load_Profiles")
+                
+                # Expand if needed
+                if worksheet.col_count < 16:
+                    worksheet.resize(cols=16)
+                
+                # Add header
+                worksheet.update_cell(1, 16, "load_8760_json")
+                st.success("✅ Column P (load_8760_json) added!")
+            except Exception as e:
+                st.error(f"❌ Error: {str(e)}")
+    
     # =========================================================================
     # TAB 5: LOAD VARIABILITY ANALYSIS
     # =========================================================================
