@@ -63,6 +63,7 @@ def save_load_configuration(site_name: str, load_config: dict) -> bool:
                 break
         
         # Extract values from load_config
+        with open("/tmp/load_save_debug.txt", "a") as f: f.write(">>> Extracting values...\n")
         pue = float(load_config.get('pue', 1.25))
         load_factor_pct = float(load_config.get('load_factor_pct', 80.0))
         growth_enabled = bool(load_config.get('growth_enabled', True))
@@ -84,8 +85,10 @@ def save_load_configuration(site_name: str, load_config: dict) -> bool:
             load_8760 = load_config['load_8760_mw']
             if hasattr(load_8760, 'tolist'):
                 load_8760_json = json.dumps(load_8760.tolist())
+        with open("/tmp/load_save_debug.txt", "a") as f: f.write(f">>> Serialized 8760: {len(load_8760_json)} chars\n")
             elif isinstance(load_8760, list):
                 load_8760_json = json.dumps(load_8760)
+        with open("/tmp/load_save_debug.txt", "a") as f: f.write(f">>> Serialized 8760: {len(load_8760_json)} chars\n")
         
         new_cols_data = [
             round(peak_it_load_mw, 1),  # J: peak_it_load_mw (derived)
@@ -98,9 +101,11 @@ def save_load_configuration(site_name: str, load_config: dict) -> bool:
         ]
         
         if existing_row:
+        with open("/tmp/load_save_debug.txt", "a") as f: f.write(f">>> Existing row: {existing_row}\n")
             # Update existing (columns J-P)
             update_range = f'J{existing_row}:P{existing_row}'
             worksheet.update(range_name=update_range, values=[new_cols_data])
+        with open("/tmp/load_save_debug.txt", "a") as f: f.write(">>> About to update worksheet...\n")
             print(f"✓ Updated load config for {site_name} (with 8760 profile)")
         else:
             # For new rows, need ALL columns A-P
@@ -120,8 +125,10 @@ def save_load_configuration(site_name: str, load_config: dict) -> bool:
             full_row.extend(new_cols_data)
             
             worksheet.append_row(full_row)
+        with open("/tmp/load_save_debug.txt", "a") as f: f.write(">>> About to append row...\n")
             print(f"✓ Created new load config for {site_name} (with 8760 profile)")
         
+        with open("/tmp/load_save_debug.txt", "a") as f: f.write(">>> SUCCESS - returning True\n")
         return True
         
     except Exception as e:
