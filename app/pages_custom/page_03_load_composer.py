@@ -513,10 +513,18 @@ def render():
             print(f"pue: {pue}")
             
             # Generate flexibility profile
+            # Ensure load_factor is a fraction (safeguard)
+            lf_fraction = load_factor / 100.0
+            if lf_fraction > 1.0:
+                st.warning(f"⚠️ load_factor was {load_factor}, using 0.{load_factor} instead")
+                lf_fraction = load_factor / 1000.0  # Assume typo
+            
+            st.info(f"🔍 Using load_factor: {lf_fraction:.2f} (from slider: {load_factor}%)")
+            
             load_data = generate_load_profile_with_flexibility(
                 peak_it_load_mw=peak_it_mw,
                 pue=pue,
-                load_factor=load_factor / 100.0,  # Convert percentage to fraction
+                load_factor=lf_fraction,
                 workload_mix=st.session_state.load_profile_dr['workload_mix'],
                 cooling_flex_pct=st.session_state.load_profile_dr['cooling_flex']
             )
