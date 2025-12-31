@@ -126,10 +126,13 @@ def save_load_configuration(site_name: str, load_config: dict) -> bool:
         return True
         
     except Exception as e:
-        print(f"❌ Error saving load configuration: {e}")
+        error_msg = f'Error: {e}'
+        print(f'❌ {error_msg}')
         import traceback
-        traceback.print_exc()
-        return False
+        tb = traceback.format_exc()
+        print(tb)
+        with open('/tmp/load_save_debug.txt', 'a') as f:
+            f.write(f'\n!!! EXCEPTION !!!\n{error_msg}\n{tb}\n')
 
 
 def load_load_configuration(site_name: str) -> Dict:
