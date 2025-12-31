@@ -63,8 +63,18 @@ def save_load_configuration(site_name: str, load_config: dict) -> bool:
         else:
             peak_it_load_mw = float(load_config.get('peak_it_load_mw', 600.0))
         
-        # Prepare row data for columns J-O (NEW schema)
+        # Prepare row data for columns J-P (NEW schema)
         # NOTE: growth_steps now stores FACILITY loads, not IT loads
+        # Extract 8760 load profile if available (from load_data)
+        load_8760_json = ''
+        if 'load_8760_mw' in load_config:
+            # Convert numpy array to list for JSON serialization
+            load_8760 = load_config['load_8760_mw']
+            if hasattr(load_8760, 'tolist'):
+                load_8760_json = json.dumps(load_8760.tolist())
+            elif isinstance(load_8760, list):
+                load_8760_json = json.dumps(load_8760)
+        
         new_cols_data = [
             round(peak_it_load_mw, 1),  # J: peak_it_load_mw (derived)
             float(pue),  # K: pue
@@ -72,15 +82,16 @@ def save_load_configuration(site_name: str, load_config: dict) -> bool:
             growth_enabled,  # M: growth_enabled
             json.dumps(growth_steps),  # N: growth_steps_json (FACILITY loads!)
             datetime.now().isoformat(),  # O: last_updated
+            load_8760_json,  # P: load_8760_json (8760 hourly values)
         ]
         
         if existing_row:
-            # Update existing (columns J-O only)
-            update_range = f'J{existing_row}:O{existing_row}'
+            # Update existing (columns J-P)
+            update_range = f'J{existing_row}:P{existing_row}'
             worksheet.update(range_name=update_range, values=[new_cols_data])
-            print(f"✓ Updated load config for {site_name}")
+            print(f"✓ Updated load config for {site_name} (with 8760 profile)")
         else:
-            # For new rows, need ALL columns A-O
+            # For new rows, need ALL columns A-P
             # Columns A-I (legacy schema - keep for backward compatibility)
             full_row = [
                 site_name,  # A: site_name
@@ -93,11 +104,11 @@ def save_load_configuration(site_name: str, load_config: dict) -> bool:
                 15,  # H: batch_inference_pct (legacy default)
                 20,  # I: real_time_inference_pct (legacy default)
             ]
-            # Add new columns J-O
+            # Add new columns J-P
             full_row.extend(new_cols_data)
             
             worksheet.append_row(full_row)
-            print(f"✓ Created new load config for {site_name}")
+            print(f"✓ Created new load config for {site_name} (with 8760 profile)")
         
         return True
         
@@ -175,7 +186,7 @@ def load_load_configuration(site_name: str) -> Dict:
                 else:
                     config['load_trajectory'] = {y: 0.0 for y in range(2027, 2042)}
                 
-                print(f"✓ Loaded load config for {site_name} ({len(growth_steps)} growth steps, facility loads)")
+                \n                # Load 8760 profile if available (column P)\n                load_8760_json = record.get('load_8760_json', '')\n                if load_8760_json:\n                    try:\n                        import numpy as np\n                        load_8760 = json.loads(load_8760_json)\n                        config['load_8760_mw'] = np.array(load_8760)\n                        print(f"✓ Loaded 8760 profile (peak={np.max(load_8760):.1f} MW)")\n                    except Exception as e:\n                        print(f"⚠️  Could not parse 8760 profile: {e}")\n                print(f"✓ Loaded load config for {site_name} ({len(growth_steps)} growth steps, facility loads)")
                 return config
         
         # Return default if not found
