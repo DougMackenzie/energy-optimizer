@@ -24,6 +24,13 @@ import zipfile
 # Import custom diagram functions
 from app.utils.plotly_diagram import create_interactive_single_line_diagram
 from app.utils.plotly_rbd import create_interactive_rbd_diagram
+# NEW: Comprehensive engineering drawings
+from app.utils.plotly_engineering_drawings import (
+    create_professional_single_line_diagram,
+    create_site_plan_diagram,
+    ELECTRICAL_SPECS,
+    FOOTPRINT_LIBRARY
+)
 
 # =============================================================================
 # SESSION STATE EXTRACTION (NEW - Pull Real Optimization Data)
@@ -163,6 +170,17 @@ def get_config_from_session_state() -> Optional[Dict]:
     config['system_mva_base'] = 100.0
     config['pue'] = site.get('pue', 1.25) if site else 1.25
     
+    # Site acreage from site data or GeoJSON
+    config['site_acreage'] = site.get('acreage', 50) if site else 50
+    if site and 'geojson' in site:
+        try:
+            import json
+            geojson = json.loads(site['geojson']) if isinstance(site['geojson'], str) else site['geojson']
+            if 'properties' in geojson:
+                config['site_acreage'] = geojson['properties'].get('acres', config['site_acreage'])
+        except:
+            pass
+    
     # Redundancy inference
     constraints = result.get('constraints', {})
     total_thermal = config['n_recip'] + config['n_turbine']
@@ -170,6 +188,23 @@ def get_config_from_session_state() -> Optional[Dict]:
         config['redundancy'] = 'N+1'  #  ⚠️ ASSUMPTION: Inferred from count
     else:
         config['redundancy'] = 'N+0'
+    
+    # NEW: Electrical configuration inference based on equipment and redundancy
+    if config['redundancy'] == 'N+1' and total_thermal > 8:
+        # Large, redundant facility → premium electrical configuration
+        config['suggested_poi'] = 'ring_n1'
+        config['suggested_gen'] = 'double_bus'
+        config['suggested_dist'] = 'catcher'
+    elif config['redundancy'] == 'N+1':
+        # Standard redundant facility → mid-tier configuration
+        config['suggested_poi'] = 'radial'
+        config['suggested_gen'] = 'mtm'
+        config['suggested_dist'] = 'n_topology'
+    else:
+        # No redundancy → simple configuration
+        config['suggested_poi'] = 'radial'
+        config['suggested_gen'] = 'radial'
+        config['suggested_dist'] = 'distributed'
     
     return config
 
@@ -306,77 +341,458 @@ def generate_sample_etap_equipment_df(config: Dict) -> pd.DataFrame:
 
 
 def generate_etap_bus_data(config: Dict) -> pd.DataFrame:
-    """Generate ETAP bus data for all nodes in the system."""
-    rows = []
-    bus_id = 100
+    """Generate ETAP bus data matching engineering drawing topology.
     
-    # Equipment buses
-    for i in range(config.get("n_recip", 0)):
+    Includes proper voltage levels and bus configurations:
+    - 345 kV: POI (utility interconnection)
+    - 34.5 kV: Main/Facility bus
+    - 13.8 kV: Generation bus and generator terminals
+    - 13.8 kV or 34.5 kV: Data hall buses
+    """
+    rows = []
+    
+    # Get electrical configurations
+    poi_config = config.get('suggested_poi', 'radial')
+    gen_config = config.get('suggested_gen', 'mtm')
+    dist_config = config.get('suggested_dist', 'catcher')
+    
+    poi_type = ELECTRICAL_SPECS['poi'][poi_config]['type']
+    gen_type = ELECTRICAL_SPECS['generation'][gen_config]['type']
+    dist_type = ELECTRICAL_SPECS['distribution'][dist_config]['type']
+    
+    # === 1. POI BUSES (345 kV) ===
+    if poi_type == 'ring':
         rows.append({
-            "Bus_ID": f"BUS_{bus_id + i}",
-            "Bus_Name": f"RECIP_{i+1}_BUS",
+            "Bus_ID": "BUS_POI_RING",
+            "Bus_Name": "345kV_RING_BUS",
+            "Nominal_kV": 345.0,
+            "Bus_Type": "Swing",
+            "Area": 1,
+            "Zone": 1,
+            "Notes": "POI Ring Bus - N-1 configuration"
+        })
+    elif poi_type == 'bah':
+        rows.append({
+            "Bus_ID": "BUS_POI_RAIL_A",
+            "Bus_Name": "345kV_RAIL_A",
+            "Nominal_kV": 345.0,
+            "Bus_Type": "Swing",
+            "Area": 1,
+            "Zone": 1,
+            "Notes": "Breaker-and-a-Half - Rail A"
+        })
+        rows.append({
+            "Bus_ID": "BUS_POI_RAIL_B",
+            "Bus_Name": "345kV_RAIL_B",
+            "Nominal_kV": 345.0,
+            "Bus_Type": "Swing",
+            "Area": 1,
+            "Zone": 1,
+            "Notes": "Breaker-and-a-Half - Rail B"
+        })
+    else:  # radial
+        rows.append({
+            "Bus_ID": "BUS_POI_RADIAL",
+            "Bus_Name": "345kV_RADIAL_BUS",
+            "Nominal_kV": 345.0,
+            "Bus_Type": "Swing",
+            "Area": 1,
+            "Zone": 1,
+            "Notes": "POI Radial Feed"
+        })
+    
+    # === 2. MAIN BUS (34.5 kV) ===
+    if gen_type in ['mtm', 'double']:
+        rows.append({
+            "Bus_ID": "BUS_MAIN_A",
+            "Bus_Name": "MAIN_BUS_A_34_5kV",
+            "Nominal_kV": 34.5,
+            "Bus_Type": "PV",
+            "Area": 1,
+            "Zone": 1,
+            "Notes": "Main Facility Bus A"
+        })
+        rows.append({
+            "Bus_ID": "BUS_MAIN_B",
+            "Bus_Name": "MAIN_BUS_B_34_5kV",
+            "Nominal_kV": 34.5,
+            "Bus_Type": "PV",
+            "Area": 1,
+            "Zone": 1,
+            "Notes": "Main Facility Bus B"
+        })
+    else:
+        rows.append({
+            "Bus_ID": "BUS_MAIN",
+            "Bus_Name": "MAIN_BUS_34_5kV",
+            "Nominal_kV": 34.5,
+            "Bus_Type": "PV",
+            "Area": 1,
+            "Zone": 1,
+            "Notes": "Main Facility Bus"
+        })
+    
+    # === 3. GENERATION BUS (13.8 kV) ===
+    if gen_type in ['mtm', 'double']:
+        rows.append({
+            "Bus_ID": "BUS_GEN_A",
+            "Bus_Name": "GEN_BUS_A_13_8kV",
             "Nominal_kV": 13.8,
             "Bus_Type": "PV",
             "Area": 1,
             "Zone": 1,
+            "Notes": "Generation Bus A - connects to generators"
+        })
+        rows.append({
+            "Bus_ID": "BUS_GEN_B",
+            "Bus_Name": "GEN_BUS_B_13_8kV",
+            "Nominal_kV": 13.8,
+            "Bus_Type": "PV",
+            "Area": 1,
+            "Zone": 1,
+            "Notes": "Generation Bus B - connects to generators"
+        })
+    elif gen_type == 'ring':
+        rows.append({
+            "Bus_ID": "BUS_GEN_RING",
+            "Bus_Name": "GEN_RING_13_8kV",
+            "Nominal_kV": 13.8,
+            "Bus_Type": "PV",
+            "Area": 1,
+            "Zone": 1,
+            "Notes": "Generation Ring Bus - generators tap from ring"
+        })
+    else:  # radial
+        rows.append({
+            "Bus_ID": "BUS_GEN",
+            "Bus_Name": "GEN_BUS_13_8kV",
+            "Nominal_kV": 13.8,
+            "Bus_Type": "PV",
+            "Area": 1,
+            "Zone": 1,
+            "Notes": "Generation Bus - single radial"
+        })
+    
+    # === 4. GENERATOR TERMINAL BUSES (13.8 kV) ===
+    for i in range(config.get("n_recip", 0)):
+        rows.append({
+            "Bus_ID": f"BUS_RECIP_{i+1:02d}",
+            "Bus_Name": f"RECIP_{i+1:02d}_TERM",
+            "Nominal_kV": 13.8,
+            "Bus_Type": "PV",
+            "Area": 1,
+            "Zone": 1,
+            "Notes": f"Reciprocating Engine {i+1} Terminal"
         })
     
     for i in range(config.get("n_turbine", 0)):
         rows.append({
-            "Bus_ID": f"BUS_{bus_id + 20 + i}",
-            "Bus_Name": f"GT_{i+1}_BUS",
+            "Bus_ID": f"BUS_GT_{i+1:02d}",
+            "Bus_Name": f"GT_{i+1:02d}_TERM",
             "Nominal_kV": 13.8,
             "Bus_Type": "PV",
             "Area": 1,
             "Zone": 1,
+            "Notes": f"Gas Turbine {i+1} Terminal"
         })
     
-    if config.get("bess_mw", 0) > 0:
+    # === 5. DISTRIBUTION BUSES ===
+    if dist_type == 'catcher':
+        # Reserve bus at 34.5kV for catcher topology
         rows.append({
-            "Bus_ID": "BUS_140",
-            "Bus_Name": "BESS_BUS",
-            "Nominal_kV": 13.8,
+            "Bus_ID": "BUS_RESERVE",
+            "Bus_Name": "RESERVE_BUS_34_5kV",
+            "Nominal_kV": 34.5,
             "Bus_Type": "PV",
             "Area": 1,
             "Zone": 1,
+            "Notes": "Reserve Bus for N+1 Catcher topology"
         })
     
-    if config.get("solar_mw", 0) > 0:
+    # === 6. DATA HALL BUSES (13.8 kV after distribution transformers) ===
+    n_halls = 4
+    for i in range(n_halls):
         rows.append({
-            "Bus_ID": "BUS_150",
-            "Bus_Name": "SOLAR_BUS",
+            "Bus_ID": f"BUS_HALL_{i+1}",
+            "Bus_Name": f"HALL_{i+1}_13_8kV",
             "Nominal_kV": 13.8,
-            "Bus_Type": "PV",
+            "Bus_Type": "PQ",
             "Area": 1,
             "Zone": 1,
+            "Notes": f"Data Hall {i+1} Load Bus"
         })
-    
-    rows.append({
-        "Bus_ID": "BUS_200",
-        "Bus_Name": "MAIN_BUS",
-        "Nominal_kV": 13.8,
-        "Bus_Type": "Swing",
-        "Area": 1,
-        "Zone": 1,
-    })
     
     return pd.DataFrame(rows)
 
 
+def generate_etap_transformer_data(config: Dict) -> pd.DataFrame:
+    """Generate transformer data matching engineering drawing topology.
+    
+    Includes:
+    - POI Transformers: T1, T2 (345kV → 34.5kV)
+    - Step-Up Transformers: TR1-TR6 (13.8kV → 34.5kV)
+    - Distribution Transformers: T-1 to T-4 (34.5kV → 13.8kV)
+    """
+    rows = []
+    
+    # Get electrical configurations
+    poi_config = config.get('suggested_poi', 'radial')
+    gen_config = config.get('suggested_gen', 'mtm')
+    dist_config = config.get('suggested_dist', 'catcher')
+    
+    poi_type = ELECTRICAL_SPECS['poi'][poi_config]['type']
+    gen_type = ELECTRICAL_SPECS['generation'][gen_config]['type']
+    dist_type = ELECTRICAL_SPECS['distribution'][dist_config]['type']
+    
+    # === 1. POI TRANSFORMERS (345kV → 34.5kV) ===
+    n_poi_xfmrs = 2 if poi_type in ['ring', 'bah'] else 1
+    
+    for i in range(n_poi_xfmrs):
+        if poi_type == 'ring':
+            from_bus = "BUS_POI_RING"
+        elif poi_type == 'bah':
+            from_bus = f"BUS_POI_RAIL_{'A' if i == 0 else 'B'}"
+        else:
+            from_bus = "BUS_POI_RADIAL"
+        
+        to_bus = f"BUS_MAIN_{'A' if i == 0 else 'B'}" if gen_type in ['mtm', 'double'] else "BUS_MAIN"
+        
+        rows.append({
+            'Transformer_ID': f'T{i+1}',
+            'From_Bus': from_bus,
+            'To_Bus': to_bus,
+            'MVA_Rating': 300,
+            'Primary_kV': 345.0,
+            'Secondary_kV': 34.5,
+            'Connection': 'Delta-Wye',
+            'Z_percent': 12.5,
+            'R_percent': 0.5,
+            'X_percent': 12.49,
+            'Tap_Position': 0,
+            'Notes': f'POI Transformer {i+1} - 345kV to 34.5kV step-down'
+        })
+    
+    # === 2. STEP-UP TRANSFORMERS (13.8kV → 34.5kV) ===
+    n_recip = config.get('n_recip', 0)
+    n_turbine = config.get('n_turbine', 0)
+    n_step_up = min(6, max(2, (n_recip + n_turbine) // 3))  # N-1 redundancy
+    
+    for i in range(n_step_up):
+        # Determine which gen bus (A or B for MTM/double, single for others)
+        if gen_type in ['mtm', 'double']:
+            from_bus = f"BUS_GEN_{'A' if i < n_step_up//2 else 'B'}"
+            to_bus = f"BUS_MAIN_{'A' if i < n_step_up//2 else 'B'}"
+        elif gen_type == 'ring':
+            from_bus = "BUS_GEN_RING"
+            to_bus = "BUS_MAIN"
+        else:
+            from_bus = "BUS_GEN"
+            to_bus = "BUS_MAIN"
+        
+        # Size based on generators
+        total_gen_mw = n_recip * config.get('recip_mw_each', 18.3) + n_turbine * config.get('turbine_mw_each', 50.0)
+        xfmr_mva = max(50, total_gen_mw / n_step_up * 1.25)  # 25% margin
+        
+        rows.append({
+            'Transformer_ID': f'TR{i+1}',
+            'From_Bus': from_bus,
+            'To_Bus': to_bus,
+            'MVA_Rating': round(xfmr_mva, 1),
+            'Primary_kV': 13.8,
+            'Secondary_kV': 34.5,
+            'Connection': 'Delta-Wye',
+            'Z_percent': 6.5,
+            'R_percent': 0.4,
+            'X_percent': 6.49,
+            'Tap_Position': 0,
+            'Notes': f'Step-Up Transformer {i+1} - 13.8kV gen bus to 34.5kV main bus'
+        })
+    
+    # === 3. DISTRIBUTION TRANSFORMERS (34.5kV → 13.8kV) ===
+    n_halls = 4
+    peak_load = config.get('peak_load_mw', 200)
+    
+    for i in range(n_halls):
+        from_bus = "BUS_MAIN_A" if gen_type in ['mtm', 'double'] and i < 2 else \
+                   ("BUS_MAIN_B" if gen_type in ['mtm', 'double'] else "BUS_MAIN")
+        to_bus = f"BUS_HALL_{i+1}"
+        
+        # Size for per-hall load + margin
+        dist_mva = (peak_load / n_halls) * 1.2
+        
+        rows.append({
+            'Transformer_ID': f'T-{i+1}',
+            'From_Bus': from_bus,
+            'To_Bus': to_bus,
+            'MVA_Rating': round(dist_mva, 1),
+            'Primary_kV': 34.5,
+            'Secondary_kV': 13.8,
+            'Connection': 'Delta-Wye',
+            'Z_percent': 5.75,
+            'R_percent': 0.35,
+            'X_percent': 5.74,
+            'Tap_Position': 0,
+            'Notes': f'Distribution Transformer to Hall {i+1}'
+        })
+    
+    # === 4. RESERVE TRANSFORMER (if catcher topology) ===
+    if dist_type == 'catcher':
+        from_bus = "BUS_MAIN_B" if gen_type in ['mtm', 'double'] else "BUS_MAIN"
+        
+        rows.append({
+            'Transformer_ID': 'T-Res',
+            'From_Bus': from_bus,
+            'To_Bus': 'BUS_RESERVE',
+            'MVA_Rating': round(peak_load * 0.3, 1),  # 30% capacity for reserve
+            'Primary_kV': 34.5,
+            'Secondary_kV': 34.5,
+            'Connection': 'Delta-Delta',
+            'Z_percent': 5.0,
+            'R_percent': 0.3,
+            'X_percent': 4.99,
+            'Tap_Position': 0,
+            'Notes': 'Reserve Bus Transformer for N+1 Catcher topology'
+        })
+    
+    return pd.DataFrame(rows)
+
+
+def generate_etap_breaker_data(config: Dict) -> pd.DataFrame:
+    """Generate breaker/switch data matching engineering drawing topology."""
+    rows = []
+    
+    # Get electrical configurations
+    poi_config = config.get('suggested_poi', 'radial')
+    gen_config = config.get('suggested_gen', 'mtm')
+    dist_config = config.get('suggested_dist', 'catcher')
+    
+    poi_type = ELECTRICAL_SPECS['poi'][poi_config]['type']
+    gen_type = ELECTRICAL_SPECS['generation'][gen_config]['type']
+    dist_type = ELECTRICAL_SPECS['distribution'][dist_config]['type']
+    
+    # === 1. POI BREAKERS ===
+    if poi_type == 'ring':
+        # Ring bus has breakers at corners
+        for i in range(4):
+            rows.append({
+                'Breaker_ID': f'BKR_POI_RING_{i+1}',
+                'Bus': 'BUS_POI_RING',
+                'Voltage_kV': 345.0,
+                'BIL_kV': 1550,
+                'Interrupting_MVA': 40000,
+                'Type': 'Circuit Breaker',
+                'Status': 'Closed',
+                'Notes': f'POI Ring Bus Breaker {i+1}'
+            })
+    elif poi_type == 'bah':
+        # Breaker-and-a-half has 3 breakers per bay
+        for bay in range(3):
+            for pos in range(3):
+                rows.append({
+                    'Breaker_ID': f'BKR_POI_BAY{bay+1}_{pos+1}',
+                    'Bus': f'BUS_POI_RAIL_{"AB"[pos%2]}',
+                    'Voltage_kV': 345.0,
+                    'BIL_kV': 1550,
+                    'Interrupting_MVA': 40000,
+                    'Type': 'Circuit Breaker',
+                    'Status': 'Closed',
+                    'Notes': f'Breaker-and-a-Half Bay {bay+1} Position {pos+1}'
+                })
+    
+    # === 2. MAIN BUS BREAKERS ===
+    if gen_type == 'mtm':
+        # Tie breaker (normally open)
+        rows.append({
+            'Breaker_ID': 'BKR_MAIN_TIE',
+            'Bus': 'BUS_MAIN_A',
+            'Voltage_kV': 34.5,
+            'BIL_kV': 200,
+            'Interrupting_MVA': 1500,
+            'Type': 'Circuit Breaker',
+            'Status': 'Open',
+            'Notes': 'Main Bus Tie Breaker (Normally Open for MTM)'
+        })
+    
+    # === 3. GENERATION BUS BREAKERS ===
+    if gen_type == 'mtm':
+        rows.append({
+            'Breaker_ID': 'BKR_GEN_TIE',
+            'Bus': 'BUS_GEN_A',
+            'Voltage_kV': 13.8,
+            'BIL_kV': 95,
+            'Interrupting_MVA': 500,
+            'Type': 'Circuit Breaker',
+            'Status': 'Open',
+            'Notes': 'Generation Bus Tie Breaker (Normally Open for MTM)'
+        })
+    
+    # Generator breakers
+    for i in range(config.get('n_recip', 0)):
+        rows.append({
+            'Breaker_ID': f'BKR_RECIP_{i+1:02d}',
+            'Bus': 'BUS_GEN_A' if gen_type in ['mtm', 'double'] and i < config.get('n_recip', 0)//2 else 'BUS_GEN_B' if gen_type in ['mtm', 'double'] else 'BUS_GEN',
+            'Voltage_kV': 13.8,
+            'BIL_kV': 95,
+            'Interrupting_MVA': 500,
+            'Type': 'Circuit Breaker',
+            'Status': 'Closed',
+            'Notes': f'Recip {i+1} Main Breaker'
+        })
+    
+    for i in range(config.get('n_turbine', 0)):
+        rows.append({
+            'Breaker_ID': f'BKR_GT_{i+1:02d}',
+            'Bus': 'BUS_GEN_B' if gen_type in ['mtm', 'double'] else 'BUS_GEN',
+            'Voltage_kV': 13.8,
+            'BIL_kV': 95,
+            'Interrupting_MVA': 500,
+            'Type': 'Circuit Breaker',
+            'Status': 'Closed',
+            'Notes': f'Gas Turbine {i+1} Main Breaker'
+        })
+    
+    # === 4. STS SWITCHES (if catcher topology) ===
+    if dist_type == 'catcher':
+        for i in range(4):
+            rows.append({
+                'Breaker_ID': f'STS_{i+1}',
+                'Bus': f'BUS_HALL_{i+1}',
+                'Voltage_kV': 13.8,
+                'BIL_kV': 95,
+                'Interrupting_MVA': 250,
+                'Type': 'Static Transfer Switch',
+                'Status': 'Normal->Primary',
+                'Transfer_Time_ms': 4,
+                'Notes': f'STS for Hall {i+1} - Switches between primary and reserve'
+            })
+    
+    return pd.DataFrame(rows)
+
+
+
 def generate_etap_load_data(config: Dict) -> pd.DataFrame:
-    """Generate ETAP load data for datacenter."""
+    """Generate ETAP load data for datacenter halls."""
     peak_load = config.get("peak_load_mw", 200)
-    return pd.DataFrame([{
-        "Load_ID": "LOAD_DC",
-        "Load_Name": "Datacenter Load",
-        "Bus_ID": "BUS_200",
-        "Nominal_kV": 13.8,
-        "P_MW": peak_load,
-        "Q_MVAR": peak_load * 0.33,
-        "Load_Model": "Constant Power",
-        "Status": "Online",
-        "Category": "Critical",
-    }])
+    n_halls = 4
+    load_per_hall = peak_load / n_halls
+    
+    rows = []
+    for i in range(n_halls):
+        rows.append({
+            "Load_ID": f"LOAD_HALL_{i+1}",
+            "Load_Name": f"Hall {i+1} Load",
+            "Bus_ID": f"BUS_HALL_{i+1}",
+            "Nominal_kV": 13.8,
+            "P_MW": round(load_per_hall, 2),
+            "Q_MVAR": round(load_per_hall * 0.33, 2),
+            "Load_Model": "Constant Power",
+            "Status": "Online",
+            "Category": "Critical",
+            "Notes": f"Data Hall {i+1} critical IT load"
+        })
+    
+    return pd.DataFrame(rows)
+
 
 def generate_sample_etap_scenarios_df(config: Dict) -> pd.DataFrame:
     """Generate sample ETAP scenarios dataframe."""
@@ -473,183 +889,243 @@ def generate_sample_etap_shortcircuit_results_df() -> pd.DataFrame:
 
 
 def generate_sample_psse_raw(config: Dict) -> str:
-    """Generate sample PSS/e RAW format file content."""
+    """Generate PSS/e RAW format file with full multi-voltage topology.
+    
+    Matches engineering drawing architecture:
+    - 345 kV: POI (Utility Interconnection)
+    - 34.5 kV: Main Facility Bus
+    - 13.8 kV: Generation Bus + Generator Terminals + Data Halls
+    """
     lines = []
     system_mva = config.get('system_mva_base', 100.0)
     
+    # Get electrical configurations
+    poi_config = config.get('suggested_poi', 'radial')
+    gen_config = config.get('suggested_gen', 'mtm')
+    dist_config = config.get('suggested_dist', 'catcher')
+    
+    poi_type = ELECTRICAL_SPECS['poi'][poi_config]['type']
+    gen_type = ELECTRICAL_SPECS['generation'][gen_config]['type']
+    dist_type = ELECTRICAL_SPECS['distribution'][dist_config]['type']
+    
     # Header (3 lines required)
     lines.append(f"0,   {system_mva:.2f}     / PSS/E-35    {datetime.now().strftime('%a, %b %d %Y  %H:%M')}")
-    lines.append(f"{config.get('project_name', 'bvNexus Export')} - Power Flow Base Case")
-    lines.append("Behind-the-Meter Datacenter Generation System")
+    lines.append(f"{config.get('project_name', 'bvNexus Export')} - {ELECTRICAL_SPECS['poi'][poi_config]['label']} / {ELECTRICAL_SPECS['generation'][gen_config]['label']}")
+    lines.append(f"Multi-Voltage Topology: 345kV→34.5kV→13.8kV - Generated by bvNexus")
     
     # Bus data section
     lines.append("")
-    lines.append("/ BUS DATA")
+    lines.append("/ BUS DATA - Voltage Levels: 345kV (POI), 34.5kV (Main), 13.8kV (Gen/Halls)")
     lines.append("/ I, 'NAME', BASKV, IDE, AREA, ZONE, OWNER, VM, VA, NVHI, NVLO, EVHI, EVLO")
     
-    bus_id = 100
-    buses = []
+    bus_counter = 1
+    bus_mapping = {}
     
-    # Generator buses
+    # === 1. POI BUSES (345 kV) - Swing Bus ===
+    if poi_type == 'ring':
+        poi_bus = bus_counter
+        bus_mapping['POI'] = poi_bus
+        lines.append(f"{poi_bus},'POI_RING ',345.000,3,   1,   1,   1,1.01000,   0.0000,1.05000,0.95000,1.05000,0.95000")
+        bus_counter += 1
+    else:  # radial or bah - use single swing for simplicity
+        poi_bus = bus_counter
+        bus_mapping['POI'] = poi_bus
+        lines.append(f"{poi_bus},'POI_UTIL ',345.000,3,   1,   1,   1,1.00000,   0.0000,1.05000,0.95000,1.05000,0.95000")
+        bus_counter += 1
+    
+    # === 2. MAIN BUS (34.5 kV) - PV Buses ===
+    if gen_type in ['mtm', 'double']:
+        main_bus_a = bus_counter
+        bus_mapping['MAIN_A'] = main_bus_a
+        lines.append(f"{main_bus_a},'MAIN_A  ', 34.500,2,   1,   1,   1,1.00000,   0.0000,1.05000,0.95000,1.05000,0.95000")
+        bus_counter += 1
+        
+        main_bus_b = bus_counter
+        bus_mapping['MAIN_B'] = main_bus_b
+        lines.append(f"{main_bus_b},'MAIN_B  ', 34.500,2,   1,   1,   1,1.00000,   0.0000,1.05000,0.95000,1.05000,0.95000")
+        bus_counter += 1
+        bus_mapping['MAIN'] = main_bus_a  # Default to A for single connections
+    else:
+        main_bus = bus_counter
+        bus_mapping['MAIN'] = main_bus
+        lines.append(f"{main_bus},'MAIN_BUS', 34.500,2,   1,   1,   1,1.00000,   0.0000,1.05000,0.95000,1.05000,0.95000")
+        bus_counter += 1
+    
+    # === 3. GENERATION BUS (13.8 kV) - PV Buses ===
+    if gen_type in ['mtm', 'double']:
+        gen_bus_a = bus_counter
+        bus_mapping['GEN_A'] = gen_bus_a
+        lines.append(f"{gen_bus_a},'GEN_A   ', 13.800,2,   1,   1,   1,1.00000,   0.0000,1.05000,0.95000,1.05000,0.95000")
+        bus_counter += 1
+        
+        gen_bus_b = bus_counter
+        bus_mapping['GEN_B'] = gen_bus_b
+        lines.append(f"{gen_bus_b},'GEN_B   ', 13.800,2,   1,   1,   1,1.00000,   0.0000,1.05000,0.95000,1.05000,0.95000")
+        bus_counter += 1
+        bus_mapping['GEN'] = gen_bus_a
+    else:
+        gen_bus = bus_counter
+        bus_mapping['GEN'] = gen_bus
+        lines.append(f"{gen_bus},'GEN_BUS ', 13.800,2,   1,   1,   1,1.00000,   0.0000,1.05000,0.95000,1.05000,0.95000")
+        bus_counter += 1
+    
+    # === 4. GENERATOR TERMINAL BUSES (13.8 kV) - PV Buses ===
+    bus_mapping['RECIP'] = []
     for i in range(config.get('n_recip', 0)):
-        bus = bus_id + i
-        buses.append(bus)
-        lines.append(f"{bus},'RECIP_{i+1:02d}',  {config.get('voltage_kv', 13.8):.3f},1,   1,   1,   1,1.01000,   0.0000,1.10000,0.90000,1.10000,0.90000")
+        recip_bus = bus_counter
+        bus_mapping['RECIP'].append(recip_bus)
+        lines.append(f"{recip_bus},'RECIP{i+1:02d} ', 13.800,2,   1,   1,   1,1.01000,   0.0000,1.05000,0.95000,1.05000,0.95000")
+        bus_counter += 1
     
+    bus_mapping['GT'] = []
     for i in range(config.get('n_turbine', 0)):
-        bus = bus_id + 20 + i
-        buses.append(bus)
-        lines.append(f"{bus},'GT_{i+1:02d}    ',  {config.get('voltage_kv', 13.8):.3f},1,   1,   1,   1,1.02500,   0.0000,1.10000,0.90000,1.10000,0.90000")
+        gt_bus = bus_counter
+        bus_mapping['GT'].append(gt_bus)
+        lines.append(f"{gt_bus},'GT{i+1:02d}    ', 13.800,2,   1,   1,   1,1.02000,   0.0000,1.05000,0.95000,1.05000,0.95000")
+        bus_counter += 1
     
-    # BESS bus
-    if config.get('bess_mw', 0) > 0:
-        bus = bus_id + 40
-        buses.append(bus)
-        lines.append(f"{bus},'BESS_01 ',  {config.get('voltage_kv', 13.8):.3f},1,   1,   1,   1,1.00500,   0.0000,1.10000,0.90000,1.10000,0.90000")
-    
-    # Solar PV bus
-    if config.get('solar_mw', 0) > 0:
-        bus = bus_id + 50
-        buses.append(bus)
-        lines.append(f"{bus},'SOLAR_01',  {config.get('voltage_kv', 13.8):.3f},1,   1,   1,   1,1.00000,   0.0000,1.10000,0.90000,1.10000,0.90000")
-    
-    # Main bus (swing)
-    main_bus = 200
-    buses.append(main_bus)
-    lines.append(f"{main_bus},'MAIN_BUS',  {config.get('voltage_kv', 13.8):.3f},3,   1,   1,   1,1.00000,   0.0000,1.10000,0.90000,1.10000,0.90000")
+    # === 5. DATA HALL BUSES (13.8 kV) - PQ Load Buses ===
+    bus_mapping['HALL'] = []
+    for i in range(4):
+        hall_bus = bus_counter
+        bus_mapping['HALL'].append(hall_bus)
+        lines.append(f"{hall_bus},'HALL_{i+1}  ', 13.800,1,   1,   1,   1,1.00000,   0.0000,1.05000,0.95000,1.05000,0.95000")
+        bus_counter += 1
     
     lines.append("0 / END OF BUS DATA")
     
-    # Load data section
+    # === LOAD DATA ===
     lines.append("")
-    lines.append("/ LOAD DATA")
-    lines.append("/ I, ID, STATUS, AREA, ZONE, PL, QL, IP, IQ, YP, YQ, OWNER, SCALE, INTRPT, DESSION")
+    lines.append("/ LOAD DATA - Distributed across data halls")
+    lines.append("/ I, ID, STATUS, AREA, ZONE, PL, QL, IP, IQ, YP, YQ, OWNER, SCALE, INTRPT, DGENON")
+    
     peak_load = config.get('peak_load_mw', 200)
-    lines.append(f"{main_bus},'1 ',1,   1,   1,   {peak_load:.2f},    {peak_load*0.33:.2f},   0.00,   0.00,   0.00,   0.00,   1,1,0,1")
+    load_per_hall = peak_load / 4
+    
+    for hall_bus in bus_mapping['HALL']:
+        lines.append(f"{hall_bus},'1 ',1,   1,   1,   {load_per_hall:.2f},    {load_per_hall*0.33:.2f},   0.00,   0.00,   0.00,   0.00,   1,1,0,1")
+    
     lines.append("0 / END OF LOAD DATA")
     
-    # Fixed shunt data
+    # === FIXED SHUNT DATA ===
     lines.append("")
     lines.append("/ FIXED SHUNT DATA")
     lines.append("0 / END OF FIXED SHUNT DATA")
     
-    # Generator data section
+    # === GENERATOR DATA ===
     lines.append("")
-    lines.append("/ GENERATOR DATA")
+    lines.append("/ GENERATOR DATA - 13.8kV terminals")
     lines.append("/ I, ID, PG, QG, QT, QB, VS, IREG, MBASE, ZR, ZX, RT, XT, GTAP, STAT, RMPCT, PT, PB")
     
-    for i in range(config.get('n_recip', 0)):
-        bus = bus_id + i
+    # Reciprocating engines
+    for i, recip_bus in enumerate(bus_mapping['RECIP']):
         mw = config.get('recip_mw_each', 18.3)
         mva = mw / 0.85
-        lines.append(f"{bus},'1 ',   {mw:.2f},    0.00,  {mva*0.5:.2f}, {-mva*0.3:.2f},1.0100,     0,  {mva:.2f}, 0.00000, 1.00000, 0.00000, 0.00000,1.00000,1,  100.0,  {mw:.2f},    0.00,1,1.0000,0,1.0000,0,1.0000,0,1.0000,0")
+        lines.append(f"{recip_bus},'1 ',   {mw:.2f},    0.00,  {mva*0.5:.2f}, {-mva*0.3:.2f},1.0100,     0,  {mva:.2f}, 0.00000, 1.00000, 0.00000, 0.00000,1.00000,1,  100.0,  {mw:.2f},    0.00,1,1.0000,0,1.0000,0,1.0000,0,1.0000,0")
     
-    for i in range(config.get('n_turbine', 0)):
-        bus = bus_id + 20 + i
+    # Gas turbines
+    for i, gt_bus in enumerate(bus_mapping['GT']):
         mw = config.get('turbine_mw_each', 50.0)
         mva = mw / 0.85
-        lines.append(f"{bus},'1 ',   {mw:.2f},    0.00,  {mva*0.5:.2f}, {-mva*0.3:.2f},1.0250,     0,  {mva:.2f}, 0.00000, 1.00000, 0.00000, 0.00000,1.00000,1,  100.0,  {mw:.2f},    0.00,1,1.0000,0,1.0000,0,1.0000,0,1.0000,0")
-    
-    # Solar inverter (if present)
-    if config.get('solar_mw', 0) > 0:
-        bus = bus_id + 50
-        mw = config.get('solar_mw', 0)
-        mva = mw / 1.0  # Inverter at unity PF
-        lines.append(f"{bus},'1 ',   {mw:.2f},    0.00,  {mva*0.4:.2f}, {-mva*0.4:.2f},1.0000,     0,  {mva:.2f}, 0.00000, 0.10000, 0.00000, 0.00000,1.00000,1,  100.0,  {mw:.2f},    0.00,1,1.0000,0,1.0000,0,1.0000,0,1.0000,0")
+        lines.append(f"{gt_bus},'1 ',   {mw:.2f},    0.00,  {mva*0.5:.2f}, {-mva*0.3:.2f},1.0200,     0,  {mva:.2f}, 0.00000, 1.00000, 0.00000, 0.00000,1.00000,1,  100.0,  {mw:.2f},    0.00,1,1.0000,0,1.0000,0,1.0000,0,1.0000,0")
     
     lines.append("0 / END OF GENERATOR DATA")
     
-    # Branch data section
+    # === BRANCH DATA (Cable connections) ===
     lines.append("")
-    lines.append("/ BRANCH DATA")
+    lines.append("/ BRANCH DATA - Cable connections between buses")
     lines.append("/ I, J, CKT, R, X, B, RATEA, RATEB, RATEC, GI, BI, GJ, BJ, ST, MET, LEN, O1, F1")
     
-    # Connect all generators to main bus
-    for i in range(config.get('n_recip', 0)):
-        bus = bus_id + i
-        lines.append(f"{bus},  {main_bus},'1 ', 0.00100, 0.01000, 0.00000,  100.0,  100.0,  100.0, 0.00000, 0.00000, 0.00000, 0.00000,1,1,   0.10,1,1.0000")
-    
-    for i in range(config.get('n_turbine', 0)):
-        bus = bus_id + 20 + i
-        lines.append(f"{bus},  {main_bus},'1 ', 0.00050, 0.00800, 0.00000,  150.0,  150.0,  150.0, 0.00000, 0.00000, 0.00000, 0.00000,1,1,   0.05,1,1.0000")
-    
-    if config.get('bess_mw', 0) > 0:
-        bus = bus_id + 40
-        lines.append(f"{bus},  {main_bus},'1 ', 0.00200, 0.01500, 0.00000,   50.0,   50.0,   50.0, 0.00000, 0.00000, 0.00000, 0.00000,1,1,   0.02,1,1.0000")
-    
-    if config.get('solar_mw', 0) > 0:
-        bus = bus_id + 50
-        lines.append(f"{bus},  {main_bus},'1 ', 0.00100, 0.01000, 0.00000,  100.0,  100.0,  100.0, 0.00000, 0.00000, 0.00000, 0.00000,1,1,   0.05,1,1.0000")
+    # Generators to gen bus
+    if gen_type in ['mtm', 'double']:
+        n_per_bus = len(bus_mapping['RECIP']) // 2
+        for i, recip_bus in enumerate(bus_mapping['RECIP']):
+            gen_bus = bus_mapping['GEN_A'] if i < n_per_bus else bus_mapping['GEN_B']
+            lines.append(f"{recip_bus},  {gen_bus},'1 ', 0.00100, 0.01000, 0.00000,   25.0,   25.0,   25.0, 0.00000, 0.00000, 0.00000, 0.00000,1,1,   0.10,1,1.0000")
+        
+        for i, gt_bus in enumerate(bus_mapping['GT']):
+            gen_bus = bus_mapping['GEN_B']  # Turbines on Bus B
+            lines.append(f"{gt_bus},  {gen_bus},'1 ', 0.00050, 0.00800, 0.00000,   60.0,   60.0,   60.0, 0.00000, 0.00000, 0.00000, 0.00000,1,1,   0.05,1,1.0000")
+    else:
+        for recip_bus in bus_mapping['RECIP']:
+            lines.append(f"{recip_bus},  {bus_mapping['GEN']},'1 ', 0.00100, 0.01000, 0.00000,   25.0,   25.0,   25.0, 0.00000, 0.00000, 0.00000, 0.00000,1,1,   0.10,1,1.0000")
+        
+        for gt_bus in bus_mapping['GT']:
+            lines.append(f"{gt_bus},  {bus_mapping['GEN']},'1 ', 0.00050, 0.00800, 0.00000,   60.0,   60.0,   60.0, 0.00000, 0.00000, 0.00000, 0.00000,1,1,   0.05,1,1.0000")
     
     lines.append("0 / END OF BRANCH DATA")
     
-    # System switching device data
+    # === TRANSFORMER DATA ===
     lines.append("")
-    lines.append("/ SYSTEM SWITCHING DEVICE DATA")
-    lines.append("0 / END OF SYSTEM SWITCHING DEVICE DATA")
+    lines.append("/ TRANSFORMER DATA - Multi-voltage transformers")
     
-    # Transformer data
-    lines.append("")
-    lines.append("/ TRANSFORMER DATA")
+    # POI Transformers (345kV → 34.5kV)
+    if gen_type in ['mtm', 'double']:
+        # T1: POI → MAIN_A
+        lines.append(f"{bus_mapping['POI']}, {bus_mapping['MAIN_A']},'1 ',1,1,1,'T1_POI  ',   1,   1,   1,'            ',1,1, 1.00000")
+        lines.append(f" 0.00500, 0.12500,  300.00")
+        lines.append(f"1.00000,     0,1.00000,     0,1.10000,0.90000,1.10000,0.90000,   0,   0,   0.00000,   0.00000,  10,1,0.00000,1.00000,0.00000,'            '")
+        lines.append(f"1.00000,   0.0000")
+        
+        # T2: POI → MAIN_B
+        lines.append(f"{bus_mapping['POI']}, {bus_mapping['MAIN_B']},'1 ',1,1,1,'T2_POI  ',   1,   1,   1,'            ',1,1, 1.00000")
+        lines.append(f" 0.00500, 0.12500,  300.00")
+        lines.append(f"1.00000,     0,1.00000,     0,1.10000,0.90000,1.10000,0.90000,   0,   0,   0.00000,   0.00000,  10,1,0.00000,1.00000,0.00000,'            '")
+        lines.append(f"1.00000,   0.0000")
+    else:
+        # T1: POI → MAIN
+        lines.append(f"{bus_mapping['POI']}, {bus_mapping['MAIN']},'1 ',1,1,1,'T1_POI  ',   1,   1,   1,'            ',1,1, 1.00000")
+        lines.append(f" 0.00500, 0.12500,  300.00")
+        lines.append(f"1.00000,     0,1.00000,     0,1.10000,0.90000,1.10000,0.90000,   0,   0,   0.00000,   0.00000,  10,1,0.00000,1.00000,0.00000,'            '")
+        lines.append(f"1.00000,   0.0000")
+    
+    # Step-Up Transformers (13.8kV → 34.5kV)
+    n_step_up = min(6, max(2, (len(bus_mapping['RECIP']) + len(bus_mapping['GT'])) // 3))
+    for i in range(n_step_up):
+        if gen_type in ['mtm', 'double']:
+            from_bus = bus_mapping['GEN_A'] if i < n_step_up//2 else bus_mapping['GEN_B']
+            to_bus = bus_mapping['MAIN_A'] if i < n_step_up//2 else bus_mapping['MAIN_B']
+        else:
+            from_bus = bus_mapping['GEN']
+            to_bus = bus_mapping['MAIN']
+        
+        lines.append(f"{from_bus}, {to_bus},'{i+1} ',1,1,1,'TR{i+1}_UP ',   1,   1,   1,'            ',1,1, 1.00000")
+        lines.append(f" 0.00400, 0.06500,   70.00")
+        lines.append(f"1.00000,     0,1.00000,     0,1.10000,0.90000,1.10000,0.90000,   0,   0,   0.00000,   0.00000,  10,1,0.00000,1.00000,0.00000,'            '")
+        lines.append(f"1.00000,   0.0000")
+    
+    # Distribution Transformers (34.5kV → 13.8kV to halls)
+    for i, hall_bus in enumerate(bus_mapping['HALL']):
+        if gen_type in ['mtm', 'double']:
+            from_bus = bus_mapping['MAIN_A'] if i < 2 else bus_mapping['MAIN_B']
+        else:
+            from_bus = bus_mapping['MAIN']
+        
+        lines.append(f"{from_bus}, {hall_bus},'{i+1} ',1,1,1,'T{i+1}_DIST',   1,   1,   1,'            ',1,1, 1.00000")
+        lines.append(f" 0.00350, 0.05750,   65.00")
+        lines.append(f"1.00000,     0,1.00000,     0,1.10000,0.90000,1.10000,0.90000,   0,   0,   0.00000,   0.00000,  10,1,0.00000,1.00000,0.00000,'            '")
+        lines.append(f"1.00000,   0.0000")
+    
     lines.append("0 / END OF TRANSFORMER DATA")
     
-    # Area data
+    # === Remaining sections (empty but required) ===
     lines.append("")
     lines.append("/ AREA DATA")
-    lines.append(f"   1,  {main_bus},   0.000,   10.00,'DATACENTER'")
+    lines.append(f"   1,  {bus_mapping['POI']},   0.000,   10.00,'DATACENTER'")
     lines.append("0 / END OF AREA DATA")
     
-    # Two-terminal DC data
-    lines.append("")
-    lines.append("/ TWO-TERMINAL DC DATA")
-    lines.append("0 / END OF TWO-TERMINAL DC DATA")
-    
-    # VSC DC line data
-    lines.append("")
-    lines.append("/ VSC DC LINE DATA")
-    lines.append("0 / END OF VSC DC LINE DATA")
-    
-    # Switched shunt data
-    lines.append("")
-    lines.append("/ SWITCHED SHUNT DATA")
-    lines.append("0 / END OF SWITCHED SHUNT DATA")
-    
-    # Impedance correction data
-    lines.append("")
-    lines.append("/ IMPEDANCE CORRECTION DATA")
-    lines.append("0 / END OF IMPEDANCE CORRECTION DATA")
-    
-    # Multi-terminal DC data
-    lines.append("")
-    lines.append("/ MULTI-TERMINAL DC DATA")
-    lines.append("0 / END OF MULTI-TERMINAL DC DATA")
-    
-    # Multi-section line data
-    lines.append("")
-    lines.append("/ MULTI-SECTION LINE DATA")
-    lines.append("0 / END OF MULTI-SECTION LINE DATA")
-    
-    # Zone data
-    lines.append("")
-    lines.append("/ ZONE DATA")
-    lines.append("   1,'ZONE_1'")
-    lines.append("0 / END OF ZONE DATA")
-    
-    # Inter-area transfer data
-    lines.append("")
-    lines.append("/ INTER-AREA TRANSFER DATA")
-    lines.append("0 / END OF INTER-AREA TRANSFER DATA")
-    
-    # Owner data
-    lines.append("")
-    lines.append("/ OWNER DATA")
-    lines.append("   1,'OWNER_1'")
-    lines.append("0 / END OF OWNER DATA")
-    
-    # FACTS device data
-    lines.append("")
-    lines.append("/ FACTS DEVICE DATA")
-    lines.append("0 / END OF FACTS DEVICE DATA")
+    for section in [
+        "TWO-TERMINAL DC DATA", "VSC DC LINE DATA", "SWITCHED SHUNT DATA",
+        "IMPEDANCE CORRECTION DATA", "MULTI-TERMINAL DC DATA", "MULTI-SECTION LINE DATA",
+        "ZONE DATA", "INTER-AREA TRANSFER DATA", "OWNER DATA", "FACTS DEVICE DATA"
+    ]:
+        lines.append("")
+        lines.append(f"/ {section}")
+        if section == "ZONE DATA":
+            lines.append("   1,'ZONE_1'")
+        elif section == "OWNER DATA":
+            lines.append("   1,'OWNER_1'")
+        lines.append(f"0 / END OF {section}")
     
     # End of file
     lines.append("")
@@ -762,32 +1238,195 @@ def generate_sample_windchill_component_df(config: Dict) -> pd.DataFrame:
             'PM_Interval_Hours': 8760,
         })
     
-    # Supporting equipment
+    # === ELECTRICAL COMPONENTS (Based on Topology) ===
+    # Get electrical configurations
+    poi_config = config.get('suggested_poi', 'radial')
+    gen_config = config.get('suggested_gen', 'mtm')
+    dist_config = config.get('suggested_dist', 'catcher')
+    
+    poi_type = ELECTRICAL_SPECS['poi'][poi_config]['type']
+    gen_type = ELECTRICAL_SPECS['generation'][gen_config]['type']
+    dist_type = ELECTRICAL_SPECS['distribution'][dist_config]['type']
+    
+    # POI Transformers (345kV → 34.5kV)
+    n_poi_xfmrs = 2 if poi_type in ['ring', 'bah'] else 1
+    for i in range(n_poi_xfmrs):
+        rows.append({
+            'Component_ID': f'XFMR_POI_T{i+1}',
+            'Component_Name': f'POI Transformer {i+1} (345kV→34.5kV)',
+            'Component_Type': 'TRANSFORMER_HV',
+            'Subsystem': 'POI / Utility Interconnection',
+            'Redundancy_Group': 'POI_TRANSFORMERS',
+            'Capacity_MW': 300,
+            'MTBF_Hours': 175200,  # 20 years
+            'MTTR_Hours': 720,  # 30 days (critical replacement)
+            'Failure_Rate_Per_Hour': 5.71e-6,
+            'Availability': 0.9959,
+            'Distribution': 'Exponential',
+            'Weibull_Beta': 1.0,
+            'Weibull_Eta': 175200,
+            'Operating_Hours_Per_Year': 8760,
+            'PM_Interval_Hours': 17520,  # 2 years
+            'Notes': 'Critical HV transformer - extended outage on failure'
+        })
+    
+    # Step-Up Transformers (13.8kV → 34.5kV)
+    n_recip = config.get('n_recip', 0)
+    n_turbine = config.get('n_turbine', 0)
+    n_step_up = min(6, max(2, (n_recip + n_turbine) // 3))
+    
+    for i in range(n_step_up):
+        rows.append({
+            'Component_ID': f'XFMR_TR{i+1}',
+            'Component_Name': f'Step-Up Transformer TR{i+1} (13.8kV→34.5kV)',
+            'Component_Type': 'TRANSFORMER_MV',
+            'Subsystem': 'Generation Step-Up',
+            'Redundancy_Group': 'STEP_UP_TRANSFORMERS',
+            'Capacity_MW': 70,
+            'MTBF_Hours': 87600,  # 10 years
+            'MTTR_Hours': 168,  # 1 week
+            'Failure_Rate_Per_Hour': 1.14e-5,
+            'Availability': 0.9981,
+            'Distribution': 'Exponential',
+            'Weibull_Beta': 1.0,
+            'Weibull_Eta': 87600,
+            'Operating_Hours_Per_Year': 8760,
+            'PM_Interval_Hours': 8760,  # 1 year
+            'Notes': 'N-1 redundant - connects gen bus to main bus'
+        })
+    
+    # Distribution Transformers (34.5kV → 13.8kV to halls)
+    for i in range(4):
+        rows.append({
+            'Component_ID': f'XFMR_DIST_T{i+1}',
+            'Component_Name': f'Distribution Transformer T-{i+1} (Hall {i+1})',
+            'Component_Type': 'TRANSFORMER_MV',
+            'Subsystem': 'Distribution to Data Halls',
+            'Redundancy_Group': f'HALL_{i+1}_ELECTRICAL',
+            'Capacity_MW': 65,
+            'MTBF_Hours': 87600,
+            'MTTR_Hours': 120,  # 5 days
+            'Failure_Rate_Per_Hour': 1.14e-5,
+            'Availability': 0.9986,
+            'Distribution': 'Exponential',
+            'Weibull_Beta': 1.0,
+            'Weibull_Eta': 87600,
+            'Operating_Hours_Per_Year': 8760,
+            'PM_Interval_Hours': 8760,
+            'Notes': f'Primary feed to Hall {i+1}'
+        })
+    
+    # Circuit Breakers (Topology-dependent)
+    # Main bus breakers
+    if gen_type == 'mtm':
+        rows.append({
+            'Component_ID': 'BKR_MAIN_TIE',
+            'Component_Name': 'Main Bus Tie Breaker (34.5kV)',
+            'Component_Type': 'CIRCUIT_BREAKER_MV',
+            'Subsystem': 'Main Bus Protection',
+            'Redundancy_Group': 'MAIN_BUS',
+            'Capacity_MW': 300,
+            'MTBF_Hours': 175200,
+            'MTTR_Hours': 24,
+            'Failure_Rate_Per_Hour': 5.71e-6,
+            'Availability': 0.9999,
+            'Distribution': 'Exponential',
+            'Weibull_Beta': 1.0,
+            'Weibull_Eta': 175200,
+            'Operating_Hours_Per_Year': 0,  # Normally open
+            'PM_Interval_Hours': 8760,
+            'Notes': 'Normally open - MTM topology tie breaker'
+        })
+    
+    # STS Switches (if catcher topology)
+    if dist_type == 'catcher':
+        # Reserve transformer
+        rows.append({
+            'Component_ID': 'XFMR_RESERVE',
+            'Component_Name': 'Reserve Bus Transformer (34.5kV→34.5kV)',
+            'Component_Type': 'TRANSFORMER_MV',
+            'Subsystem': 'Reserve/Redundant Path',
+            'Redundancy_Group': 'RESERVE_BUS',
+            'Capacity_MW': 60,
+            'MTBF_Hours': 87600,
+            'MTTR_Hours': 168,
+            'Failure_Rate_Per_Hour': 1.14e-5,
+            'Availability': 0.9981,
+            'Distribution': 'Exponential',
+            'Weibull_Beta': 1.0,
+            'Weibull_Eta': 87600,
+            'Operating_Hours_Per_Year': 8760,
+            'PM_Interval_Hours': 8760,
+            'Notes': 'Reserve/backup transformer for catcher topology'
+        })
+        
+        for i in range(4):
+            rows.append({
+                'Component_ID': f'STS_{i+1}',
+                'Component_Name': f'Static Transfer Switch - Hall {i+1}',
+                'Component_Type': 'STS',
+                'Subsystem': 'Distribution to Data Halls',
+                'Redundancy_Group': f'HALL_{i+1}_ELECTRICAL',
+                'Capacity_MW': 50,
+                'MTBF_Hours': 100000,  # Very reliable
+                'MTTR_Hours': 4,  # Quick replacement
+                'Failure_Rate_Per_Hour': 1.0e-5,
+                'Availability': 0.9999,
+                'Distribution': 'Exponential',
+                'Weibull_Beta': 1.0,
+                'Weibull_Eta': 100000,
+                'Operating_Hours_Per_Year': 8760,
+                'PM_Interval_Hours': 4380,  # 6 months
+                'Transfer_Time_ms': 4,
+                'Notes': f'Auto-transfer to reserve on primary failure - Hall {i+1}'
+            })
+    
+    # Switchgear / Bus Infrastructure
     rows.append({
-        'Component_ID': 'XFMR_MAIN',
-        'Component_Name': 'Main Step-Up Transformer',
-        'Component_Type': 'TRANSFORMER',
-        'Subsystem': 'Electrical Distribution',
-        'Redundancy_Group': 'ELECTRICAL',
-        'Capacity_MW': 250,
+        'Component_ID': 'BUS_MAIN_345KV',
+        'Component_Name': '345kV POI Bus Infrastructure',
+        'Component_Type': 'BUS_INFRASTRUCTURE',
+        'Subsystem': 'POI / Utility Interconnection',
+        'Redundancy_Group': 'POI_BUS',
+        'Capacity_MW': 600,
+        'MTBF_Hours': 262800,  # 30 years
+        'MTTR_Hours': 48,
+        'Failure_Rate_Per_Hour': 3.80e-6,
+        'Availability': 0.9998,
+        'Distribution': 'Exponential',
+        'Weibull_Beta': 1.0,
+        'Weibull_Eta': 262800,
+        'Operating_Hours_Per_Year': 8760,
+        'PM_Interval_Hours': 17520,
+        'Notes': 'High voltage bus and associated protection/metering'
+    })
+    
+    rows.append({
+        'Component_ID': 'BUS_MAIN_34_5KV',
+        'Component_Name': '34.5kV Main Facility Bus',
+        'Component_Type': 'BUS_INFRASTRUCTURE',
+        'Subsystem': 'Main Bus Protection',
+        'Redundancy_Group': 'MAIN_BUS',
+        'Capacity_MW': 400,
         'MTBF_Hours': 175200,
-        'MTTR_Hours': 168,
+        'MTTR_Hours': 36,
         'Failure_Rate_Per_Hour': 5.71e-6,
-        'Availability': 0.9990,
+        'Availability': 0.9998,
         'Distribution': 'Exponential',
         'Weibull_Beta': 1.0,
         'Weibull_Eta': 175200,
         'Operating_Hours_Per_Year': 8760,
-        'PM_Interval_Hours': 17520,
+        'PM_Interval_Hours': 8760,
+        'Notes': 'Medium voltage distribution bus'
     })
     
     rows.append({
-        'Component_ID': 'SWGR_MAIN',
-        'Component_Name': 'Main Switchgear',
-        'Component_Type': 'SWITCHGEAR',
-        'Subsystem': 'Electrical Distribution',
-        'Redundancy_Group': 'ELECTRICAL',
-        'Capacity_MW': 300,
+        'Component_ID': 'BUS_GEN_13_8KV',
+        'Component_Name': '13.8kV Generation Bus',
+        'Component_Type': 'BUS_INFRASTRUCTURE',
+        'Subsystem': 'Generation Step-Up',
+        'Redundancy_Group': 'GEN_BUS',
+        'Capacity_MW': 250,
         'MTBF_Hours': 87600,
         'MTTR_Hours': 24,
         'Failure_Rate_Per_Hour': 1.14e-5,
@@ -797,9 +1436,11 @@ def generate_sample_windchill_component_df(config: Dict) -> pd.DataFrame:
         'Weibull_Eta': 87600,
         'Operating_Hours_Per_Year': 8760,
         'PM_Interval_Hours': 8760,
+        'Notes': 'Generator collection bus'
     })
     
     return pd.DataFrame(rows)
+
 
 
 def generate_sample_windchill_rbd_df(config: Dict) -> pd.DataFrame:
@@ -1151,41 +1792,112 @@ def create_scenario_matrix_chart(scenarios_df: pd.DataFrame) -> str:
 # =============================================================================
 
 def export_full_etap_package(config: Dict) -> BytesIO:
-    """Generate complete ETAP import package."""
+    """Generate complete ETAP import package matching engineering drawing topology."""
     output = BytesIO()
     
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        # Equipment sheet
+        # === 1. ELECTRICAL ARCHITECTURE (Configuration Summary) ===
+        poi_config = config.get('suggested_poi', 'radial')
+        gen_config = config.get('suggested_gen', 'mtm')
+        dist_config = config.get('suggested_dist', 'catcher')
+        
+        n_recip = config.get('n_recip', 0)
+        n_turbine = config.get('n_turbine', 0)
+        n_transformers = min(6, max(2, (n_recip + n_turbine) // 3))
+        
+        arch_data = {
+            'Parameter': [
+                'POI Configuration',
+                'POI Voltage',
+                'POI Transformer Count',
+                'Main Bus Voltage',
+                'Generation Bus Configuration',
+                'Generation Voltage',
+                'Step-Up Transformer Count',
+                'Distribution Configuration', 
+                'Distribution Voltage',
+                'Data Hall Count',
+                'Total Generators',
+                'Redundancy Level',
+                'Peak Load (MW)'
+            ],
+            'Value': [
+                ELECTRICAL_SPECS['poi'][poi_config]['label'],
+                '345 kV',
+                '2' if ELECTRICAL_SPECS['poi'][poi_config]['type'] in ['ring', 'bah'] else '1',
+                '34.5 kV',
+                ELECTRICAL_SPECS['generation'][gen_config]['label'],
+                '13.8 kV',
+                f'{n_transformers} (TR1-TR{n_transformers})',
+                ELECTRICAL_SPECS['distribution'][dist_config]['label'],
+                '13.8 kV to data halls',
+                '4',
+                f'{n_recip + n_turbine} ({n_recip} recip + {n_turbine} turbines)',
+                config.get('redundancy', 'N+0'),
+                f"{config.get('peak_load_mw', 200):.1f}"
+            ],
+            'Notes': [
+                'See Single Line Diagram tab in System Overview',
+                'Utility interconnection voltage',
+                'T1, T2 step down 345kV to 34.5kV',
+                'Facility distribution voltage',
+                'Affects bus and breaker topology',
+                'Generators output at 13.8kV',
+                'Step up from 13.8kV gen bus to 34.5kV main bus',
+                'Determines STS and reserve requirements',
+                'Final distribution to IT equipment',
+                'Standard 4-hall datacenter configuration',
+                'Total thermal + renewable generation',
+                'Equipment and path redundancy',
+                'Critical IT load demand'
+            ]
+        }
+        arch_df = pd.DataFrame(arch_data)
+        arch_df.to_excel(writer, sheet_name='Electrical_Architecture', index=False)
+        
+        # === 2. BUS DATA ===
+        bus_df = generate_etap_bus_data(config)
+        bus_df.to_excel(writer, sheet_name='Bus_Data', index=False)
+        
+        # === 3. TRANSFORMER DATA ===
+        xfmr_df = generate_etap_transformer_data(config)
+        xfmr_df.to_excel(writer, sheet_name='Transformer_Data', index=False)
+        
+        # === 4. BREAKER/SWITCH DATA ===
+        breaker_df = generate_etap_breaker_data(config)
+        breaker_df.to_excel(writer, sheet_name='Breaker_Data', index=False)
+        
+        # === 5. EQUIPMENT DATA ===
         equip_df = generate_sample_etap_equipment_df(config)
         equip_df.to_excel(writer, sheet_name='Equipment', index=False)
         
-        # Scenarios sheet
+        # === 6. LOAD DATA ===
+        load_df = generate_etap_load_data(config)
+        load_df.to_excel(writer, sheet_name='Load_Data', index=False)
+        
+        # === 7. SCENARIOS ===
         scenarios_df = generate_sample_etap_scenarios_df(config)
         scenarios_df.to_excel(writer, sheet_name='Scenarios', index=False)
         
-        # Bus data sheet
-        buses = equip_df['Bus_ID'].unique().tolist()
-        bus_df = pd.DataFrame([{
-            'Bus_ID': bus,
-            'Bus_Name': bus,
-            'Nominal_kV': 13.8,
-            'Bus_Type': 'Generator' if 'RECIP' in bus or 'GT' in bus else 'Load',
-        } for bus in buses])
-        bus_df.to_excel(writer, sheet_name='Bus Data', index=False)
-        
-        # Instructions sheet
+        # === 8. IMPORT INSTRUCTIONS ===
         instructions = pd.DataFrame([
-            {'Step': 1, 'Instruction': 'Open ETAP and go to File → Import → DataX'},
-            {'Step': 2, 'Instruction': 'Select the Equipment sheet and map columns'},
-            {'Step': 3, 'Instruction': 'Import Bus Data sheet for bus definitions'},
-            {'Step': 4, 'Instruction': 'Create study cases using Scenarios sheet as reference'},
-            {'Step': 5, 'Instruction': 'Run Load Flow and Short Circuit studies'},
-            {'Step': 6, 'Instruction': 'Export results via Results Analyzer → Excel'},
+            {'Step': 1, 'Instruction': 'Review Electrical_Architecture sheet for system topology'},
+            {'Step': 2, 'Instruction': 'Open ETAP and create new project'},
+            {'Step': 3, 'Instruction': 'Import Bus_Data: Go to Study → DataX Import → Buses'},
+            {'Step': 4, 'Instruction': 'Import Transformer_Data: DataX Import → Transformers'},
+            {'Step': 5, 'Instruction': 'Import Breaker_Data: DataX Import → Circuit Breakers'},
+            {'Step': 6, 'Instruction': 'Import Equipment: DataX Import → Generators/Motors'},
+            {'Step': 7, 'Instruction': 'Import Load_Data: DataX Import → Loads'},
+            {'Step': 8, 'Instruction': 'Create study cases using Scenarios sheet reference'},
+            {'Step': 9, 'Instruction': 'Build one-line diagram matching System Overview'},
+            {'Step': 10, 'Instruction': 'Run Load Flow, Short Circuit, and Arc Flash studies'},
+            {'Step': 11, 'Instruction': 'Export results via Results Analyzer → Excel for import back to bvNexus'},
         ])
         instructions.to_excel(writer, sheet_name='Instructions', index=False)
     
     output.seek(0)
     return output
+
 
 
 def export_full_windchill_package(config: Dict) -> BytesIO:
@@ -1350,69 +2062,198 @@ def render_integration_export_page():
 
 
 def render_system_overview(config: Dict):
-    """Render system overview with visual diagrams."""
+    """Render system overview with comprehensive engineering diagrams."""
     st.header("📊 System Overview")
     
-    col1, col2 = st.columns([2, 1])
+    st.markdown("""
+    Professional electrical single-line diagrams and site plans synchronized with optimization results.
+    Select electrical configurations below to customize the diagrams.
+    """)
     
-    with col1:
-        st.subheader("Single Line Diagram")
-        # NEW: Interactive Plotly diagram (zoomable, larger text)
-        fig = create_interactive_single_line_diagram(config)
-        st.plotly_chart(fig, use_container_width=True)
+    # Configuration Selectors
+    st.subheader("Electrical Configuration")
+    col_poi, col_gen, col_dist = st.columns(3)
     
-    with col2:
-        st.subheader("Configuration Summary")
-        st.metric("Peak Load", f"{config.get('peak_load_mw', 0):.0f} MW")
+    with col_poi:
+        poi_options = list(ELECTRICAL_SPECS['poi'].keys())
+        poi_default = config.get('suggested_poi', 'radial')
+        # Ensure default is in options
+        if poi_default not in poi_options:
+            poi_default = poi_options[0]
         
-        total_gen = (config.get('n_recip', 0) * config.get('recip_mw_each', 0) + 
-                    config.get('n_turbine', 0) * config.get('turbine_mw_each', 0))
-        st.metric("Total Generation", f"{total_gen:.0f} MW")
+        poi_config = st.selectbox(
+            "POI Substation",
+            options=poi_options,
+            index=poi_options.index(poi_default),
+            format_func=lambda x: ELECTRICAL_SPECS['poi'][x]['label'],
+            help="Point of Interconnection configuration"
+        )
+        st.caption(f"**Tier:** {ELECTRICAL_SPECS['poi'][poi_config]['tier']}")
+    
+    with col_gen:
+        gen_options = list(ELECTRICAL_SPECS['generation'].keys())
+        gen_default = config.get('suggested_gen', 'mtm')
+        if gen_default not in gen_options:
+            gen_default = gen_options[0]
         
-        reserve = total_gen - config.get('peak_load_mw', 0)
-        st.metric("Reserve Capacity", f"{reserve:.0f} MW", 
-                 delta=f"{reserve/config.get('peak_load_mw', 1)*100:.1f}%")
+        gen_config = st.selectbox(
+            "Generation Bus",
+            options=gen_options,
+            index=gen_options.index(gen_default),
+            format_func=lambda x: ELECTRICAL_SPECS['generation'][x]['label'],
+            help="Medium voltage generation bus topology"
+        )
+        st.caption(f"**Type:** {ELECTRICAL_SPECS['generation'][gen_config]['desc']}")
+    
+    with col_dist:
+        dist_options = list(ELECTRICAL_SPECS['distribution'].keys())
+        dist_default = config.get('suggested_dist', 'catcher')
+        if dist_default not in dist_options:
+            dist_default = dist_options[0]
         
-        st.metric("BESS", f"{config.get('bess_mw', 0):.0f} MW / {config.get('bess_mwh', 0):.0f} MWh")
+        dist_config = st.selectbox(
+            "Distribution",
+            options=dist_options,
+            index=dist_options.index(dist_default),
+            format_func=lambda x: ELECTRICAL_SPECS['distribution'][x]['label'],
+            help="Low voltage distribution architecture"
+        )
+        st.caption(f"**Type:** {ELECTRICAL_SPECS['distribution'][dist_config]['desc']}")
     
     st.divider()
     
-    # Equipment summary table
-    st.subheader("Equipment Summary")
-    summary_df = pd.DataFrame([
-        {'Equipment': 'Reciprocating Engines', 'Count': config.get('n_recip', 0), 
-         'Unit Size (MW)': config.get('recip_mw_each', 0), 
-         'Total (MW)': config.get('n_recip', 0) * config.get('recip_mw_each', 0)},
-        {'Equipment': 'Gas Turbines', 'Count': config.get('n_turbine', 0), 
-         'Unit Size (MW)': config.get('turbine_mw_each', 0), 
-         'Total (MW)': config.get('n_turbine', 0) * config.get('turbine_mw_each', 0)},
-        {'Equipment': 'BESS', 'Count': 1 if config.get('bess_mw', 0) > 0 else 0, 
-         'Unit Size (MW)': config.get('bess_mw', 0), 
-         'Total (MW)': config.get('bess_mw', 0)},
-        {'Equipment': 'Solar PV', 'Count': 1 if config.get('solar_mw', 0) > 0 else 0,
-         'Unit Size (MW)': config.get('solar_mw', 0),
-         'Total (MW)': config.get('solar_mw', 0)},
-        {'Equipment': 'Grid Connection', 'Count': 1 if config.get('grid_connection_mw', 0) > 0 else 0,
-         'Unit Size (MW)': config.get('grid_connection_mw', 0),
-         'Total (MW)': config.get('grid_connection_mw', 0)},
+    # Engineering Drawings Tabs
+    tab_sld, tab_site, tab_summary = st.tabs([
+        "⚡ Single Line Diagram", 
+        "🗺️ Site Plan",
+        "📋 Equipment Summary"
     ])
-    st.dataframe(summary_df, use_container_width=True, hide_index=True)
     
-    # Scenario overview
-    st.subheader("Scenarios to Generate")
-    scenarios_df = generate_sample_etap_scenarios_df(config)
+    with tab_sld:
+        st.subheader("Professional Single Line Diagram")
+        
+        # Create electrical config dict
+        electrical_config = {
+            'poi_config': poi_config,
+            'gen_config': gen_config,
+            'dist_config': dist_config
+        }
+        
+        try:
+            # Generate comprehensive diagram
+            fig = create_professional_single_line_diagram(config, electrical_config)
+            st.plotly_chart(fig, use_container_width=True)
+            
+            # Configuration notes
+            st.info(f"""
+            **Configuration:** {ELECTRICAL_SPECS['poi'][poi_config]['label']} | 
+            {ELECTRICAL_SPECS['generation'][gen_config]['label']} | 
+            {ELECTRICAL_SPECS['distribution'][dist_config]['label']}
+            """)
+            
+        except Exception as e:
+            st.error(f"Error generating single-line diagram: {e}")
+            st.warning("Falling back to simple diagram...")
+            # Fallback to simple diagram
+            fig = create_interactive_single_line_diagram(config)
+            st.plotly_chart(fig, use_container_width=True)
     
-    col1, col2 = st.columns(2)
-    with col1:
-        type_counts = scenarios_df['Type'].value_counts()
-        st.bar_chart(type_counts)
+    with tab_site:
+        st.subheader("Site Plan / Equipment Layout")
+        
+        # Prepare site data
+        site_data = {
+            'acreage': config.get('site_acreage', 50),
+            'name': config.get('project_name', 'Datacenter Project')
+        }
+        
+        # Add POI config to config dict for site plan
+        config['suggested_poi'] = poi_config
+        
+        try:
+            # Generate site plan
+            fig = create_site_plan_diagram(config, site_data)
+            st.plotly_chart(fig, use_container_width=True)
+            
+            # Site details
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.metric("Site Acreage", f"{site_data['acreage']:.1f} acres")
+            with col2:
+                n_buildings = (1 if config.get('n_recip', 0) > 0 else 0) + config.get('n_turbine', 0) + (1 if config.get('bess_mw', 0) > 0 else 0)
+                st.metric("Major Structures", n_buildings)
+            with col3:
+                st.metric("POI Footprint", f"{FOOTPRINT_LIBRARY.get('substation_345kv_bah' if poi_config == 'breaker_half' else 'substation_345kv_ring', {}).get('acres', 6)} acres")
+        
+        except Exception as e:
+            st.error(f"Error generating site plan: {e}")
+            st.info("Site plan could not be generated. Check equipment configuration.")
     
-    with col2:
-        st.dataframe(
-            scenarios_df[['Scenario_ID', 'Name', 'Type', 'Load_MW']].head(10),
-            use_container_width=True,
-            hide_index=True
-        )
+    with tab_summary:
+        st.subheader("Configuration Summary")
+        
+        col1, col2 = st.columns([1, 1])
+        
+        with col1:
+            st.metric("Peak Load", f"{config.get('peak_load_mw', 0):.0f} MW")
+            
+            total_gen = (config.get('n_recip', 0) * config.get('recip_mw_each', 0) + 
+                        config.get('n_turbine', 0) * config.get('turbine_mw_each', 0))
+            st.metric("Total Generation", f"{total_gen:.0f} MW")
+            
+            reserve = total_gen - config.get('peak_load_mw', 0)
+            st.metric("Reserve Capacity", f"{reserve:.0f} MW", 
+                     delta=f"{reserve/config.get('peak_load_mw', 1)*100:.1f}%")
+            
+            st.metric("BESS", f"{config.get('bess_mw', 0):.0f} MW / {config.get('bess_mwh', 0):.0f} MWh")
+        
+        with col2:
+            if config.get('solar_mw', 0) > 0:
+                st.metric("Solar PV", f"{config.get('solar_mw', 0):.0f} MW")
+            if config.get('grid_connection_mw', 0) > 0:
+                st.metric("Grid Connection", f"{config.get('grid_connection_mw', 0):.0f} MW")
+            st.metric("Redundancy", config.get('redundancy', 'N+0'))
+            st.metric("Voltage Level", f"{config.get('voltage_kv', 13.8)} kV")
+        
+        st.divider()
+        
+        # Equipment summary table
+        st.subheader("Equipment Summary")
+        summary_df = pd.DataFrame([
+            {'Equipment': 'Reciprocating Engines', 'Count': config.get('n_recip', 0), 
+             'Unit Size (MW)': config.get('recip_mw_each', 0), 
+             'Total (MW)': config.get('n_recip', 0) * config.get('recip_mw_each', 0)},
+            {'Equipment': 'Gas Turbines', 'Count': config.get('n_turbine', 0), 
+             'Unit Size (MW)': config.get('turbine_mw_each', 0), 
+             'Total (MW)': config.get('n_turbine', 0) * config.get('turbine_mw_each', 0)},
+            {'Equipment': 'BESS', 'Count': 1 if config.get('bess_mw', 0) > 0 else 0, 
+             'Unit Size (MW)': config.get('bess_mw', 0), 
+             'Total (MW)': config.get('bess_mw', 0)},
+            {'Equipment': 'Solar PV', 'Count': 1 if config.get('solar_mw', 0) > 0 else 0,
+             'Unit Size (MW)': config.get('solar_mw', 0),
+             'Total (MW)': config.get('solar_mw', 0)},
+            {'Equipment': 'Grid Connection', 'Count': 1 if config.get('grid_connection_mw', 0) > 0 else 0,
+             'Unit Size (MW)': config.get('grid_connection_mw', 0),
+             'Total (MW)': config.get('grid_connection_mw', 0)},
+        ])
+        st.dataframe(summary_df, use_container_width=True, hide_index=True)
+        
+        # Equipment specifications (if detailed data available)
+        if 'recip_details' in config or 'turbine_details' in config or 'bess_details' in config:
+            st.subheader("Detailed Equipment Specifications")
+            
+            if 'recip_details' in config:
+                with st.expander("🔧 Reciprocating Engine Details"):
+                    st.json(config['recip_details'])
+            
+            if 'turbine_details' in config:
+                with st.expander("⚙️ Gas Turbine Details"):
+                    st.json(config['turbine_details'])
+            
+            if 'bess_details' in config:
+                with st.expander("🔋 BESS Details"):
+                    st.json(config['bess_details'])
+
 
 
 def render_etap_export(config: Dict):
@@ -1430,18 +2271,33 @@ def render_etap_export(config: Dict):
     ])
     
     with preview_tab:
-        st.subheader("Equipment Data Preview")
-        equip_df = generate_sample_etap_equipment_df(config)
-        st.dataframe(equip_df, use_container_width=True, hide_index=True)
+        st.info("✅ Export now includes full electrical topology matching System Overview diagrams")
         
         st.subheader("Bus Data Preview")
         bus_df = generate_etap_bus_data(config)
         st.dataframe(bus_df, use_container_width=True, hide_index=True)
+        st.caption(f"📊 {len(bus_df)} buses across 3 voltage levels: 345kV (POI) → 34.5kV (Main) → 13.8kV (Gen/Halls)")
+        
+        st.subheader("Transformer Data Preview")
+        xfmr_df = generate_etap_transformer_data(config)
+        st.dataframe(xfmr_df, use_container_width=True, hide_index=True)
+        st.caption(f"⚡ {len(xfmr_df)} transformers: POI (345→34.5kV), Step-Up (13.8→34.5kV), Distribution (34.5→13.8kV)")
+        
+        st.subheader("Breaker/Switch Data Preview")
+        breaker_df = generate_etap_breaker_data(config)
+        st.dataframe(breaker_df, use_container_width=True, hide_index=True)
+        st.caption(f"🔌 {len(breaker_df)} breakers/switches including POI, main bus, generation, and STS (if applicable)")
+        
+        st.subheader("Equipment Data Preview")
+        equip_df = generate_sample_etap_equipment_df(config)
+        st.dataframe(equip_df, use_container_width=True, hide_index=True)
         
         st.subheader("Load Data Preview")
         load_df = generate_etap_load_data(config)
         st.dataframe(load_df, use_container_width=True, hide_index=True)
+        st.caption("📍 Loads distributed across 4 data halls")
         
+       
         st.subheader("Scenarios Preview")
         scenarios_df = generate_sample_etap_scenarios_df(config)
         st.dataframe(scenarios_df, use_container_width=True, hide_index=True)
