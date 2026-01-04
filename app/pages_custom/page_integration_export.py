@@ -189,6 +189,51 @@ def get_config_from_session_state() -> Optional[Dict]:
     else:
         config['redundancy'] = 'N+0'
     
+    # NEW: Load advanced load data from Google Sheets (bvNexus LoadComposition)
+    if site:
+        try:
+            from app.utils.load_backend import load_load_configuration
+            load_config = load_load_configuration(site.get('name'))
+            
+            # Check if advanced load data is available
+            if load_config and load_config.get('cooling_type'):
+                config['advanced_load'] = {
+                    'cooling_type': load_config.get('cooling_type', ''),
+                    'iso_region': load_config.get('iso_region', ''),
+                    'psse_fractions': {
+                        'electronic': load_config.get('psse_electronic_pct', 0.0),
+                        'motor': load_config.get('psse_motor_pct', 0.0),
+                        'static': load_config.get('psse_static_pct', 0.0),
+                        'power_factor': load_config.get('psse_power_factor', 0.99)
+                    },
+                    'equipment': {
+                        'ups': load_config.get('equipment_ups', 0),
+                        'chillers': load_config.get('equipment_chillers', 0),
+                        'crah': load_config.get('equipment_crah', 0),
+                        'pumps': load_config.get('equipment_pumps', 0)
+                    },
+                    'dr_capacity': {
+                        'total': load_config.get('dr_total_mw', 0.0),
+                        'economic': load_config.get('dr_economic_mw', 0.0),
+                        'ers30': load_config.get('dr_ers30_mw', 0.0),
+                        'ers10': load_config.get('dr_ers10_mw', 0.0)
+                    },
+                    'harmonics': {
+                        'thd_v': load_config.get('harmonics_thd_v', 0.0),
+                        'thd_i': load_config.get('harmonics_thd_i', 0.0),
+                        'ieee519_compliant': load_config.get('harmonics_ieee519_compliant', False)
+                    },
+                    'workload_mix': {
+                        'pre_training': load_config.get('workload_pretraining_pct', 0.0),
+                        'fine_tuning': load_config.get('workload_finetuning_pct', 0.0),
+                        'batch_inference': load_config.get('workload_batch_inference_pct', 0.0),
+                        'realtime_inference': load_config.get('workload_realtime_inference_pct', 0.0)
+                    }
+                }
+                print(f"✓ Loaded advanced load data from Google Sheets for {site.get('name')}")
+        except Exception as e:
+            print(f"Note: Advanced load data not available ({e})")
+    
     # NEW: Electrical configuration inference based on equipment and redundancy
     if config['redundancy'] == 'N+1' and total_thermal > 8:
         # Large, redundant facility → premium electrical configuration
@@ -771,25 +816,107 @@ def generate_etap_breaker_data(config: Dict) -> pd.DataFrame:
 
 
 def generate_etap_load_data(config: Dict) -> pd.DataFrame:
-    """Generate ETAP load data for datacenter halls."""
+    """Generate ETAP load data for datacenter halls using advanced load composition."""
+    import math
+    
     peak_load = config.get("peak_load_mw", 200)
     n_halls = 4
-    load_per_hall = peak_load / n_halls
     
-    rows = []
-    for i in range(n_halls):
-        rows.append({
-            "Load_ID": f"LOAD_HALL_{i+1}",
-            "Load_Name": f"Hall {i+1} Load",
-            "Bus_ID": f"BUS_HALL_{i+1}",
-            "Nominal_kV": 13.8,
-            "P_MW": round(load_per_hall, 2),
-            "Q_MVAR": round(load_per_hall * 0.33, 2),
-            "Load_Model": "Constant Power",
-            "Status": "Online",
-            "Category": "Critical",
-            "Notes": f"Data Hall {i+1} critical IT load"
-        })
+    # Check if advanced load data available
+    if 'advanced_load' in config:
+        adv = config['advanced_load']
+        psse_frac = adv.get('psse_fractions', {})
+        
+        # Get fractions (stored as percentages in JSON)
+        electronic_frac = psse_frac.get('electronic', 0.73) / 100
+        motor_frac = psse_frac.get('motor', 0.21) / 100
+        static_frac = psse_frac.get('static', 0.06) / 100
+        pf = psse_frac.get('power_factor', 0.99)
+        
+        # Get harmonics
+        harm = adv.get('harmonics', {})
+        thd_v = harm.get('thd_v', 0.0)
+        thd_i = harm.get('thd_i', 0.0)
+        ieee519 = 'Compliant' if harm.get('ieee519_compliant', True) else 'Non-Compliant'
+        
+        # Get equipment counts
+        eq = adv.get('equipment', {})
+        
+        # Calculate load breakdown
+        electronic_mw = peak_load * electronic_frac
+        motor_mw = peak_load * motor_frac
+        static_mw = peak_load * static_frac
+        
+        rows = []
+        for i in range(n_halls):
+            hall_num = i + 1
+            
+            # Electronic load (GPU/TPU) - Constant Power model
+            if electronic_mw > 0:
+                q_mvar = (electronic_mw / n_halls) * math.tan(math.acos(pf))
+                rows.append({
+                    "Load_ID": f"LOAD_HALL_{hall_num}_GPU",
+                    "Load_Name": f"Hall {hall_num} GPU/TPU Load",
+                    "Bus_ID": f"BUS_HALL_{hall_num}",
+                    "Nominal_kV": 13.8,
+                    "P_MW": round(electronic_mw / n_halls, 2),
+                    "Q_MVAR": round(q_mvar, 2),
+                    "Load_Model": "Constant Power",
+                    "Status": "Online",
+                    "Category": "Critical",
+                    "Notes": f"Electronic load {electronic_frac*100:.1f}%, THD-V:{thd_v:.2f}%, THD-I:{thd_i:.2f}%, {ieee519}"
+                })
+            
+            # Motor load (Cooling equipment) - Induction Motor model
+            if motor_mw > 0:
+                motor_pf = 0.85  # Typical motor power factor
+                q_mvar = (motor_mw / n_halls) * math.tan(math.acos(motor_pf))
+                rows.append({
+                    "Load_ID": f"LOAD_HALL_{hall_num}_COOLING",
+                    "Load_Name": f"Hall {hall_num} Cooling",
+                    "Bus_ID": f"BUS_HALL_{hall_num}",
+                    "Nominal_kV": 13.8,
+                    "P_MW": round(motor_mw / n_halls, 2),
+                    "Q_MVAR": round(q_mvar, 2),
+                    "Load_Model": "Induction Motor",
+                    "Status": "Online",
+                    "Category": "Critical",
+                    "Notes": f"Motor load {motor_frac*100:.1f}%, {eq.get('chillers', 0)//n_halls} chillers, {eq.get('crah', 0)//n_halls} CRAH"
+                })
+            
+            # Static load (Lighting, controls) - Constant Impedance model
+            if static_mw > 0:
+                static_pf = 0.95
+                q_mvar = (static_mw / n_halls) * math.tan(math.acos(static_pf))
+                rows.append({
+                    "Load_ID": f"LOAD_HALL_{hall_num}_STATIC",
+                    "Load_Name": f"Hall {hall_num} Static Load",
+                    "Bus_ID": f"BUS_HALL_{hall_num}",
+                    "Nominal_kV": 13.8,
+                    "P_MW": round(static_mw / n_halls, 2),
+                    "Q_MVAR": round(q_mvar, 2),
+                    "Load_Model": "Constant Impedance",
+                    "Status": "Online",
+                    "Category": "Normal",
+                    "Notes": f"Static load {static_frac*100:.1f}% (lighting, controls)"
+                })
+    else:
+        # Fallback to generic load if no advanced data
+        load_per_hall = peak_load / n_halls
+        rows = []
+        for i in range(n_halls):
+            rows.append({
+                "Load_ID": f"LOAD_HALL_{i+1}",
+                "Load_Name": f"Hall {i+1} Load",
+                "Bus_ID": f"BUS_HALL_{i+1}",
+                "Nominal_kV": 13.8,
+                "P_MW": round(load_per_hall, 2),
+                "Q_MVAR": round(load_per_hall * 0.33, 2),
+                "Load_Model": "Constant Power",
+                "Status": "Online",
+                "Category": "Critical",
+                "Notes": f"Data Hall {i+1} critical IT load (generic - no advanced data)"
+            })
     
     return pd.DataFrame(rows)
 
@@ -996,14 +1123,48 @@ def generate_sample_psse_raw(config: Dict) -> str:
     
     # === LOAD DATA ===
     lines.append("")
-    lines.append("/ LOAD DATA - Distributed across data halls")
+    lines.append("/ LOAD DATA - Distributed across data halls with composition detail")
     lines.append("/ I, ID, STATUS, AREA, ZONE, PL, QL, IP, IQ, YP, YQ, OWNER, SCALE, INTRPT, DGENON")
     
     peak_load = config.get('peak_load_mw', 200)
     load_per_hall = peak_load / 4
     
-    for hall_bus in bus_mapping['HALL']:
-        lines.append(f"{hall_bus},'1 ',1,   1,   1,   {load_per_hall:.2f},    {load_per_hall*0.33:.2f},   0.00,   0.00,   0.00,   0.00,   1,1,0,1")
+    # Use advanced load data if available - DETAILED BREAKDOWN
+    if 'advanced_load' in config:
+        import math
+        adv = config['advanced_load']
+        psse_frac = adv.get('psse_fractions', {})
+        
+        # Get fractions (as percentages, convert to per-unit)
+        electronic_frac = psse_frac.get('electronic', 73) / 100
+        motor_frac = psse_frac.get('motor', 21) / 100
+        static_frac = psse_frac.get('static', 6) / 100
+        pf = psse_frac.get('power_factor', 0.99)
+        
+        # Calculate MW per load type per hall
+        gpu_mw = load_per_hall * electronic_frac
+        cooling_mw = load_per_hall * motor_frac
+        static_mw = load_per_hall * static_frac
+        
+        # Calculate Q for each type
+        gpu_q = gpu_mw * math.tan(math.acos(pf))  # GPU power electronics
+        cooling_q = cooling_mw * math.tan(math.acos(0.85))  # Motor PF
+        static_q = static_mw * math.tan(math.acos(0.95))  # Static load PF
+        
+        comment = f"! bvNexus detailed composition: {electronic_frac*100:.1f}% GPU/TPU, {motor_frac*100:.1f}% Cooling, {static_frac*100:.1f}% Static"
+        lines.append(comment)
+        
+        for i, hall_bus in enumerate(bus_mapping['HALL']):
+            # ID '1' = GPU/TPU load (electronic)
+            lines.append(f"{hall_bus},'1 ',1,   1,   1,   {gpu_mw:.2f},    {gpu_q:.2f},   0.00,   0.00,   0.00,   0.00,   1,1,0,1  ! Hall {i+1} GPU")
+            # ID '2' = Cooling load (motor)
+            lines.append(f"{hall_bus},'2 ',1,   1,   1,   {cooling_mw:.2f},    {cooling_q:.2f},   0.00,   0.00,   0.00,   0.00,   1,1,0,1  ! Hall {i+1} Cooling")
+            # ID '3' = Static load (lighting, controls)
+            lines.append(f"{hall_bus},'3 ',1,   1,   1,   {static_mw:.2f},    {static_q:.2f},   0.00,   0.00,   0.00,   0.00,   1,1,0,1  ! Hall {i+1} Static")
+    else:
+        # Generic aggregate load if no advanced data
+        for hall_bus in bus_mapping['HALL']:
+            lines.append(f"{hall_bus},'1 ',1,   1,   1,   {load_per_hall:.2f},    {load_per_hall*0.33:.2f},   0.00,   0.00,   0.00,   0.00,   1,1,0,1")
     
     lines.append("0 / END OF LOAD DATA")
     
@@ -1134,6 +1295,50 @@ def generate_sample_psse_raw(config: Dict) -> str:
     return '\n'.join(lines)
 
 
+def generate_psse_dyr(config: Dict) -> str:
+    """Generate PSS/e DYR file with CMPLDW composite load model."""
+    if 'advanced_load' not in config:
+        return "! No advanced load data - CMPLDW requires bvNexus calculation\n"
+    
+    adv = config['advanced_load']
+    psse_frac = adv.get('psse_fractions', {})
+    
+    # Get fractions (percentages, convert to per-unit)
+    fel = psse_frac.get('electronic', 73.0) / 100
+    motor_total = psse_frac.get('motor', 21.0) / 100
+    pfs = psse_frac.get('static', 6.0) / 100
+    pf = psse_frac.get('power_factor', 0.99)
+    
+    # Distribute motor across CMPLDW types
+    fma, fmb, fmc, fmd = motor_total * 0.3, motor_total * 0.4, motor_total * 0.2, motor_total * 0.1
+    
+    cooling = adv.get('cooling_type', '').replace('_', ' ').title()
+    iso = adv.get('iso_region', '').upper()
+    eq = adv.get('equipment', {})
+    
+    dyr = []
+    dyr.append("! PSS/e CMPLDW Composite Load Model - bvNexus Generated")
+    dyr.append(f"! Site: {config.get('project_name', 'Datacenter')}")
+    dyr.append(f"! Cooling: {cooling}, ISO: {iso}")
+    dyr.append("!")
+    dyr.append(f"! FEL (Electronic):  {fel:.6f} ({fel*100:.1f}%) - GPU/TPU")
+    dyr.append(f"! FMA (Motor A):     {fma:.6f} ({fma*100:.1f}%) - Fans/Pumps")
+    dyr.append(f"! FMB (Motor B):     {fmb:.6f} ({fmb*100:.1f}%) - Chillers")
+    dyr.append(f"! FMC (Motor C):     {fmc:.6f} ({fmc*100:.1f}%) - Compressors")
+    dyr.append(f"! FMD (Motor D):     {fmd:.6f} ({fmd*100:.1f}%) - VFD Equipment")
+    dyr.append(f"! PFS (Static):      {pfs:.6f} ({pfs*100:.1f}%) - Lighting")
+    dyr.append(f"! Power Factor:      {pf:.4f}")
+    dyr.append(f"! Equipment: {eq.get('ups',0)} UPS, {eq.get('chillers',0)} Chillers, {eq.get('crah',0)} CRAH, {eq.get('pumps',0)} Pumps")
+    dyr.append("!")
+    
+    for hall in range(1, 5):
+        bus_num = 5 + hall  # Bus 6-9
+        dyr.append(f"! Hall {hall}")
+        dyr.append(f"{bus_num} 'CMPLDW' 1 {fel:.6f} {fma:.6f} {fmb:.6f} {fmc:.6f} {fmd:.6f} {pfs:.6f} {pf:.4f} /")
+    
+    return "\n".join(dyr)
+
+
 def generate_sample_psse_results_df() -> pd.DataFrame:
     """Generate sample PSS/e power flow results (what would be imported)."""
     return pd.DataFrame([
@@ -1155,9 +1360,108 @@ def generate_sample_psse_results_df() -> pd.DataFrame:
 
 
 def generate_sample_windchill_component_df(config: Dict) -> pd.DataFrame:
-    """Generate sample Windchill RAM component dataframe."""
+    """Generate sample Windchill RAM component dataframe with actual equipment counts."""
     rows = []
     
+    # === COOLING & ELECTRICAL EQUIPMENT (from bvNexus Advanced Load Data) ===
+    if 'advanced_load' in config:
+        adv = config['advanced_load']
+        eq = adv.get('equipment', {})
+        cooling = adv.get('cooling_type', 'air_cooled').replace('_', ' ').title()
+        
+        # UPS Systems
+        n_ups = eq.get('ups', 0)
+        if n_ups > 0:
+            rows.append({
+                'Component_ID': 'UPS_SYSTEM',
+                'Component_Name': f'UPS Modules (N+1 Configuration)',
+                'Component_Type': 'UPS_MODULE',
+                'Subsystem': 'Electrical Distribution',
+                'Redundancy_Group': 'UPS',
+                'Capacity_MW': 2.5,  # Typical UPS module size
+                'Quantity': n_ups,
+                'MTBF_Hours': 50000,
+                'MTTR_Hours': 24,
+                'Failure_Rate_Per_Hour': 2.0e-5,
+                'Availability': 0.9995,
+                'Distribution': 'Exponential',
+                'Weibull_Beta': 1.0,
+                'Weibull_Eta': 50000,
+                'Operating_Hours_Per_Year': 8760,
+                'PM_Interval_Hours': 2190,  # Quarterly
+                'Notes': f'bvNexus calculated: {n_ups} units required for {config.get("peak_load_mw", 200)} MW'
+            })
+        
+        # Chillers
+        n_chillers = eq.get('chillers', 0)
+        if n_chillers > 0:
+            rows.append({
+                'Component_ID': 'CHILLER',
+                'Component_Name': f'{cooling} Chiller',
+                'Component_Type': 'CHILLER',
+                'Subsystem': 'Cooling System',
+                'Redundancy_Group': 'COOLING_PRIMARY',
+                'Capacity_MW': 5.0,  # Typical chiller capacity
+                'Quantity': n_chillers,
+                'MTBF_Hours': 30000,
+                'MTTR_Hours': 48,
+                'Failure_Rate_Per_Hour': 3.33e-5,
+                'Availability': 0.9984,
+                'Distribution': 'Weibull',
+                'Weibull_Beta': 1.5,
+                'Weibull_Eta': 35000,
+                'Operating_Hours_Per_Year': 8760,
+                'PM_Interval_Hours': 4380,  # Semi-annual
+                'Notes': f'bvNexus calculated: {n_chillers} units for {cooling} cooling'
+            })
+        
+        # CRAH Units
+        n_crah = eq.get('crah', 0)
+        if n_crah > 0:
+            rows.append({
+                'Component_ID': 'CRAH',
+                'Component_Name': 'CRAH Units (Computer Room Air Handler)',
+                'Component_Type': 'CRAH_UNIT',
+                'Subsystem': 'Cooling System',
+                'Redundancy_Group': 'COOLING_DISTRIBUTION',
+                'Capacity_MW': 0.2,  # Typical CRAH capacity
+                'Quantity': n_crah,
+                'MTBF_Hours': 40000,
+                'MTTR_Hours': 12,
+                'Failure_Rate_Per_Hour': 2.5e-5,
+                'Availability': 0.9997,
+                'Distribution': 'Exponential',
+                'Weibull_Beta': 1.0,
+                'Weibull_Eta': 40000,
+                'Operating_Hours_Per_Year': 8760,
+                'PM_Interval_Hours': 2190,  # Quarterly
+                'Notes': f'bvNexus calculated: {n_crah} units required'
+            })
+        
+        # Pumps
+        n_pumps = eq.get('pumps', 0)
+        if n_pumps > 0:
+            rows.append({
+                'Component_ID': 'PUMP',
+                'Component_Name': 'Chilled Water Pumps',
+                'Component_Type': 'PUMP',
+                'Subsystem': 'Cooling System',
+                'Redundancy_Group': 'PUMPS',
+                'Capacity_MW': 0.5,  # Typical pump power
+                'Quantity': n_pumps,
+                'MTBF_Hours': 60000,
+                'MTTR_Hours': 8,
+                'Failure_Rate_Per_Hour': 1.67e-5,
+                'Availability': 0.9999,
+                'Distribution': 'Exponential',
+                'Weibull_Beta': 1.0,
+                'Weibull_Eta': 60000,
+                'Operating_Hours_Per_Year': 8760,
+                'PM_Interval_Hours': 4380,  # Semi-annual
+                'Notes': f'bvNexus calculated: {n_pumps} units with N+2 redundancy'
+            })
+    
+    # === GENERATION EQUIPMENT ===
     # Reciprocating engines
     for i in range(config.get('n_recip', 0)):
         rows.append({
@@ -1985,6 +2289,50 @@ def render_integration_export_page():
     and Windchill RAM for detailed engineering analysis.
     """)
     
+    # SITE SELECTOR at top of page
+    st.markdown("---")
+    col1, col2 = st.columns([3, 1])
+    with col1:
+        # Load available sites
+        if 'sites_list' not in st.session_state or not st.session_state.sites_list:
+            from app.utils.site_backend import load_sites_from_google_sheets
+            try:
+                st.session_state.sites_list = load_sites_from_google_sheets()
+            except:
+                st.session_state.sites_list = []
+        
+        if st.session_state.sites_list:
+            site_names = [s.get('name', 'Unnamed') for s in st.session_state.sites_list]
+            
+            # Get current selection
+            current_idx = 0
+            if 'current_site' in st.session_state and st.session_state.current_site:
+                try:
+                    current_idx = site_names.index(st.session_state.current_site)
+                except ValueError:
+                    pass
+            
+            selected_site = st.selectbox(
+                "📍 Select Site for Export",
+                options=site_names,
+                index=current_idx,
+                key="integration_export_site_selector"
+            )
+            
+            # Update session state
+            if selected_site != st.session_state.get('current_site'):
+                st.session_state.current_site = selected_site
+                st.rerun()
+        else:
+            st.warning("⚠️ No sites loaded. Go to Sites page to create a site first.")
+    
+    with col2:
+        if st.button("🔄 Refresh Data", help="Reload site data from Google Sheets"):
+            st.cache_data.clear()
+            st.rerun()
+    
+    st.markdown("---")
+    
     # Sidebar configuration
     st.sidebar.header("📋 Project Configuration")
     
@@ -2265,6 +2613,42 @@ def render_etap_export(config: Dict):
     imported into ETAP for load flow, short circuit, and arc flash studies.
     """)
     
+    # Check if advanced load data is available
+    if 'advanced_load' in config:
+        adv = config['advanced_load']
+        
+        st.success(f"✅ Advanced load model loaded: **{adv['cooling_type'].replace('_', ' ').title()}** cooling @ **{adv['iso_region'].upper()}**")
+        
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            st.markdown("**Load Composition:**")
+            st.write(f"- Electronic (GPU/TPU): {adv['psse_fractions']['electronic']:.1f}%")
+            st.write(f"- Motor Load: {adv['psse_fractions']['motor']:.1f}%")
+            st.write(f"- Static Load: {adv['psse_fractions']['static']:.1f}%")
+            st.write(f"- Power Factor: {adv['psse_fractions']['power_factor']:.3f}")
+        
+        with col2:
+            st.markdown("**Harmonics (IEEE 519):**")
+            st.write(f"- THD-V: {adv['harmonics']['thd_v']:.2f}%")
+            st.write(f"- THD-I: {adv['harmonics']['thd_i']:.2f}%")
+            compliance = "✅ Compliant" if adv['harmonics']['ieee519_compliant'] else "❌ Non-Compliant"
+            st.write(f"- IEEE 519: {compliance}")
+        
+        with col3:
+            st.markdown("**Equipment Counts:**")
+            st.write(f"- UPS Units: {adv['equipment']['ups']}")
+            st.write(f"- Chillers: {adv['equipment']['chillers']}")
+            st.write(f"- CRAH Units: {adv['equipment']['crah']}")
+            st.write(f"- Pumps: {adv['equipment']['pumps']}")
+        
+        st.markdown("---")
+    else:
+        st.warning("⚠️ No advanced load model found. Go to **Load Composer** → Calculate Advanced Model → Save to Google Sheets")
+        st.info("💡 Advanced load data includes PSS/e fractions, harmonics, equipment counts, and DR capacity")
+        st.markdown("---")
+    
+    
     # Preview tabs
     preview_tab, results_tab, download_tab = st.tabs([
         "📋 Preview Export Data", "📊 Expected Results Format", "⬇️ Download Files"
@@ -2337,6 +2721,46 @@ def render_psse_export(config: Dict):
     Use for grid interconnection studies and dynamic simulations.
     """)
     
+    # Check if advanced load data is available
+    if 'advanced_load' in config:
+        adv = config['advanced_load']
+        
+        st.success(f"✅ PSS/e CMPLDW load model ready: **{adv['cooling_type'].replace('_', ' ').title()}** @ **{adv['iso_region'].upper()}**")
+        
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            st.markdown("**CMPLDW Load Fractions:**")
+            st.write(f"- Electronic (GPU/TPU): {adv['psse_fractions']['electronic']:.1f}%")
+            st.write(f"- Motor Load (Cooling): {adv['psse_fractions']['motor']:.1f}%")
+            st.write(f"- Static Load: {adv['psse_fractions']['static']:.1f}%")
+            st.write(f"- Power Factor: {adv['psse_fractions']['power_factor']:.3f}")
+        
+        with col2:
+            st.markdown("**ISO Compliance:**")
+            st.write(f"- Region: {adv['iso_region'].upper()}")
+            st.write(f"- Cooling Type: {adv['cooling_type'].replace('_', ' ').title()}")
+            # Show dynamic model requirement based on load size
+            peak_mw = config.get('peak_load_mw', 0)
+            if peak_mw > 75:
+                st.write(f"- Dynamic Model: ✅ Required (>75 MW)")
+            else:
+                st.write(f"- Dynamic Model: Optional (<75 MW)")
+        
+        with col3:
+            st.markdown("**Equipment for Motor Model:**")
+            st.write(f"- Chillers: {adv['equipment']['chillers']}")
+            st.write(f"- CRAH Units: {adv['equipment']['crah']}")
+            st.write(f"- Pumps: {adv['equipment']['pumps']}")
+            st.write(f"- UPS Units: {adv['equipment']['ups']}")
+        
+        st.markdown("---")
+    else:
+        st.warning("⚠️ No advanced load model found. Go to **Load Composer** → Calculate Advanced Model → Save to Google Sheets")
+        st.info("💡 PSS/e CMPLDW model requires load fractions from bvNexus Load Module")
+        st.markdown("---")
+    
+    
     preview_tab, format_tab, download_tab = st.tabs([
         "📋 Preview RAW File", "📊 Results Format", "⬇️ Download Files"
     ])
@@ -2387,7 +2811,7 @@ with open('psse_results.csv', 'w') as f:
     with download_tab:
         st.subheader("Download PSS/e Files")
         
-        col1, col2 = st.columns(2)
+        col1, col2, col3 = st.columns(3)
         
         with col1:
             if st.button("📄 Generate RAW File", key="gen_raw"):
@@ -2400,6 +2824,29 @@ with open('psse_results.csv', 'w') as f:
                 )
         
         with col2:
+            # Direct DYR download (no generate button needed)
+            try:
+                dyr_content = generate_psse_dyr(config)
+                st.download_button(
+                    label="⚡ Download DYR File",
+                    data=dyr_content,
+                    file_name=f"bvNexus_CMPLDW_{datetime.now().strftime('%Y%m%d_%H%M')}.dyr",
+                    mime="text/plain",
+                    help="PSS/e CMPLDW composite load model with bvNexus fractions",
+                    key="download_dyr_direct"
+                )
+                # Show status below button
+                if 'advanced_load' in config:
+                    st.caption("✅ Using bvNexus load composition")
+                else:
+                    st.caption("⚠️ Using generic defaults")
+            except Exception as e:
+                st.error(f"❌ DYR Error: {str(e)[:100]}")
+                if st.checkbox("Show full error", key="show_dyr_error"):
+                    import traceback
+                    st.code(traceback.format_exc())
+        
+        with col3:
             if st.button("📋 Generate Scenarios CSV", key="gen_psse_scen"):
                 scenarios_df = generate_sample_etap_scenarios_df(config)
                 csv_content = scenarios_df.to_csv(index=False)
@@ -2419,6 +2866,49 @@ def render_ram_export(config: Dict):
     Generate Excel files for Windchill (ReliaSoft) reliability analysis.
     Includes component data, RBD structure, FMEA templates, and requirements.
     """)
+    
+    # Check if advanced load data is available
+    if 'advanced_load' in config:
+        adv = config['advanced_load']
+        
+        st.success(f"✅ Equipment reliability data from bvNexus: **{adv['cooling_type'].replace('_', ' ').title()}** cooling system")
+        
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            st.markdown("**Cooling Equipment:**")
+            st.write(f"- Chillers: {adv['equipment']['chillers']} units (N+1)")
+            st.write(f"- CRAH Units: {adv['equipment']['crah']} units (N+1)")
+            st.write(f"- Pumps: {adv['equipment']['pumps']} units (N+2)")
+            st.caption("Component counts from load calculation")
+        
+        with col2:
+            st.markdown("**Electrical Equipment:**")
+            st.write(f"- UPS Units: {adv['equipment']['ups']} units")
+            num_gen = config.get('n_recip', 0) + config.get('n_turbine', 0)
+            num_xfmr = max(2, num_gen // 4)  # Estimate transformers
+            st.write(f"- Generators: {num_gen} units")
+            st.write(f"- Transformers: {num_xfmr} units")
+            st.caption("From configuration")
+        
+        with col3:
+            st.markdown("**Reliability Targets:**")
+            # Calculate system availability estimate
+            # Simplified: assuming series components
+            chiller_avail = 0.9998  # Commercial chiller
+            ups_avail = 0.9999  # N+1 UPS
+            # Simplified calculation
+            est_avail = chiller_avail * ups_avail
+            st.write(f"- Estimated Availability: {est_avail:.5f}")
+            st.write(f"- Annual Downtime: {(1-est_avail)*8760:.1f} hrs")
+            st.caption("Preliminary estimate only")
+        
+        st.markdown("---")
+    else:
+        st.warning("⚠️ No advanced load model found. Generic equipment counts will be used.")
+        st.info("💡 Go to **Load Composer** → Calculate Advanced Model → Save to get actual equipment counts")
+        st.markdown("---")
+    
     
     # Show RBD diagram
     st.subheader("Reliability Block Diagram")

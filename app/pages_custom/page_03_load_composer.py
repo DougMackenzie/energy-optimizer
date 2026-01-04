@@ -13,6 +13,19 @@ from app.utils.load_profile_generator import (
 )
 from app.utils.site_context_helper import display_site_context
 
+# bvNexus Advanced Load Module
+from app.utils.bvnexus_load_module import (
+    COOLING_SPECS,
+    ISO_PROFILES,
+    WORKLOAD_SPECS,
+    LoadPageConfig,
+    WorkloadMix,
+)
+from app.utils.bvnexus_load_wrapper import (
+    LoadManager,
+    SiteLoadConfig,
+)
+
 
 def render():
     st.markdown("### ⚡ Load Composer with Demand Response")
@@ -180,9 +193,11 @@ def render():
     # Call initialization helper
     ensure_load_profile_complete()
     
-    # Create tabs (removed Tab 6 - functionality moved to Tab 1)
+    
+    # Create tabs - Added Tab 6 for Engineering Exports
     tab1, tab2, tab3, tab4, tab5 = st.tabs([
-        "📊 Basic Load", "🔄 Workload Mix", "❄️ Cooling Flexibility", "💰 DR Economics", "📈 Load Variability"
+        "📊 Basic Load", "🔄 Workload Mix", "❄️ Cooling Flexibility",
+        "💰 DR Economics", "📈 Load Variability"
     ])
     
     
@@ -200,26 +215,45 @@ def render():
         else:
             peak_facility_mw = float(st.session_state.load_config.get('peak_facility_load_mw', 750.0))
         
-        # INPUT WIDGETS (PUE first so it's available for calculations)
+        # INPUT WIDGETS - PUE is READ-ONLY (driven by cooling technology)
+        current_cooling_type = st.session_state.load_config.get('cooling_type', 'rear_door_heat_exchanger')
+        # Ensure valid cooling type (fallback to default if empty or invalid)
+        if not current_cooling_type or current_cooling_type not in COOLING_SPECS:
+            current_cooling_type = 'rear_door_heat_exchanger'
+            st.session_state.load_config['cooling_type'] = current_cooling_type
+        
+        cooling_spec = COOLING_SPECS[current_cooling_type]
+        cooling_typical_pue = cooling_spec['pue_typical']
+        
+        # Set PUE from cooling technology (no manual override)
+        pue = cooling_typical_pue
+        st.session_state.load_config['pue'] = pue
+        st.session_state.load_profile_dr['pue'] = pue
+        
         col1, col2, col3 = st.columns(3)
         
         with col1:
-            pue = st.number_input(
-                "PUE", 
-                min_value=1.0, max_value=2.0, 
-                value=float(st.session_state.load_config.get('pue', 1.25)),
-                step=0.01,
-                help="Power Usage Effectiveness",
-                key='tab1_pue'
+            # PUE - READ-ONLY display (set by cooling technology)
+            st.metric(
+                "PUE (from Cooling Tech)",
+                f"{pue:.2f}",
+                help=f"Automatically set by cooling technology. Typical for {cooling_spec['name']}: {cooling_typical_pue}"
             )
-            st.session_state.load_config['pue'] = pue
-            st.session_state.load_profile_dr['pue'] = pue
+
+
         
         with col2:
+            # Initialize load factor to 75% if not set or if set to OLD defaults (30% or 80%)
+            current_lf = st.session_state.load_config.get('load_factor_pct')
+            if current_lf is None or current_lf == 80.0 or current_lf <= 30.0:
+                default_lf = 75.0
+            else:
+                default_lf = current_lf
+            
             load_factor = st.slider(
                 "Load Factor (%)", 
                 min_value=50, max_value=100, 
-                value=int(st.session_state.load_config.get('load_factor_pct', 80.0)),
+                value=int(default_lf),
                 help="Average utilization as % of peak",
                 key='tab1_load_factor'
             )
@@ -228,6 +262,78 @@ def render():
         
         with col3:
             st.write("")  # Placeholder
+        
+        # === ADVANCED LOAD MODELING (NEW) ===
+        st.markdown("---")
+        st.markdown("#### 🔬 Advanced Load Modeling")
+        st.caption("Configure cooling technology and grid interconnection for PSS/e, ETAP, and RAM exports")
+        
+        col_adv1, col_adv2 = st.columns(2)
+        
+        with col_adv1:
+            # Cooling Type Selector
+            cooling_options = list(COOLING_SPECS.keys())
+            cooling_names = [COOLING_SPECS[c]["name"] for c in cooling_options]
+            
+            current_cooling = st.session_state.load_config.get('cooling_type', 'rear_door_heat_exchanger')
+            try:
+                cooling_idx = cooling_options.index(current_cooling)
+            except ValueError:
+                cooling_idx = 1  # Default to rear-door
+            
+            selected_cooling_idx = st.selectbox(
+                "Cooling Technology",
+                range(len(cooling_options)),
+                format_func=lambda i: cooling_names[i],
+                index=cooling_idx,
+                key='tab1_cooling_type',
+                help="Cooling technology affects PUE range, motor load distribution, and harmonic characteristics"
+            )
+            cooling_type = cooling_options[selected_cooling_idx]
+            
+            # Auto-update PUE when cooling technology changes
+            cooling_spec = COOLING_SPECS[cooling_type]
+            if cooling_type != current_cooling:
+                # User changed cooling technology - update PUE to typical value
+                new_pue = cooling_spec['pue_typical']
+                st.session_state.load_config['pue'] = new_pue
+                st.session_state.load_profile_dr['pue'] = new_pue
+                st.info(f"ℹ️ PUE updated to {new_pue} (typical for {cooling_spec['name']}). Scroll up to see.")
+                # NOTE: Don't st.rerun() - causes hang. User can see updated value on next interaction.
+            
+            st.session_state.load_config['cooling_type'] = cooling_type
+            
+            # Show cooling tech specs
+            st.caption(f"PUE Range: {cooling_spec['pue_range'][0]}-{cooling_spec['pue_range'][1]} (typical: {cooling_spec['pue_typical']})")
+            st.caption(f"VFD Penetration: {cooling_spec['vfd_penetration']*100:.0f}%")
+        
+        with col_adv2:
+            # ISO Region Selector
+            iso_options = list(ISO_PROFILES.keys())
+            iso_names = [ISO_PROFILES[i]["name"] for i in iso_options]
+            
+            current_iso = st.session_state.load_config.get('iso_region', 'ercot')
+            try:
+                iso_idx = iso_options.index(current_iso)
+            except ValueError:
+                iso_idx = 0  # Default to ERCOT
+            
+            selected_iso_idx = st.selectbox(
+                "ISO/RTO Region",
+                range(len(iso_options)),
+                format_func=lambda i: iso_names[i],
+                index=iso_idx,
+                key='tab1_iso_region',
+                help="ISO region determines interconnection requirements and voltage ride-through profiles"
+            )
+            iso_region = iso_options[selected_iso_idx]
+            st.session_state.load_config['iso_region'] = iso_region
+            
+            # Show ISO requirements
+            iso_profile = ISO_PROFILES[iso_region]
+            st.caption(f"Large Load Threshold: {iso_profile['large_load_threshold_mw']} MW")
+            if iso_profile['dynamic_model_required']:
+                st.caption("✅ Dynamic Model Required")
         
         # CALCULATIONS (after inputs!)
         peak_it_mw = round(peak_facility_mw / pue, 1)
@@ -243,117 +349,185 @@ def render():
         col_m3.metric("Avg Load", f"{avg_facility_mw:.1f} MW")
         col_m4.metric("Annual Energy", f"{avg_facility_mw * 8760 / 1000:.1f} GWh")
         
-        # TRAJECTORY EDITOR (moved from Tab 6)
+        # TRAJECTORY EDITOR (always visible)
         st.markdown("#### 📈 Load Growth Trajectory")
+        st.caption("Define when Facility load (IT + cooling) reaches each milestone. Peak IT will be calculated automatically.")
         
-        enable_growth = st.checkbox(
-            "Enable load growth over planning horizon",
-            value=st.session_state.load_config.get('growth_enabled', True),
-            key='tab1_growth_enabled'
+        # Always enabled (checkbox removed per user request)
+        st.session_state.load_config['growth_enabled'] = True
+            
+        # Get current growth steps (FACILITY loads - source of truth)
+        import pandas as pd
+        growth_steps = st.session_state.load_config.get('growth_steps', [
+            {'year': 2027, 'facility_load_mw': 0},
+            {'year': 2028, 'facility_load_mw': 187.5},
+            {'year': 2029, 'facility_load_mw': 375},
+            {'year': 2030, 'facility_load_mw': 562.5},
+            {'year': 2031, 'facility_load_mw': 750},
+        ])
+        
+        growth_df = pd.DataFrame(growth_steps)
+        
+        # Editable table
+        edited_df = st.data_editor(
+            growth_df,
+            num_rows="dynamic",
+            column_config={
+                "year": st.column_config.NumberColumn(
+                    "Year",
+                    min_value=2025,
+                    max_value=2050,
+                    step=1,
+                    required=True
+                ),
+                "facility_load_mw": st.column_config.NumberColumn(
+                    "Facility Load (MW)",
+                    min_value=0.0,
+                    max_value=peak_it_mw * pue,  # Max is peak facility
+                    step=10.0,
+                    required=True,
+                    help="Total facility load (IT + cooling)"
+                )
+            },
+            hide_index=True,
+            key='tab1_trajectory_editor'
         )
-        st.session_state.load_config['growth_enabled'] = enable_growth
         
-        if enable_growth:
-            st.markdown("**Edit Growth Steps:**")
-            st.caption("Define when Facility load (IT + cooling) reaches each milestone. Peak IT will be calculated automatically.")
-            
-            # Get current growth steps (FACILITY loads - source of truth)
-            import pandas as pd
-            growth_steps = st.session_state.load_config.get('growth_steps', [
-                {'year': 2027, 'facility_load_mw': 0},
-                {'year': 2028, 'facility_load_mw': 187.5},
-                {'year': 2029, 'facility_load_mw': 375},
-                {'year': 2030, 'facility_load_mw': 562.5},
-                {'year': 2031, 'facility_load_mw': 750},
-            ])
-            
-            growth_df = pd.DataFrame(growth_steps)
-            
-            # Editable table
-            edited_df = st.data_editor(
-                growth_df,
-                num_rows="dynamic",
-                column_config={
-                    "year": st.column_config.NumberColumn(
-                        "Year",
-                        min_value=2025,
-                        max_value=2050,
-                        step=1,
-                        required=True
-                    ),
-                    "facility_load_mw": st.column_config.NumberColumn(
-                        "Facility Load (MW)",
-                        min_value=0.0,
-                        max_value=peak_it_mw * pue,  # Max is peak facility
-                        step=10.0,
-                        required=True,
-                        help="Total facility load (IT + cooling)"
-                    )
-                },
-                hide_index=True,
-                key='tab1_trajectory_editor'
-            )
-            
-            
-            # Update session state with facility loads (source of truth)\n            st.session_state.load_config['growth_steps'] = edited_df.to_dict('records')\n            
-            # Update peak facility load from trajectory
-            if len(edited_df) > 0:
-                peak_facility = edited_df['facility_load_mw'].max()
-                st.session_state.load_config['peak_facility_load_mw'] = peak_facility
-            
-            # Generate and visualize trajectory (facility loads)
-            from app.utils.load_backend import generate_full_trajectory_facility
-            trajectory = generate_full_trajectory_facility(
-                edited_df.to_dict('records'),
-                planning_horizon=15
-            )
-            
-            # Trajectory chart
-            import plotly.graph_objects as go
-            fig_traj = go.Figure()
-            fig_traj.add_trace(go.Scatter(
-                x=list(trajectory.keys()),
-                y=list(trajectory.values()),
-                mode='lines+markers',
-                name='Facility Load',
-                line=dict(color='#1f77b4', width=3),
-                marker=dict(size=8)
-            ))
-            fig_traj.update_layout(
-                title="15-Year Load Trajectory",
-                xaxis_title="Year",
-                yaxis_title="Facility Load (MW)",
-                height=400
-            )
-            st.plotly_chart(fig_traj, use_container_width=True, key='tab1_trajectory_chart')
-            
-            # Also update load_profile_dr for compatibility
-            st.session_state.load_profile_dr['load_trajectory'] = trajectory
-        else:
-            # Flat trajectory
-            trajectory = {y: peak_facility_mw for y in range(2027, 2042)}
-            st.session_state.load_profile_dr['load_trajectory'] = trajectory
         
-        # SAVE BUTTON
+        # Update session state with facility loads (source of truth)\n            st.session_state.load_config['growth_steps'] = edited_df.to_dict('records')\n            
+        # Update peak facility load from trajectory
+        if len(edited_df) > 0:
+            peak_facility = edited_df['facility_load_mw'].max()
+            st.session_state.load_config['peak_facility_load_mw'] = peak_facility
+        
+        # Generate and visualize trajectory (facility loads)
+        from app.utils.load_backend import generate_full_trajectory_facility
+        trajectory = generate_full_trajectory_facility(
+            edited_df.to_dict('records'),
+            planning_horizon=15
+        )
+        
+        # Trajectory chart
+        import plotly.graph_objects as go
+        fig_traj = go.Figure()
+        fig_traj.add_trace(go.Scatter(
+            x=list(trajectory.keys()),
+            y=list(trajectory.values()),
+            mode='lines+markers',
+            name='Facility Load',
+            line=dict(color='#1f77b4', width=3),
+            marker=dict(size=8)
+        ))
+        fig_traj.update_layout(
+            title="15-Year Load Trajectory",
+            xaxis_title="Year",
+            yaxis_title="Facility Load (MW)",
+            height=400
+        )
+        st.plotly_chart(fig_traj, use_container_width=True, key='tab1_trajectory_chart')
+        
+        # Also update load_profile_dr for compatibility
+        st.session_state.load_profile_dr['load_trajectory'] = trajectory
+        
+        # === ADVANCED LOAD CALCULATION (NEW) ===
         st.markdown("---")
-        col_save1, col_save2 = st.columns([3, 1])
+        st.markdown("#### 🧮 Advanced Load Calculation")
         
-        with col_save1:
-            if st.session_state.load_config.get('last_updated'):
-                st.caption(f"💾 Last saved: {st.session_state.load_config['last_updated'][:19]}")
-            else:
-                st.caption("⚠️ Configuration not yet saved to backend")
+        col_calc1, col_calc2 = st.columns([3, 1])
         
-        with col_save2:
-            if st.button("💾 Save to Backend", type="primary", use_container_width=True, key='tab1_save_config'):
-                from app.utils.load_backend import save_load_configuration
-                success = save_load_configuration(selected_site, st.session_state.load_config)
-                if success:
-                    st.success("✅ Load configuration saved to Google Sheets!")
-                    st.session_state.load_config['last_updated'] = pd.Timestamp.now().isoformat()
+        with col_calc2:
+            # Create cache-busting key based on inputs to force recalculation when they change
+            session_pue = st.session_state.load_config.get('pue', pue)
+            calc_key = f'tab1_calc_advanced_{cooling_type}_{iso_region}_{session_pue:.2f}_{peak_facility_mw:.1f}'
+            
+            if st.button("🔬 Calculate Advanced Model", type="primary", use_container_width=True, key=calc_key):
+                try:
+                    # Initialize Load Manager (always fresh)
+                    st.session_state.load_manager = LoadManager()
+                    manager = st.session_state.load_manager
+                    
+                    # Get workload mix from session state
+                    workload = st.session_state.load_profile_dr.get('workload_mix', {})
+                    
+                    # Create configuration (FRESH each time)
+                    config = SiteLoadConfig(
+                        site_id=selected_site,
+                        site_name=selected_site,
+                        peak_load_mw=peak_facility_mw,
+                        pue=pue,
+                        cooling_type=cooling_type,
+                        iso_region=iso_region,
+                        pre_training_pct=workload.get('pre_training', 0.45) * 100,
+                        fine_tuning_pct=workload.get('fine_tuning', 0.20) * 100,
+                        batch_inference_pct=workload.get('batch_inference', 0.15) * 100,
+                        realtime_inference_pct=workload.get('realtime_inference', 0.20) * 100,
+                    )
+                    
+                    # Calculate composition (forces fresh calculation)
+                    composition = manager.add_site(config)
+                    st.session_state.load_composition = composition
+                    st.session_state.load_advanced_calculated = True
+                    
+                    st.success(f"✅ Calculated: {cooling_type} @ PUE {pue}")
                     st.rerun()
-                else:
-                    st.error("❌ Failed to save configuration. Check terminal for errors.")
+                    
+                except Exception as e:
+                    st.error(f"❌ Calculation error: {e}")
+                    import traceback
+                    st.code(traceback.format_exc())
+        
+        with col_calc1:
+            st.caption("Calculate PSS/e fractions, equipment counts, harmonics, and DR capacity")
+        
+        # Show results if calculated
+        if st.session_state.get('load_advanced_calculated') and 'load_composition' in st.session_state:
+            comp = st.session_state.load_composition
+            
+            st.markdown("**📊 PSS/e CMPLDW Load Fractions:**")
+            col_psse1, col_psse2, col_psse3, col_psse4 = st.columns(4)
+            
+            f = comp.psse_fractions
+            col_psse1.metric("Electronic (GPU/TPU)", f"{f.fel*100:.1f}%", help="Server PSUs with active PFC")
+            col_psse2.metric("Motor Load", f"{(f.fma+f.fmb+f.fmc+f.fmd)*100:.1f}%", help="Cooling equipment motors")
+            col_psse3.metric("Static Load", f"{f.pfs*100:.1f}%", help="Lighting, facility, etc.")
+            col_psse4.metric("Power Factor", f"{comp.power_factor:.3f}", help="Composite power factor")
+            
+            st.markdown("**🔧 Equipment Counts (for ETAP/RAM):**")
+            col_eq1, col_eq2, col_eq3, col_eq4 = st.columns(4)
+            
+            eq = comp.equipment
+            col_eq1.metric("UPS Units", f"{eq.ups_count}", help=f"{eq.ups_rating_kva:.0f} kVA each")
+            col_eq2.metric("Chillers", f"{eq.chiller_count}", help=f"{eq.chiller_rating_mw:.2f} MW each")
+            col_eq3.metric("CRAH Units", f"{eq.crah_count}", help=f"{eq.crah_rating_kw:.0f} kW each")
+            col_eq4.metric("Pumps", f"{eq.pump_count}", help=f"{eq.pump_rating_kw:.0f} kW each")
+            
+            st.markdown("**⚡ Demand Response Capacity:**")
+            col_dr1, col_dr2, col_dr3, col_dr4 = st.columns(4)
+            
+            flex = comp.flexibility
+            col_dr1.metric("Total DR", f"{flex.dr_capacity_mw:.1f} MW", help="Total flexible capacity")
+            col_dr2.metric("Economic DR", f"{flex.economic_dr_mw:.1f} MW", help="All workloads")
+            col_dr3.metric("ERS-30", f"{flex.ers_30_mw:.1f} MW", help="≥30min response")
+            col_dr4.metric("ERS-10", f"{flex.ers_10_mw:.1f} MW", help="≥10min response")
+            
+            # Show compliance status
+            with st.expander("🏛️ ISO Compliance & Harmonics"):
+                col_iso1, col_iso2 = st.columns(2)
+                
+                with col_iso1:
+                    st.write("**ISO Requirements:**")
+                    st.write(f"- Region: {comp.iso_region.upper()}")
+                    st.write(f"- LLIS Study: {'✅ Required' if comp.requires_llis else '⚪ Not Required'}")
+                    st.write(f"- VRT Profile: {comp.voltage_ride_through.get('profile', 'N/A')}")
+                
+                with col_iso2:
+                    st.write("**Harmonic Analysis:**")
+                    st.write(f"- THD-V: {comp.harmonics.thd_v:.2f}%")
+                    st.write(f"- THD-I: {comp.harmonics.thd_i:.2f}%")
+                    status = "✅ Compliant" if comp.harmonics.ieee_519_compliant else "❌ Non-Compliant"
+                    st.write(f"- IEEE 519: {status}")
+        
+        # Note: Main save button is at bottom of tab
     
     # =========================================================================
     # TAB 2: WORKLOAD MIX
@@ -633,36 +807,7 @@ def render():
         else:
             st.warning("⚠️ Please fix workload mix to sum to 100% before viewing DR economics.")
     
-    # =========================================================================
-    # SAVE CONFIGURATION
-    # =========================================================================
-    st.markdown("---")
-    
-    col_save1, col_save2 = st.columns([3, 1])
-    
-    with col_save2:
-        if st.button("💾 Save Configuration", type="primary", use_container_width=True):
-            if total_pct != 100:
-                st.error("Cannot save - workload mix must sum to 100%")
-            else:
-                # Save complete configuration for optimizer
-                st.success("✅ Load profile with DR saved!")
-                
-                # Update main session state if needed
-                if 'current_config' in st.session_state:
-                    st.session_state.current_config['load_profile_dr'] = st.session_state.load_profile_dr
-    
-    with col_save1:
-        if total_pct == 100 and 'load_data' in st.session_state.load_profile_dr:
-            with st.expander("📋 View Configuration Summary"):
-                summary = {
-                    'Peak IT Load (MW)': peak_it_mw,
-                    'PUE': pue,
-                    'Peak Facility Load (MW)': peak_facility_mw,
-                    'Total Flexibility (%)': f"{flex_summary['avg_flexibility_pct']:.1f}%",
-                    'Flexible MW': f"{flex_summary['avg_flexibility_mw']:.1f}",
-                }
-                st.json(summary)
+    # Note: Main save button is below
 
     
     
@@ -690,6 +835,53 @@ def render():
                     if 'load_8760_mw' in st.session_state:
                         st.session_state.load_config['load_8760_mw'] = st.session_state['load_8760_mw']
                         print(f"Added 8760 profile")
+                    
+                    # Extract advanced load data from LoadComposition (if calculated)
+                    if 'load_composition' in st.session_state:
+                        comp = st.session_state.load_composition
+                        
+                        # PSS/e CMPLDW fractions - Calculate aggregated values
+                        # Electronic = fel (GPU/TPU)
+                        # Motor = fma + fmb + fmc + fmd (all motor types)
+                        # Static = pfs (static load)
+                        pf = comp.psse_fractions
+                        total_motor = pf.fma + pf.fmb + pf.fmc + pf.fmd
+                        st.session_state.load_config['psse_electronic_pct'] = pf.fel * 100
+                        st.session_state.load_config['psse_motor_pct'] = total_motor * 100
+                        st.session_state.load_config['psse_static_pct'] = pf.pfs * 100
+                        st.session_state.load_config['psse_power_factor'] = comp.power_factor
+                        
+                        # ISO region from LoadComposition (already set by SiteLoadConfig, but ensure it's correct)
+                        st.session_state.load_config['iso_region'] = comp.iso_region
+                        
+                        # Equipment counts - Use correct attribute names
+                        eq = comp.equipment
+                        st.session_state.load_config['equipment_ups'] = eq.ups_count  # NOT ups_units
+                        st.session_state.load_config['equipment_chillers'] = eq.chiller_count  # NOT chillers
+                        st.session_state.load_config['equipment_crah'] = eq.crah_count  # NOT crah_units
+                        st.session_state.load_config['equipment_pumps'] = eq.pump_count  # NOT pumps
+                        
+                        # DR capacity - From flexibility object with correct attribute names
+                        flex = comp.flexibility
+                        st.session_state.load_config['dr_total_mw'] = flex.dr_capacity_mw  # NOT total_dr_mw
+                        st.session_state.load_config['dr_economic_mw'] = flex.economic_dr_mw
+                        st.session_state.load_config['dr_ers30_mw'] = flex.ers_30_mw  # NOT ers_30min_mw
+                        st.session_state.load_config['dr_ers10_mw'] = flex.ers_10_mw  # NOT ers_10min_mw
+                        
+                        # Harmonics
+                        st.session_state.load_config['harmonics_thd_v'] = comp.harmonics.thd_v
+                        st.session_state.load_config['harmonics_thd_i'] = comp.harmonics.thd_i
+                        st.session_state.load_config['harmonics_ieee519_compliant'] = comp.harmonics.ieee_519_compliant
+                        
+                        # Workload mix
+                        workload = st.session_state.load_profile_dr.get('workload_mix', {})
+                        st.session_state.load_config['workload_pretraining_pct'] = workload.get('pre_training', 45.0)
+                        st.session_state.load_config['workload_finetuning_pct'] = workload.get('fine_tuning', 20.0)
+                        st.session_state.load_config['workload_batch_inference_pct'] = workload.get('batch_inference', 15.0)
+                        st.session_state.load_config['workload_realtime_inference_pct'] = workload.get('realtime_inference', 20.0)
+                        
+                        print(f"Added advanced load data from LoadComposition")
+                    
                     
                     # Save to Google Sheets
                     success = save_load_configuration(
@@ -733,6 +925,10 @@ def render():
         
         # Run variability analysis inline
         page_04_variability.render_variability_content()
+    
+    # =========================================================================
+    # TAB 6: ENGINEERING EXPORTS (NEW)
+    # =========================================================================
 
 if __name__ == "__main__":
     render()

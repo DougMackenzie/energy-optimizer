@@ -99,79 +99,6 @@ def save_load_configuration(site_name: str, load_config: dict) -> bool:
                 with open('/tmp/load_save_debug.txt', 'a') as f:
                     f.write(f'>>> Original: {len(json_str)} chars, Compressed: {len(load_8760_json)} chars\n')
         
-        # Extract advanced load data from bvNexus LoadComposition (NEW)
-        cooling_type = load_config.get('cooling_type', '')
-        iso_region = load_config.get('iso_region', '')
-        
-        # PSS/e CMPLDW fractions
-        psse_electronic = load_config.get('psse_electronic_pct', 0.0)
-        psse_motor = load_config.get('psse_motor_pct', 0.0)
-        psse_static = load_config.get('psse_static_pct', 0.0)
-        psse_power_factor = load_config.get('psse_power_factor', 0.99)
-        
-        # Equipment counts
-        equipment_ups = int(load_config.get('equipment_ups', 0))
-        equipment_chillers = int(load_config.get('equipment_chillers', 0))
-        equipment_crah = int(load_config.get('equipment_crah', 0))
-        equipment_pumps = int(load_config.get('equipment_pumps', 0))
-        
-        # DR capacity
-        dr_total_mw = float(load_config.get('dr_total_mw', 0.0))
-        dr_economic_mw = float(load_config.get('dr_economic_mw', 0.0))
-        dr_ers30_mw = float(load_config.get('dr_ers30_mw', 0.0))
-        dr_ers10_mw = float(load_config.get('dr_ers10_mw', 0.0))
-        
-        # Harmonics
-        harmonics_thd_v = float(load_config.get('harmonics_thd_v', 0.0))
-        harmonics_thd_i = float(load_config.get('harmonics_thd_i', 0.0))
-        harmonics_ieee519 = bool(load_config.get('harmonics_ieee519_compliant', False))
-        
-        # Workload mix
-        workload_pretraining = float(load_config.get('workload_pretraining_pct', 0.0))
-        workload_finetuning = float(load_config.get('workload_finetuning_pct', 0.0))
-        workload_batch = float(load_config.get('workload_batch_inference_pct', 0.0))
-        workload_realtime = float(load_config.get('workload_realtime_inference_pct', 0.0))
-        
-        # Create advanced load JSON (single column Q)
-        advanced_load_data = {
-            'cooling_type': cooling_type,
-            'iso_region': iso_region,
-            'psse_fractions': {
-                'electronic': psse_electronic,
-                'motor': psse_motor,
-                'static': psse_static,
-                'power_factor': psse_power_factor,
-            },
-            'equipment': {
-                'ups': equipment_ups,
-                'chillers': equipment_chillers,
-                'crah': equipment_crah,
-                'pumps': equipment_pumps,
-            },
-            'dr_capacity': {
-                'total_mw': dr_total_mw,
-                'economic_mw': dr_economic_mw,
-                'ers30_mw': dr_ers30_mw,
-                'ers10_mw': dr_ers10_mw,
-            },
-            'harmonics': {
-                'thd_v': harmonics_thd_v,
-                'thd_i': harmonics_thd_i,
-                'ieee519_compliant': harmonics_ieee519,
-            },
-            'workload_mix': {
-                'pretraining_pct': workload_pretraining,
-                'finetuning_pct': workload_finetuning,
-                'batch_inference_pct': workload_batch,
-                'realtime_inference_pct': workload_realtime,
-            }
-        }
-        # Only create JSON if we have advanced data
-        advanced_load_json = json.dumps(advanced_load_data) if any([
-            cooling_type, iso_region, psse_electronic, equipment_ups, dr_total_mw
-        ]) else ''
-        
-        # Columns J-Q (basic + 8760 + advanced JSON)
         new_cols_data = [
             round(peak_it_load_mw, 1),  # J: peak_it_load_mw (derived)
             float(pue),  # K: pue
@@ -180,28 +107,13 @@ def save_load_configuration(site_name: str, load_config: dict) -> bool:
             json.dumps(growth_steps),  # N: growth_steps_json (FACILITY loads!)
             datetime.now().isoformat(),  # O: last_updated
             load_8760_json,  # P: load_8760_json (8760 hourly values)
-            advanced_load_json,  # Q: advanced_load_json (NEW - single column!)
         ]
         
         if existing_row:
-            # Update columns J-Q (all data in 2 calls for safety)
-            # Update 1: Columns J-O plus Q (basic config + advanced JSON, skip P)
-            basic_and_advanced = new_cols_data[0:6] + [new_cols_data[7]]  # J-O, Q
-            update_range = f'J{existing_row}:O{existing_row}'
-            worksheet.update(range_name=update_range, values=[basic_and_advanced[0:6]])
-            update_range_advanced = f'Q{existing_row}'
-            worksheet.update(range_name=update_range_advanced, values=[[new_cols_data[7]]])
-            
-            # Update 2: Column P (8760 data) - separate call, allow failure
-            if load_8760_json:
-                try:
-                    update_range_8760 = f'P{existing_row}'
-                    worksheet.update(range_name=update_range_8760, values=[[load_8760_json]])
-                    print(f"✓ Saved 8760 profile ({len(load_8760_json)} chars)")
-                except Exception as e:
-                    print(f"⚠️  8760 profile too large ({len(load_8760_json)} chars): {e}")
-            
-            print(f"✓ Updated load config for {site_name} (with advanced load JSON)")
+            # Update existing (columns J-P)
+            update_range = f'J{existing_row}:P{existing_row}'
+            worksheet.update(range_name=update_range, values=[new_cols_data])
+            print(f"✓ Updated load config for {site_name} (with 8760 profile)")
         else:
             # For new rows, need ALL columns A-P
             # Columns A-I (legacy schema - keep for backward compatibility)
@@ -216,11 +128,11 @@ def save_load_configuration(site_name: str, load_config: dict) -> bool:
                 15,  # H: batch_inference_pct (legacy default)
                 20,  # I: real_time_inference_pct (legacy default)
             ]
-            # Add new columns J-AK
+            # Add new columns J-P
             full_row.extend(new_cols_data)
             
             worksheet.append_row(full_row)
-            print(f"✓ Created new load config for {site_name} (with advanced load data)")
+            print(f"✓ Created new load config for {site_name} (with 8760 profile)")
         
         return True
         
@@ -294,50 +206,6 @@ def load_load_configuration(site_name: str) -> Dict:
                     'growth_steps': growth_steps,  # FACILITY loads
                     'last_updated': record.get('last_updated', ''),
                 }
-                
-                # Parse advanced load JSON from column Q
-                advanced_load_json = record.get('advanced_load_json', '')
-                if advanced_load_json:
-                    try:
-                        adv_data = json.loads(advanced_load_json)
-                        config['cooling_type'] = adv_data.get('cooling_type', '')
-                        config['iso_region'] = adv_data.get('iso_region', '')
-                        
-                        # PSS/e fractions - FIX: use correct keys (no _pct suffix in JSON)
-                        psse = adv_data.get('psse_fractions', {})
-                        config['psse_electronic_pct'] = psse.get('electronic', 0.0)
-                        config['psse_motor_pct'] = psse.get('motor', 0.0)
-                        config['psse_static_pct'] = psse.get('static', 0.0)
-                        config['psse_power_factor'] = psse.get('power_factor', 0.99)
-                        
-                        # Equipment
-                        eq = adv_data.get('equipment', {})
-                        config['equipment_ups'] = eq.get('ups', 0)
-                        config['equipment_chillers'] = eq.get('chillers', 0)
-                        config['equipment_crah'] = eq.get('crah', 0)
-                        config['equipment_pumps'] = eq.get('pumps', 0)
-                        
-                        # DR capacity
-                        dr = adv_data.get('dr_capacity', {})
-                        config['dr_total_mw'] = dr.get('total_mw', 0.0)
-                        config['dr_economic_mw'] = dr.get('economic_mw', 0.0)
-                        config['dr_ers30_mw'] = dr.get('ers30_mw', 0.0)
-                        config['dr_ers10_mw'] = dr.get('ers10_mw', 0.0)
-                        
-                        # Harmonics
-                        harm = adv_data.get('harmonics', {})
-                        config['harmonics_thd_v'] = harm.get('thd_v', 0.0)
-                        config['harmonics_thd_i'] = harm.get('thd_i', 0.0)
-                        config['harmonics_ieee519_compliant'] = harm.get('ieee519_compliant', False)
-                        
-                        # Workload mix
-                        wl = adv_data.get('workload_mix', {})
-                        config['workload_pretraining_pct'] = wl.get('pretraining_pct', 0.0)
-                        config['workload_finetuning_pct'] = wl.get('finetuning_pct', 0.0)
-                        config['workload_batch_inference_pct'] = wl.get('batch_inference_pct', 0.0)
-                        config['workload_realtime_inference_pct'] = wl.get('realtime_inference_pct', 0.0)
-                    except json.JSONDecodeError:
-                        pass  # No advanced data available
                 
                 # Generate full trajectory from growth_steps (facility loads)
                 if growth_steps:
